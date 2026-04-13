@@ -1,0 +1,32 @@
+epochs: 50
+batch_size: 32
+grad_clip: 1.0
+
+optimizer:
+  name: adamw
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+  betas: [0.9, 0.999]
+
+scheduler:
+  name: cosine
+  T_max: 50      # matches epochs
+  eta_min: 1.0e-6
+  warmup_epochs: 5
+
+loss:
+  name: cross_entropy
+  label_smoothing: 0.1
+  use_class_weights: true
+
+callbacks:
+  early_stopping:
+    enabled: true
+    patience: 10
+    monitor: val_loss
+    mode: min
+  checkpoint:
+    enabled: true
+    monitor: val_auc
+    mode: max
+    save_last: true

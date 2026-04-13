@@ -1,0 +1,35 @@
+name: ham10000
+raw_dir: data/raw
+processed_dir: data/processed
+splits_dir: data/splits
+
+image_size: 224
+num_classes: 7
+
+classes:
+  - mel    # Melanoma
+  - nv     # Melanocytic nevi
+  - bcc    # Basal cell carcinoma
+  - akiec  # Actinic keratoses
+  - bkl    # Benign keratosis
+  - df     # Dermatofibroma
+  - vasc   # Vascular lesions
+
+# Class label mapping
+class_to_idx:
+  mel: 0
+  nv: 1
+  bcc: 2
+  akiec: 3
+  bkl: 4
+  df: 5
+  vasc: 6
+
+# Stratified split ratios
+split_ratios:
+  train: 0.7
+  val: 0.15
+  test: 0.15
+
+# Use weighted sampling to handle class imbalance
+use_weighted_sampler: true

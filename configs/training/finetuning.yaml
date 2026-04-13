@@ -1,0 +1,32 @@
+epochs: 30
+batch_size: 16
+grad_clip: 0.5
+
+optimizer:
+  name: adamw
+  lr: 1.0e-5      # Lower LR for fine-tuning
+  weight_decay: 1.0e-4
+  betas: [0.9, 0.999]
+
+scheduler:
+  name: cosine
+  T_max: 30
+  eta_min: 1.0e-7
+  warmup_epochs: 3
+
+loss:
+  name: focal
+  gamma: 2.0
+  use_class_weights: true
+
+callbacks:
+  early_stopping:
+    enabled: true
+    patience: 8
+    monitor: val_loss
+    mode: min
+  checkpoint:
+    enabled: true
+    monitor: val_auc
+    mode: max
+    save_last: true

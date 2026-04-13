@@ -1,0 +1,13 @@
+name: efficientnet_b3
+backbone: efficientnet_b3
+pretrained: true
+num_classes: 7  # matches data config
+
+# Head configuration
+head:
+  dropout: 0.3
+  hidden_dim: null  # null = direct FC from backbone features to num_classes
+
+# Fine-tuning strategy
+freeze_backbone: false
+freeze_bn: false

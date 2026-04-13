@@ -1,0 +1,13 @@
+defaults:
+  - data: ham10000
+  - model: efficientnet_b3
+  - training: default
+  - augmentation: light
+  - _self_
+
+seed: 42
+experiment_name: skin-cancer-baseline
+output_dir: experiments/runs
+
+device: cuda  # cuda or cpu
+num_workers: 4
