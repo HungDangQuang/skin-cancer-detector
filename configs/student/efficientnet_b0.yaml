@@ -1,0 +1,11 @@
+name: efficientnet_b0
+role: student
+paradigm: compound_scaling
+backbone: efficientnet_b0
+pretrained: true
+num_classes: 1    # binary sigmoid output
+
+head:
+  dropout: 0.3
+
+freeze_backbone: false

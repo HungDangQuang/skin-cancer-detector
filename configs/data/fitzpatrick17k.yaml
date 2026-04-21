@@ -1,0 +1,20 @@
+# Fitzpatrick17k is used ONLY for fairness analysis (never training).
+name: fitzpatrick17k
+role: fairness_evaluation
+
+raw_dir: data/raw/fitzpatrick17k
+processed_dir: data/processed/fitzpatrick17k
+
+image_size: 224
+
+skin_type_groups:
+  light:  [1, 2]    # Fitzpatrick I, II
+  medium: [3, 4]    # Fitzpatrick III, IV
+  dark:   [5, 6]    # Fitzpatrick V, VI
+
+use_only_for:
+  - fairness_evaluation
+do_not_use_for:
+  - training
+  - validation_during_training
+  - threshold_selection

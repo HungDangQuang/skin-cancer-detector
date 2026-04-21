@@ -18,7 +18,7 @@ def tmp_dataset(tmp_path):
     for i in range(6):
         img_path = images_dir / f"img_{i}.jpg"
         Image.new("RGB", (224, 224), color=(i * 40, 100, 150)).save(img_path)
-        records.append({"image_path": str(img_path), "label": i % 7, "dx": "nv"})
+        records.append({"image_path": str(img_path), "label": i % 2, "class_name": ["benign", "malignant"][i % 2]})
 
     csv_path = tmp_path / "split.csv"
     pd.DataFrame(records).to_csv(csv_path, index=False)

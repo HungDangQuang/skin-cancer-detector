@@ -1,12 +1,13 @@
 defaults:
-  - data: ham10000
-  - model: efficientnet_b3
-  - training: default
+  - data: isic2024
+  - teacher: efficientnet_b4
+  - student: efficientnet_b0
+  - training: distillation
   - augmentation: light
   - _self_
 
 seed: 42
-experiment_name: skin-cancer-baseline
+experiment_name: kd-skin-cancer
 output_dir: experiments/runs
 
 device: cuda  # cuda or cpu

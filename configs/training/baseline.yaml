@@ -1,12 +1,14 @@
-# Teacher training config
+# Student baseline training config (NO knowledge distillation)
+# Identical to distillation.yaml except no distillation block.
+# Used as the controlled comparison branch.
 epochs: 50
-batch_size: 32
+batch_size: 64
 grad_clip: 1.0
 
 optimizer:
   name: adamw
-  lr_backbone: 1.0e-4    # lower LR for pretrained backbone
-  lr_head: 1.0e-3        # higher LR for new classification head
+  lr_backbone: 1.0e-4
+  lr_head: 1.0e-3
   weight_decay: 1.0e-4
   betas: [0.9, 0.999]
 
@@ -19,7 +21,7 @@ scheduler:
 loss:
   name: focal_loss
   gamma: 2.0
-  alpha: 0.25    # prior probability of malignant class
+  alpha: 0.25
 
 callbacks:
   early_stopping:

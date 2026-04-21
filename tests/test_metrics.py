@@ -1,33 +1,45 @@
 import numpy as np
 import pytest
 
-from src.evaluation.metrics import compute_metrics
-
-CLASS_NAMES = ["mel", "nv", "bcc", "akiec", "bkl", "df", "vasc"]
+from src.evaluation.metrics import compute_metrics, pauc_at_tpr, youden_threshold
 
 
-def test_perfect_predictions():
-    y_true = [0, 1, 2, 3]
-    y_pred = [0, 1, 2, 3]
-    y_prob = np.eye(7)[:4]  # one-hot
-    metrics = compute_metrics(y_true, y_pred, y_prob, CLASS_NAMES)
-    assert metrics["accuracy"] == 1.0
-    assert metrics["f1_macro"] == pytest.approx(1.0, abs=0.01)
+def test_pauc_perfect_classifier():
+    y_true = np.array([0] * 100 + [1] * 10)
+    # Perfect: malignant gets prob=1, benign gets prob=0
+    y_prob = np.array([0.0] * 100 + [1.0] * 10)
+    pauc = pauc_at_tpr(y_true, y_prob, min_tpr=0.80)
+    assert pauc > 0.9  # should be close to 1.0
 
 
-def test_metrics_keys():
-    y_true = [0, 1, 2]
-    y_pred = [0, 1, 1]
-    y_prob = np.random.dirichlet(np.ones(7), size=3)
-    metrics = compute_metrics(y_true, y_pred, y_prob, CLASS_NAMES)
-    for key in ["accuracy", "balanced_accuracy", "f1_macro", "f1_weighted", "auc_macro"]:
+def test_pauc_random_classifier():
+    rng = np.random.default_rng(42)
+    y_true = np.array([0] * 100 + [1] * 10)
+    y_prob = rng.random(110)
+    pauc = pauc_at_tpr(y_true, y_prob, min_tpr=0.80)
+    assert 0.0 <= pauc <= 1.0
+
+
+def test_youden_threshold_range():
+    rng = np.random.default_rng(0)
+    y_true = np.array([0] * 50 + [1] * 50)
+    y_prob = rng.random(100)
+    thresh = youden_threshold(y_true, y_prob)
+    assert 0.0 <= thresh <= 1.0
+
+
+def test_compute_metrics_keys():
+    y_true = [0, 0, 1, 1]
+    y_prob = np.array([0.1, 0.2, 0.8, 0.9])
+    metrics = compute_metrics(y_true, y_prob)
+    for key in ["pauc_at_tpr80", "auc_roc", "sensitivity", "specificity", "f1_score", "threshold"]:
         assert key in metrics
 
 
-def test_per_class_f1_keys():
-    y_true = [0, 1]
-    y_pred = [0, 1]
-    y_prob = np.eye(7)[:2]
-    metrics = compute_metrics(y_true, y_pred, y_prob, CLASS_NAMES)
-    for name in CLASS_NAMES:
-        assert f"f1_{name}" in metrics
+def test_compute_metrics_perfect():
+    y_true = [0, 0, 0, 1, 1, 1]
+    y_prob = np.array([0.0, 0.1, 0.2, 0.8, 0.9, 1.0])
+    metrics = compute_metrics(y_true, y_prob)
+    assert metrics["sensitivity"] == pytest.approx(1.0)
+    assert metrics["specificity"] == pytest.approx(1.0)
+    assert metrics["auc_roc"] == pytest.approx(1.0)

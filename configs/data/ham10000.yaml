@@ -1,35 +1,31 @@
+# HAM10000 is used ONLY for cross-domain evaluation.
+# NEVER used for training, validation during training, or threshold selection.
 name: ham10000
-raw_dir: data/raw
-processed_dir: data/processed
-splits_dir: data/splits
+role: cross_domain_evaluation
+
+raw_dir: data/raw/ham10000
+processed_dir: data/processed/ham10000
+splits_dir: data/splits/ham10000
 
 image_size: 224
-num_classes: 7
+image_type: dermoscopic    # different domain from training (non-dermoscopic ISIC 2024)
 
-classes:
-  - mel    # Melanoma
-  - nv     # Melanocytic nevi
-  - bcc    # Basal cell carcinoma
-  - akiec  # Actinic keratoses
-  - bkl    # Benign keratosis
-  - df     # Dermatofibroma
-  - vasc   # Vascular lesions
+# Original 7-class labels mapped to binary for evaluation
+label_mapping:
+  mel: 1       # melanoma → malignant
+  bcc: 1       # basal cell carcinoma → malignant
+  akiec: 1     # actinic keratosis → malignant (borderline)
+  nv: 0        # nevus → benign
+  bkl: 0       # benign keratosis → benign
+  df: 0        # dermatofibroma → benign
+  vasc: 0      # vascular lesion → benign
 
-# Class label mapping
-class_to_idx:
-  mel: 0
-  nv: 1
-  bcc: 2
-  akiec: 3
-  bkl: 4
-  df: 5
-  vasc: 6
+label_col: label
+image_id_col: image_id
 
-# Stratified split ratios
-split_ratios:
-  train: 0.7
-  val: 0.15
-  test: 0.15
-
-# Use weighted sampling to handle class imbalance
-use_weighted_sampler: true
+use_only_for:
+  - cross_domain_evaluation
+do_not_use_for:
+  - training
+  - validation_during_training
+  - threshold_selection

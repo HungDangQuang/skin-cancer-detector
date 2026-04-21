@@ -1,4 +1,4 @@
-.PHONY: install install-dev prepare train evaluate test lint format clean
+.PHONY: install install-dev prepare train-teacher train-student-b0 train-student-mobilenet train-student-mobilevit evaluate test lint format clean
 
 install:
 	pip install -e .
@@ -11,14 +11,22 @@ install-dev:
 prepare:
 	python scripts/prepare_data.py
 
-train:
-	python scripts/train.py
+# Step 1: Train teacher
+train-teacher:
+	python scripts/train_teacher.py
 
-train-efficientnet:
-	python scripts/train.py model=efficientnet_b3
+# Step 2: Train each student via KD
+train-student-b0:
+	python scripts/train_student.py student=efficientnet_b0
 
-train-resnet:
-	python scripts/train.py model=resnet50
+train-student-mobilenet:
+	python scripts/train_student.py student=mobilenetv3_large
+
+train-student-mobilevit:
+	python scripts/train_student.py student=mobilevit_s
+
+# Train all students sequentially
+train-all-students: train-student-b0 train-student-mobilenet train-student-mobilevit
 
 evaluate:
 	python scripts/evaluate.py

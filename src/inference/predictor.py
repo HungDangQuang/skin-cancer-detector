@@ -9,23 +9,26 @@ from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+CLASSES = ["benign", "malignant"]
+
 
 class Predictor:
     """
-    Load a trained model and run inference on single images or batches.
+    Load a trained binary model and run inference on single images.
+    Model outputs a raw logit (B,); sigmoid is applied here.
     """
 
     def __init__(
         self,
         model: nn.Module,
         checkpoint_path: str | Path,
-        class_names: list[str],
         transform,
         device: str = "cpu",
+        threshold: float = 0.5,
     ):
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
-        self.class_names = class_names
         self.transform = transform
+        self.threshold = threshold
 
         load_checkpoint(checkpoint_path, model, device=str(self.device))
         self.model = model.to(self.device)
@@ -35,29 +38,26 @@ class Predictor:
     @torch.no_grad()
     def predict(self, image: Image.Image) -> dict:
         """
-        Predict the class of a single PIL image.
+        Predict malignancy probability for a single PIL image.
 
         Returns:
             {
-                "class": "mel",
-                "class_idx": 0,
-                "confidence": 0.87,
-                "probabilities": {"mel": 0.87, "nv": 0.05, ...}
+                "class": "malignant",
+                "probability": 0.87,
+                "threshold": 0.5,
             }
         """
         tensor = self.transform(image).unsqueeze(0).to(self.device)
-        logits = self.model(tensor)
-        probs = torch.softmax(logits, dim=1).squeeze().cpu()
+        logit = self.model(tensor)
+        prob = torch.sigmoid(logit).item()
+        predicted_class = CLASSES[int(prob >= self.threshold)]
 
-        class_idx = probs.argmax().item()
         return {
-            "class": self.class_names[class_idx],
-            "class_idx": class_idx,
-            "confidence": probs[class_idx].item(),
-            "probabilities": {name: probs[i].item() for i, name in enumerate(self.class_names)},
+            "class": predicted_class,
+            "probability": prob,
+            "threshold": self.threshold,
         }
 
     @torch.no_grad()
     def predict_batch(self, images: list[Image.Image]) -> list[dict]:
-        """Predict a list of PIL images."""
         return [self.predict(img) for img in images]

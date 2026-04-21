@@ -2,7 +2,8 @@
 Export trained model to ONNX or TorchScript.
 
 Usage:
-    python scripts/export_model.py --checkpoint path/to/best_model.pth --format onnx
+    python scripts/export_model.py --model-name efficientnet_b0 \\
+        --checkpoint path/to/best_model.pth --format onnx
 """
 import argparse
 import sys
@@ -12,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import torch
 
-from src.models.registry import build_model
+from src.models.registry import build_model_from_name
 from src.utils.checkpoint import load_checkpoint
 from src.utils.config import load_config
 from src.utils.logger import get_logger
@@ -22,6 +23,8 @@ logger = get_logger(__name__)
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--model-name", required=True,
+                        choices=["efficientnet_b4", "efficientnet_b0", "mobilenetv3_large", "mobilevit_s"])
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--format", choices=["onnx", "torchscript"], default="onnx")
     parser.add_argument("--output", default="exports/model")
@@ -29,7 +32,7 @@ def main():
     args = parser.parse_args()
 
     cfg = load_config(args.config)
-    model = build_model(cfg)
+    model, model_cfg = build_model_from_name(args.model_name, cfg)
     load_checkpoint(args.checkpoint, model)
     model.eval()
 
@@ -40,8 +43,8 @@ def main():
         out_path = args.output + ".onnx"
         torch.onnx.export(
             model, dummy, out_path,
-            input_names=["image"], output_names=["logits"],
-            dynamic_axes={"image": {0: "batch"}, "logits": {0: "batch"}},
+            input_names=["image"], output_names=["logit"],
+            dynamic_axes={"image": {0: "batch"}, "logit": {0: "batch"}},
             opset_version=17,
         )
     else:

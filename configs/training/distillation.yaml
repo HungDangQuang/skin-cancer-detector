@@ -1,0 +1,41 @@
+# Student KD training config
+epochs: 50
+batch_size: 64
+grad_clip: 1.0
+
+optimizer:
+  name: adamw
+  lr_backbone: 1.0e-4
+  lr_head: 1.0e-3
+  weight_decay: 1.0e-4
+  betas: [0.9, 0.999]
+
+scheduler:
+  name: cosine
+  T_max: 50
+  eta_min: 1.0e-6
+  warmup_epochs: 3
+
+# Hard-label loss component (used inside distillation loss)
+loss:
+  name: focal_loss
+  gamma: 2.0
+  alpha: 0.25
+
+# Knowledge Distillation hyperparameters
+# L_total = alpha * L_focal(student, true) + (1 - alpha) * T^2 * L_KL(student_soft || teacher_soft)
+distillation:
+  temperature: 4.0    # T — softens teacher/student distributions
+  alpha: 0.3          # weight of hard-label focal loss (0.3 hard + 0.7 soft)
+
+callbacks:
+  early_stopping:
+    enabled: true
+    patience: 10
+    monitor: val_loss
+    mode: min
+  checkpoint:
+    enabled: true
+    monitor: val_pauc_at_tpr80
+    mode: max
+    save_last: true

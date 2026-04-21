@@ -2,7 +2,8 @@
 Evaluation entry point.
 
 Usage:
-    python scripts/evaluate.py --checkpoint experiments/runs/skin-cancer-baseline/checkpoints/best_model.pth
+    python scripts/evaluate.py --model-name efficientnet_b4 --checkpoint path/to/best_model.pth
+    python scripts/evaluate.py --model-name efficientnet_b0  --checkpoint path/to/best_model.pth
 """
 import argparse
 import sys
@@ -13,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.data.datamodule import SkinLesionDataModule
 from src.evaluation.confusion_matrix import plot_confusion_matrix
 from src.evaluation.evaluator import Evaluator
-from src.models.registry import build_model
+from src.models.registry import build_model_from_name
 from src.utils.checkpoint import load_checkpoint
 from src.utils.config import load_config
 from src.utils.logger import get_logger
@@ -24,7 +25,11 @@ logger = get_logger(__name__)
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--model-name", required=True,
+                        choices=["efficientnet_b4", "efficientnet_b0", "mobilenetv3_large", "mobilevit_s"],
+                        help="Model architecture to evaluate")
     parser.add_argument("--checkpoint", required=True, help="Path to model checkpoint (.pth)")
+    parser.add_argument("--fold", type=int, default=0, help="Which fold's test split to use")
     parser.add_argument("--config", default="configs/config.yaml")
     parser.add_argument("--output", default="reports/results/test_metrics.json")
     args = parser.parse_args()
@@ -32,20 +37,20 @@ def main():
     cfg = load_config(args.config)
     set_seed(cfg.seed)
 
-    datamodule = SkinLesionDataModule(cfg)
-    datamodule.setup()
-
-    model = build_model(cfg)
+    model, model_cfg = build_model_from_name(args.model_name, cfg)
     load_checkpoint(args.checkpoint, model, device=cfg.device)
 
-    evaluator = Evaluator(model, device=cfg.device, class_names=cfg.data.classes)
+    datamodule = SkinLesionDataModule(model_cfg, fold=args.fold)
+    datamodule.setup()
+
+    evaluator = Evaluator(model, device=cfg.device)
     metrics = evaluator.evaluate(datamodule.test_dataloader())
     evaluator.save_metrics(metrics, args.output)
 
     plot_confusion_matrix(
-        y_true=metrics.get("_y_true", []),
-        y_pred=metrics.get("_y_pred", []),
-        class_names=cfg.data.classes,
+        y_true=metrics["_y_true"],
+        y_pred=metrics["_y_pred"],
+        class_names=list(cfg.data.classes),
         save_path="reports/figures/confusion_matrix.png",
     )
 

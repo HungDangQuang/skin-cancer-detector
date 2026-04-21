@@ -11,11 +11,8 @@ logger = get_logger(__name__)
 
 class Trainer:
     """
-    Manages the training and validation loop.
-
-    Usage:
-        trainer = Trainer(cfg, model, datamodule, run_dir)
-        trainer.fit()
+    Standalone trainer for the teacher model (no distillation).
+    Uses binary focal loss and sigmoid output.
     """
 
     def __init__(self, cfg, model: nn.Module, datamodule, run_dir: str | Path):
@@ -35,12 +32,8 @@ class Trainer:
         from src.training.optimizers import build_optimizer
         from src.training.schedulers import build_scheduler
         from src.training.callbacks import EarlyStopping, ModelCheckpoint
-        from src.utils.class_weights import compute_weights_from_csv
 
-        splits_dir = Path(self.cfg.data.splits_dir)
-        class_weights = compute_weights_from_csv(splits_dir / "train_split.csv").to(self.device)
-
-        self.criterion = build_loss(self.cfg, class_weights)
+        self.criterion = build_loss(self.cfg)
         self.optimizer = build_optimizer(self.cfg, self.model)
         self.scheduler = build_scheduler(self.cfg, self.optimizer)
 
@@ -57,16 +50,17 @@ class Trainer:
             save_last=cb_cfg.checkpoint.save_last,
         ) if cb_cfg.checkpoint.enabled else None
 
-        self.history = {"train_loss": [], "val_loss": [], "train_acc": [], "val_acc": []}
+        self.history = {"train_loss": [], "val_loss": [], "train_pauc": [], "val_pauc": []}
 
     def fit(self) -> dict:
-        """Run full training loop. Returns training history."""
         self.datamodule.setup()
         train_loader = self.datamodule.train_dataloader()
         val_loader = self.datamodule.val_dataloader()
         epochs = self.cfg.training.epochs
 
         for epoch in range(1, epochs + 1):
+            self.datamodule.set_epoch(epoch)
+
             train_metrics = self._train_epoch(train_loader, epoch, epochs)
             val_metrics = self._val_epoch(val_loader)
 
@@ -74,24 +68,17 @@ class Trainer:
 
             self.history["train_loss"].append(train_metrics["loss"])
             self.history["val_loss"].append(val_metrics["loss"])
-            self.history["train_acc"].append(train_metrics["acc"])
-            self.history["val_acc"].append(val_metrics["acc"])
 
             logger.info(
                 f"Epoch {epoch}/{epochs} | "
-                f"train_loss={train_metrics['loss']:.4f} train_acc={train_metrics['acc']:.4f} | "
-                f"val_loss={val_metrics['loss']:.4f} val_acc={val_metrics['acc']:.4f}"
+                f"train_loss={train_metrics['loss']:.4f} | "
+                f"val_loss={val_metrics['loss']:.4f} "
+                f"val_pauc={val_metrics.get('pauc_at_tpr80', 0):.4f}"
             )
 
-            monitor_val = val_metrics.get(
-                self.checkpoint.monitor.replace("val_", ""), val_metrics["loss"]
-            ) if self.checkpoint else val_metrics["loss"]
-
             if self.checkpoint:
-                self.checkpoint.step(
-                    monitor_val, self.model, self.optimizer, epoch,
-                    {**train_metrics, **{f"val_{k}": v for k, v in val_metrics.items()}}
-                )
+                monitor_val = val_metrics.get("pauc_at_tpr80", val_metrics["loss"])
+                self.checkpoint.step(monitor_val, self.model, self.optimizer, epoch, val_metrics)
 
             if self.early_stopping and self.early_stopping.step(val_metrics["loss"]):
                 logger.info("Early stopping triggered.")
@@ -101,12 +88,13 @@ class Trainer:
 
     def _train_epoch(self, loader, epoch: int, total_epochs: int) -> dict:
         self.model.train()
-        total_loss, correct, total = 0.0, 0, 0
+        total_loss, total = 0.0, 0
         grad_clip = self.cfg.training.get("grad_clip", None)
 
         pbar = tqdm(loader, desc=f"Train [{epoch}/{total_epochs}]", leave=False)
         for images, labels in pbar:
-            images, labels = images.to(self.device), labels.to(self.device)
+            images = images.to(self.device)
+            labels = labels.float().to(self.device)
 
             self.optimizer.zero_grad()
             logits = self.model(images)
@@ -117,28 +105,33 @@ class Trainer:
                 nn.utils.clip_grad_norm_(self.model.parameters(), grad_clip)
 
             self.optimizer.step()
-
             total_loss += loss.item() * images.size(0)
-            preds = logits.argmax(dim=1)
-            correct += (preds == labels).sum().item()
             total += images.size(0)
             pbar.set_postfix(loss=f"{loss.item():.4f}")
 
-        return {"loss": total_loss / total, "acc": correct / total}
+        return {"loss": total_loss / total}
 
     @torch.no_grad()
     def _val_epoch(self, loader) -> dict:
+        import numpy as np
+        from src.evaluation.metrics import compute_metrics
+
         self.model.eval()
-        total_loss, correct, total = 0.0, 0, 0
+        total_loss, total = 0.0, 0
+        all_labels, all_probs = [], []
 
         for images, labels in tqdm(loader, desc="Val", leave=False):
-            images, labels = images.to(self.device), labels.to(self.device)
+            images = images.to(self.device)
+            labels_float = labels.float().to(self.device)
+
             logits = self.model(images)
-            loss = self.criterion(logits, labels)
+            loss = self.criterion(logits, labels_float)
 
             total_loss += loss.item() * images.size(0)
-            preds = logits.argmax(dim=1)
-            correct += (preds == labels).sum().item()
             total += images.size(0)
+            all_probs.extend(torch.sigmoid(logits).cpu().numpy())
+            all_labels.extend(labels.numpy())
 
-        return {"loss": total_loss / total, "acc": correct / total}
+        metrics = compute_metrics(all_labels, np.array(all_probs))
+        metrics["loss"] = total_loss / total
+        return metrics

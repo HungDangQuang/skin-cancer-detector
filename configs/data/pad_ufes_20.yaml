@@ -1,0 +1,24 @@
+name: pad_ufes_20
+role: augment_malignant
+
+raw_dir: data/raw/pad_ufes_20
+processed_dir: data/processed/pad_ufes_20
+
+# Raw structure:
+#   data/raw/pad_ufes_20/
+#     images/           <- PNG/JPG files named by img_id
+#     metadata.csv      <- img_id, diagnostic (BCC/SCC/MEL/ACK/NEV/SEK), patient_id, ...
+
+image_size: 224
+
+# Binary label mapping from 6-class diagnostic
+label_mapping:
+  BCC: 1   # malignant
+  SCC: 1   # malignant
+  MEL: 1   # malignant
+  ACK: 0   # benign
+  NEV: 0   # benign
+  SEK: 0   # benign
+
+label_col: label
+image_id_col: img_id

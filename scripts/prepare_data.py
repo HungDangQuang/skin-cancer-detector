@@ -1,20 +1,42 @@
 """
-Data preparation script.
+Data preparation script — ISIC 2024 + PAD-UFES-20.
 
-Usage:
-    python scripts/prepare_data.py
+Steps before running:
+  1. Download ISIC 2024 from Kaggle:
+       https://www.kaggle.com/competitions/isic-2024-challenge/data
+     Extract to: data/raw/isic2024/
+       data/raw/isic2024/train-image.hdf5
+       data/raw/isic2024/train-metadata.csv
 
-Downloads should be done manually:
-  1. Go to https://www.kaggle.com/datasets/kmader/skin-lesion-analysis-toward-melanoma-detection
-  2. Download and extract to data/raw/
-  3. Run this script
+  2. Download PAD-UFES-20:
+       https://data.mendeley.com/datasets/zr7vgbcyr2/1
+     Extract to: data/raw/pad_ufes_20/
+       data/raw/pad_ufes_20/images/
+       data/raw/pad_ufes_20/metadata.csv
+
+  3. Run:
+       python scripts/prepare_data.py
+
+Output:
+  data/processed/isic2024/{benign,malignant}/*.jpg
+  data/processed/pad_ufes_20/{benign,malignant}/*.jpg
+  data/splits/isic2024/fold_0/train_split.csv
+  data/splits/isic2024/fold_0/val_split.csv
+  ... (5 folds)
+  data/splits/isic2024/test_split.csv   <- held-out, never changed
 """
 import sys
 from pathlib import Path
 
+import pandas as pd
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.data.preprocessing import generate_splits, process_ham10000
+from src.data.preprocessing import (
+    generate_group_kfold_splits,
+    process_isic2024,
+    process_pad_ufes_20,
+)
 from src.utils.config import load_config
 from src.utils.logger import get_logger
 from src.utils.seed import set_seed
@@ -26,33 +48,47 @@ def main():
     cfg = load_config("configs/config.yaml")
     set_seed(cfg.seed)
 
-    raw_dir = Path(cfg.data.raw_dir)
-    processed_dir = Path(cfg.data.processed_dir)
+    isic_raw = Path(cfg.data.raw_dir)
+    isic_processed = Path(cfg.data.processed_dir)
     splits_dir = Path(cfg.data.splits_dir)
-    metadata_csv = raw_dir / "HAM10000_metadata.csv"
 
-    if not metadata_csv.exists():
-        logger.error(
-            f"Metadata CSV not found at {metadata_csv}.\n"
-            "Please download HAM10000 dataset and place it in data/raw/."
-        )
+    # --- ISIC 2024 ---
+    if not isic_raw.exists():
+        logger.error(f"ISIC 2024 raw dir not found: {isic_raw}")
         sys.exit(1)
 
-    logger.info("Processing HAM10000 images...")
-    df = process_ham10000(
-        raw_dir=raw_dir,
-        processed_dir=processed_dir,
-        metadata_csv=metadata_csv,
+    logger.info("Processing ISIC 2024 (HDF5)...")
+    df_isic = process_isic2024(
+        raw_dir=isic_raw,
+        processed_dir=isic_processed,
         image_size=cfg.data.image_size,
+        image_id_col=cfg.data.image_id_col,
+        label_col=cfg.data.label_col,
     )
-    logger.info(f"Processed {len(df)} images.")
 
-    logger.info("Generating train/val/test splits...")
-    generate_splits(
-        df=df,
+    # --- PAD-UFES-20 (optional — augment malignant class) ---
+    pad_raw = Path("data/raw/pad_ufes_20")
+    if pad_raw.exists():
+        logger.info("Processing PAD-UFES-20...")
+        df_pad = process_pad_ufes_20(
+            raw_dir=pad_raw,
+            processed_dir=Path("data/processed/pad_ufes_20"),
+            image_size=cfg.data.image_size,
+        )
+        df_combined = pd.concat([df_isic, df_pad], ignore_index=True)
+        logger.info(f"Combined dataset: {len(df_combined)} images")
+    else:
+        logger.warning("PAD-UFES-20 not found — using ISIC 2024 only.")
+        df_combined = df_isic
+
+    # --- StratifiedGroupKFold splits ---
+    logger.info("Generating StratifiedGroupKFold splits (patient-level)...")
+    generate_group_kfold_splits(
+        df=df_combined,
         splits_dir=splits_dir,
-        train_ratio=cfg.data.split_ratios.train,
-        val_ratio=cfg.data.split_ratios.val,
+        n_splits=cfg.data.get("num_folds", 5),
+        group_col=cfg.data.get("group_col", "patient_id"),
+        label_col=cfg.data.label_col,
         seed=cfg.seed,
     )
     logger.info("Data preparation complete.")

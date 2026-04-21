@@ -7,8 +7,7 @@ import numpy as np
 def plot_training_curves(
     train_losses: list[float],
     val_losses: list[float],
-    train_accs: list[float],
-    val_accs: list[float],
+    val_paucs: list[float],
     save_path: str | None = None,
 ) -> None:
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
@@ -20,9 +19,8 @@ def plot_training_curves(
     ax1.set_xlabel("Epoch")
     ax1.legend()
 
-    ax2.plot(epochs, train_accs, label="Train")
-    ax2.plot(epochs, val_accs, label="Val")
-    ax2.set_title("Accuracy")
+    ax2.plot(epochs, val_paucs, label="Val pAUC@TPR80", color="green")
+    ax2.set_title("pAUC @ TPR ≥ 80%")
     ax2.set_xlabel("Epoch")
     ax2.legend()
 

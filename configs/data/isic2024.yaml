@@ -1,0 +1,31 @@
+name: isic2024
+role: primary_training
+
+raw_dir: data/raw/isic2024
+processed_dir: data/processed/isic2024
+splits_dir: data/splits/isic2024
+
+# Raw structure:
+#   data/raw/isic2024/
+#     train-image.hdf5     <- HDF5 file; keys=isic_id, values=JPEG bytes
+#     train-metadata.csv   <- isic_id, patient_id, target (0/1), age_approx, sex, ...
+
+image_size: 224
+num_classes: 1           # binary sigmoid output
+
+classes:
+  - benign     # target = 0  (~99.1% of data)
+  - malignant  # target = 1  (~0.9% of data)
+
+label_col: target
+image_id_col: isic_id
+
+# Patient-level split — prevents leakage when one patient has multiple images
+split_strategy: stratified_group_kfold
+num_folds: 5
+group_col: patient_id
+random_seed: 42
+
+# Dynamic undersampling: 1 malignant : 5 benign per epoch (resampled each epoch)
+use_weighted_sampler: true
+undersample_ratio: 5

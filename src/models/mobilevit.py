@@ -5,14 +5,14 @@ from .base_model import BaseModel
 from .heads import build_head
 
 
-class EfficientNetModel(BaseModel):
-    """EfficientNet backbone with binary classification head (via timm)."""
+class MobileViTModel(BaseModel):
+    """MobileViT-S backbone with binary classification head (via timm)."""
 
     def __init__(self, cfg):
         super().__init__()
-        backbone_name = cfg.model.get("backbone", "efficientnet_b4")
+        backbone_name = cfg.model.get("backbone", "mobilevit_s")
         pretrained = cfg.model.get("pretrained", True)
-        dropout = cfg.model.head.get("dropout", 0.3)
+        dropout = cfg.model.head.get("dropout", 0.1)
 
         self.backbone = timm.create_model(backbone_name, pretrained=pretrained, num_classes=0)
         in_features = self.backbone.num_features
