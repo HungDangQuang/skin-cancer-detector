@@ -1,4 +1,4 @@
-.PHONY: install install-dev prepare train-teacher train-student-b0 train-student-mobilenet train-student-mobilevit evaluate test lint format clean
+.PHONY: install install-dev prepare train-teacher train-student-b0 train-student-mobilenet train-student-mobilevit poc-teacher poc-student poc-all evaluate test lint format clean
 
 install:
 	pip install -e .
@@ -27,6 +27,15 @@ train-student-mobilevit:
 
 # Train all students sequentially
 train-all-students: train-student-b0 train-student-mobilenet train-student-mobilevit
+
+# POC (Proof-of-Concept) — smoke test the whole pipeline with 2 epochs.
+poc-teacher:
+	python scripts/train_teacher.py --config-name config_poc
+
+poc-student:
+	python scripts/train_student.py --config-name config_poc student=efficientnet_b0
+
+poc-all: poc-teacher poc-student
 
 evaluate:
 	python scripts/evaluate.py
