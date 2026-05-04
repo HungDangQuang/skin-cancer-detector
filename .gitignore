@@ -51,3 +51,8 @@ wandb/
 *.pth
 *.pt
 *.onnx
+
+# Slurm logs (per-job stdout/stderr)
+logs/
+*.out
+*.err

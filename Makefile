@@ -1,4 +1,4 @@
-.PHONY: install install-dev prepare train-teacher train-student-b0 train-student-mobilenet train-student-mobilevit poc-teacher poc-student poc-all evaluate test lint format clean
+.PHONY: install install-dev prepare prepare-poc train-teacher train-student-b0 train-student-mobilenet train-student-mobilevit poc-teacher poc-student poc-all evaluate test lint format clean
 
 install:
 	pip install -e .
@@ -10,6 +10,10 @@ install-dev:
 
 prepare:
 	python scripts/prepare_data.py
+
+# POC fixtures — synthetic data so you don't need ISIC 2024.
+prepare-poc:
+	python scripts/prepare_poc_data.py
 
 # Step 1: Train teacher
 train-teacher:
@@ -35,7 +39,7 @@ poc-teacher:
 poc-student:
 	python scripts/train_student.py --config-name config_poc student=efficientnet_b0
 
-poc-all: poc-teacher poc-student
+poc-all: prepare-poc poc-teacher poc-student
 
 evaluate:
 	python scripts/evaluate.py
