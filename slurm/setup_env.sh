@@ -1,15 +1,18 @@
 #!/bin/bash
 # ============================================================================
 # One-time environment setup — run on the LOGIN NODE (not as a Slurm job).
-# Creates /datastore/${USER}/venv and installs project dependencies.
+# Creates ${DATASTORE_USER_DIR}/venv and installs project dependencies.
 #
 # Usage (on slurm.uit.edu.vn):
-#     cd /datastore/${USER}/skin-cancer-detector
+#     cd /datastore/keg/hungdang/skin-cancer-detector
 #     bash slurm/setup_env.sh
+#
+# Override base dir if your account/path differs:
+#     DATASTORE_USER_DIR=/datastore/<acct>/<sub> bash slurm/setup_env.sh
 # ============================================================================
 set -euo pipefail
 
-DATASTORE_DIR=/datastore/${USER}
+DATASTORE_DIR="${DATASTORE_USER_DIR:-/datastore/keg/hungdang}"
 PROJECT_DIR=${DATASTORE_DIR}/skin-cancer-detector
 VENV_DIR=${DATASTORE_DIR}/venv
 

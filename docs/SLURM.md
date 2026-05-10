@@ -3,7 +3,7 @@
 Step-by-step instructions to train the KD pipeline on `slurm.uit.edu.vn`.
 Cluster rules from `HuongDanSuDungSlurm.pdf`:
 
-- **Working dir**: `/datastore/${USER}` (NOT `/home/${USER}` — 30 GB hard limit)
+- **Working dir**: `/datastore/keg/hungdang` (NOT `/home/${USER}` — 30 GB hard limit). Override with `DATASTORE_USER_DIR=...` if your account/path differs.
 - **Limits**: 20 MPS, 5 concurrent jobs, 32 vCPU, 72 h max per job
 - **vRAM**: declared via `REQUIRED_VRAM` arg to `acquire_gpu`; < 44000 MB on L40, < 80000 MB on A100
 - **GPU dispatch**: `gpu_check.sh` returns the best free GPU; codes 10 (requeue) / 11 (fatal after 5 retries)
@@ -36,7 +36,7 @@ Cluster rules from `HuongDanSuDungSlurm.pdf`:
 ```bash
 ssh ${USER}@slurm.uit.edu.vn          # VPN first if off-campus
 
-cd /datastore/${USER}
+cd /datastore/keg/hungdang
 git clone https://github.com/HungDangQuang/skin-cancer-detector.git
 cd skin-cancer-detector
 git checkout feature/poc
@@ -44,7 +44,7 @@ git checkout feature/poc
 
 Or, if already cloned:
 ```bash
-cd /datastore/${USER}/skin-cancer-detector
+cd /datastore/keg/hungdang/skin-cancer-detector
 git fetch && git checkout feature/poc && git pull
 ```
 
@@ -53,7 +53,7 @@ git fetch && git checkout feature/poc && git pull
 ## 1. One-time setup (login node)
 
 ```bash
-bash slurm/setup_env.sh        # creates /datastore/${USER}/venv + installs deps
+bash slurm/setup_env.sh        # creates /datastore/keg/hungdang/venv + installs deps
 bash slurm/preflight.sh        # verifies the env + runs a 5-image smoke test
 ```
 
@@ -91,7 +91,7 @@ bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilevit_s
 ### 3.1 Upload raw data
 ```bash
 # from your laptop:
-rsync -avh --progress isic2024/ ${USER}@slurm.uit.edu.vn:/datastore/${USER}/skin-cancer-detector/data/raw/isic2024/
+rsync -avh --progress isic2024/ ${USER}@slurm.uit.edu.vn:/datastore/keg/hungdang/skin-cancer-detector/data/raw/isic2024/
 ```
 Required structure:
 ```
@@ -187,14 +187,14 @@ srun --gres=mps:l40:1 --time=00:05:00 --pty nvidia-smi
 | `ERROR: venv missing at /datastore/<user>/venv` | Run `bash slurm/setup_env.sh` on the login node. |
 | `import` errors in the runtime log | Re-run `slurm/setup_env.sh`, then `slurm/preflight.sh` to confirm. |
 | `gpu_check.sh: not found` | Helper isn't installed on this node — confirm you're on a compute node (the `_lib.sh` diagnostic header prints `Hostname:`). Login node has no helper and no GPUs. |
-| `Disk quota exceeded` on `/home` | Move data to `/datastore/${USER}` (30 GB cap on `/home`). |
+| `Disk quota exceeded` on `/home` | Move data to `/datastore/keg/hungdang` (30 GB cap on `/home`). |
 
 ---
 
 ## 8. End-to-end checklist
 
 - [ ] Connected to `slurm.uit.edu.vn`
-- [ ] Repo at `/datastore/${USER}/skin-cancer-detector`, branch `feature/poc`
+- [ ] Repo at `/datastore/keg/hungdang/skin-cancer-detector`, branch `feature/poc`
 - [ ] `bash slurm/setup_env.sh` succeeded
 - [ ] `bash slurm/preflight.sh` ended with **All checks passed**
 - [ ] POC: `01 → 02 → 03` finished, `experiments/poc/.../best_model.pth` exists

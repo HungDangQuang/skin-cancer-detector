@@ -45,7 +45,8 @@ load_python_env() {
     module clear -f
     module load shared python312
 
-    local venv_path="/datastore/${USER}/venv"
+    local datastore_dir="${DATASTORE_USER_DIR:-/datastore/keg/hungdang}"
+    local venv_path="${datastore_dir}/venv"
     if [ ! -d "${venv_path}" ]; then
         echo "ERROR: venv missing at ${venv_path}"
         echo "Run on the LOGIN NODE first:  bash slurm/setup_env.sh"
@@ -63,7 +64,7 @@ load_python_env() {
         echo "       (failed: import numpy, pandas, PIL, torch, hydra, omegaconf)"
         echo
         echo "Fix on the LOGIN NODE:"
-        echo "    cd /datastore/${USER}/skin-cancer-detector"
+        echo "    cd ${datastore_dir}/skin-cancer-detector"
         echo "    bash slurm/setup_env.sh"
         echo
         echo "Then re-submit:"

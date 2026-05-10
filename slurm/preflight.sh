@@ -2,8 +2,11 @@
 # ============================================================================
 # Login-node preflight check. Run BEFORE submitting any sbatch jobs.
 #
-#     cd /datastore/${USER}/skin-cancer-detector
+#     cd /datastore/keg/hungdang/skin-cancer-detector
 #     bash slurm/preflight.sh
+#
+# Override base dir if your account/path differs:
+#     DATASTORE_USER_DIR=/datastore/<acct>/<sub> bash slurm/preflight.sh
 #
 # Verifies: working dir, venv, logs/, modules, python imports, gpu_check.sh,
 # and runs a tiny synthetic-data smoke test (CPU only) to exercise the data
@@ -11,8 +14,9 @@
 # ============================================================================
 set -euo pipefail
 
-PROJECT_DIR="/datastore/${USER}/skin-cancer-detector"
-VENV_DIR="/datastore/${USER}/venv"
+DATASTORE_DIR="${DATASTORE_USER_DIR:-/datastore/keg/hungdang}"
+PROJECT_DIR="${DATASTORE_DIR}/skin-cancer-detector"
+VENV_DIR="${DATASTORE_DIR}/venv"
 
 red()   { printf "\033[31m%s\033[0m\n" "$*"; }
 green() { printf "\033[32m%s\033[0m\n" "$*"; }
