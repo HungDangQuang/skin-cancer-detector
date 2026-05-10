@@ -82,7 +82,10 @@ echo "6. gpu_check.sh helper"
 if [ -x /usr/local/bin/gpu_check.sh ]; then
     ok "/usr/local/bin/gpu_check.sh executable"
 else
-    warn "gpu_check.sh missing on this node (only matters on compute nodes)"
+    # Expected on login nodes — the helper is provisioned by UIT cluster
+    # admins on compute nodes only. _lib.sh::acquire_gpu errors out hard
+    # if it's missing on a compute node, so login-node absence is fine.
+    ok "gpu_check.sh not on login node (expected — provisioned on compute nodes only)"
 fi
 
 echo
