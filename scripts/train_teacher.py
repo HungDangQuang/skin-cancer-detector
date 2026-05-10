@@ -28,6 +28,9 @@ logger = get_logger(__name__)
 def main(cfg: DictConfig) -> None:
     set_seed(cfg.seed)
 
+    # Hydra emits cfg in struct mode; merging in a new top-level "model" key
+    # below would otherwise raise ConfigKeyError.
+    OmegaConf.set_struct(cfg, False)
     teacher_cfg = OmegaConf.merge(cfg, {"model": OmegaConf.to_container(cfg.teacher, resolve=True)})
 
     run_dir = Path(cfg.output_dir) / "teacher" / cfg.teacher.name

@@ -50,6 +50,9 @@ def main(cfg: DictConfig) -> None:
     run_dir = Path(cfg.output_dir) / f"kd_{cfg.teacher.name}_to_{student_name}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
+    # Hydra emits cfg in struct mode; merging in a new top-level "model" key
+    # below would otherwise raise ConfigKeyError.
+    OmegaConf.set_struct(cfg, False)
     teacher_cfg = OmegaConf.merge(cfg, {"model": OmegaConf.to_container(cfg.teacher, resolve=True)})
     student_cfg = OmegaConf.merge(cfg, {"model": OmegaConf.to_container(cfg.student, resolve=True)})
 
