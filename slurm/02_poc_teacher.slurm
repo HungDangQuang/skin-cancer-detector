@@ -1,7 +1,8 @@
 #!/bin/bash
 # ============================================================================
 # Step 2 (POC) — train teacher (EfficientNet-B4) for 2 epochs on synthetic data.
-# Submit:  sbatch slurm/02_poc_teacher.slurm
+# Prereq:  Step 1 completed (data/splits/poc/ exists).
+# Submit:  bash slurm/submit.sh slurm/02_poc_teacher.slurm
 # Output:  experiments/poc/teacher/efficientnet_b4/checkpoints/best_model.pth
 # ============================================================================
 #SBATCH --job-name=poc_teacher
@@ -14,26 +15,15 @@
 #SBATCH --mem=8G
 #SBATCH --time=01:00:00
 
-REQUIRED_VRAM=8192    # B4 + batch 16 on synthetic 224x224
+source "${SLURM_SUBMIT_DIR:-$(pwd)}/slurm/_lib.sh"
+load_python_env
+acquire_gpu 8192     # 8 GB: B4 + batch 16 @ 224
+setup_mps
 
-module clear -f
-module load shared python312
-source /datastore/${USER}/venv/bin/activate
-unset CUDA_VISIBLE_DEVICES
+echo "[job] GPU info"
+nvidia-smi || true
 
-CHECK_OUT=$(/usr/local/bin/gpu_check.sh $REQUIRED_VRAM $SLURM_JOB_ID)
-EXIT_CODE=$?
-[ $EXIT_CODE -eq 10 ] && { echo "$CHECK_OUT"; exit 0; }
-[ $EXIT_CODE -eq 11 ] && { echo "$CHECK_OUT"; exit 1; }
-BEST_GPU=$CHECK_OUT
-echo "Job $SLURM_JOB_ID running on GPU: $BEST_GPU"
-
-export CUDA_MPS_PIPE_DIRECTORY=/tmp/nvidia-mps-job$SLURM_JOB_ID
-export CUDA_MPS_LOG_DIRECTORY=/tmp/nvidia-mps-log-job$SLURM_JOB_ID
-rm -rf  $CUDA_MPS_PIPE_DIRECTORY $CUDA_MPS_LOG_DIRECTORY
-mkdir -p $CUDA_MPS_PIPE_DIRECTORY $CUDA_MPS_LOG_DIRECTORY
-export CUDA_VISIBLE_DEVICES=$BEST_GPU
-
-cd ${SLURM_SUBMIT_DIR}
-nvidia-smi
+echo "[job] Training POC teacher"
 python scripts/train_teacher.py --config-name config_poc
+
+echo "[job] DONE"
