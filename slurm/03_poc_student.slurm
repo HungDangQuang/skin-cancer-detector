@@ -24,7 +24,12 @@ setup_mps
 
 STUDENT="${STUDENT:-efficientnet_b0}"
 echo "[job] KD student: ${STUDENT}"
-nvidia-smi || true
+if command -v nvidia-smi >/dev/null 2>&1; then
+    nvidia-smi
+else
+    echo "[job] nvidia-smi not on PATH — checking via PyTorch"
+    python -c "import torch; print('cuda available:', torch.cuda.is_available(), '| devices:', torch.cuda.device_count(), '| name:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'n/a')"
+fi
 
 python scripts/train_student.py --config-name config_poc student="${STUDENT}"
 
