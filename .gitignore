@@ -56,3 +56,7 @@ wandb/
 logs/
 *.out
 *.err
+
+# Claude Code — personal/local files (kept off git)
+CLAUDE.local.md
+.claude/settings.local.json

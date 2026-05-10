@@ -35,6 +35,29 @@ make format     # Apply isort + black
 mlflow ui --backend-store-uri experiments/runs
 ```
 
+## POC pipeline (synthetic data, no ISIC download)
+
+For end-to-end smoke testing of the whole pipeline in minutes:
+
+```bash
+make prepare-poc                    # Generate ~180 synthetic images + split CSVs
+make poc-teacher                    # 2-epoch teacher with config_poc
+make poc-student                    # 2-epoch KD student
+make poc-all                        # All three sequentially
+```
+
+The POC config (`configs/config_poc.yaml` + `configs/training/poc.yaml`) uses 2 epochs, batch 16, no warmup, no early stopping. Synthetic images have a learnable color bias (benign=greenish, malignant=reddish) so the model achieves AUC>0.5, confirming gradients flow. See `docs/POC.md` for full details.
+
+## Slurm execution (UIT cluster)
+
+Cluster scripts live in `slurm/`. **Always submit via the wrapper**:
+```bash
+bash slurm/submit.sh slurm/01_prepare_poc.slurm
+bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv3_large
+```
+
+The wrapper does `mkdir -p logs` before `sbatch` (Slurm 23 silently drops output if `logs/` doesn't exist). Every `*.slurm` script sources `slurm/_lib.sh` which provides `set -euo pipefail`, a fallback `tee` log at `logs/<job>_<jobid>_runtime.log`, a diagnostic header, and helpers `load_python_env` / `acquire_gpu` / `setup_mps`. See `docs/SLURM.md` for the full guide.
+
 ## Architecture
 
 This is a **binary skin cancer classification** project (benign=0, malignant=1) using **Knowledge Distillation (KD)**. All models output a single raw logit; `torch.sigmoid()` is applied at inference time.
