@@ -54,6 +54,23 @@ load_python_env() {
     # shellcheck disable=SC1091
     source "${venv_path}/bin/activate"
     echo "[lib] Python: $(which python) ($(python --version 2>&1))"
+
+    # Sanity-check that the venv was actually populated by setup_env.sh.
+    # Without this, scripts crash mid-run with "ModuleNotFoundError: numpy"
+    # and the cause (incomplete pip install) is not obvious.
+    if ! python -c "import numpy, pandas, PIL, torch, hydra, omegaconf" 2>/dev/null; then
+        echo "ERROR: venv at ${venv_path} is missing core dependencies."
+        echo "       (failed: import numpy, pandas, PIL, torch, hydra, omegaconf)"
+        echo
+        echo "Fix on the LOGIN NODE:"
+        echo "    cd /datastore/${USER}/skin-cancer-detector"
+        echo "    bash slurm/setup_env.sh"
+        echo
+        echo "Then re-submit:"
+        echo "    bash slurm/submit.sh slurm/01_prepare_poc.slurm"
+        exit 2
+    fi
+    echo "[lib] Core imports OK (numpy, pandas, PIL, torch, hydra, omegaconf)"
 }
 
 # ------------------------------------------------------------------
