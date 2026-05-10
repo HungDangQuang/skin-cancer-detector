@@ -91,7 +91,7 @@ acquire_gpu() {
         unset CUDA_VISIBLE_DEVICES
         set +e
         local check_out
-        check_out=$(/usr/local/bin/gpu_check.sh "${required_vram}" "${SLURM_JOB_ID}")
+        check_out=$(/usr/local/bin/gpu_check.sh "${required_vram}" "${SLURM_JOB_ID:-0}")
         local exit_code=$?
         set -e
 
@@ -117,13 +117,33 @@ acquire_gpu() {
                 ;;
         esac
     else
-        # Fallback: rely on Slurm's --gres allocation. Slurm auto-sets
-        # CUDA_VISIBLE_DEVICES for jobs with --gres=gpu:* or --gres=mps:*.
+        # Fallback: no gpu_check.sh helper. Prefer Slurm's CUDA_VISIBLE_DEVICES
+        # if it was set by --gres; otherwise auto-pick the GPU with the most
+        # free vRAM via nvidia-smi.
         echo "[lib] gpu_check.sh not present — using Slurm's allocation directly"
         if [ -n "${CUDA_VISIBLE_DEVICES:-}" ]; then
             echo "[lib] CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} (set by Slurm)"
         else
-            echo "[lib] WARN: CUDA_VISIBLE_DEVICES is unset — did this job request --gres?"
+            echo "[lib] CUDA_VISIBLE_DEVICES unset — picking GPU with most free vRAM"
+            if command -v nvidia-smi >/dev/null 2>&1; then
+                local picked
+                picked=$(nvidia-smi --query-gpu=index,memory.free \
+                            --format=csv,noheader,nounits 2>/dev/null \
+                         | sort -t',' -k2 -nr \
+                         | head -1 \
+                         | awk -F',' '{print $1}' \
+                         | tr -d ' ')
+                if [ -n "${picked}" ]; then
+                    export CUDA_VISIBLE_DEVICES="${picked}"
+                    echo "[lib] CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} (picked via nvidia-smi)"
+                else
+                    echo "[lib] WARN: nvidia-smi found no GPUs — defaulting to 0"
+                    export CUDA_VISIBLE_DEVICES=0
+                fi
+            else
+                echo "[lib] WARN: nvidia-smi unavailable — defaulting to CUDA_VISIBLE_DEVICES=0"
+                export CUDA_VISIBLE_DEVICES=0
+            fi
         fi
     fi
 }
@@ -131,8 +151,9 @@ acquire_gpu() {
 # ------------------------------------------------------------------
 setup_mps() {
     echo "[lib] Initializing private MPS pipe"
-    export CUDA_MPS_PIPE_DIRECTORY="/tmp/nvidia-mps-job${SLURM_JOB_ID}"
-    export CUDA_MPS_LOG_DIRECTORY="/tmp/nvidia-mps-log-job${SLURM_JOB_ID}"
+    local job_tag="${SLURM_JOB_ID:-$$}"
+    export CUDA_MPS_PIPE_DIRECTORY="/tmp/nvidia-mps-job${job_tag}"
+    export CUDA_MPS_LOG_DIRECTORY="/tmp/nvidia-mps-log-job${job_tag}"
     rm -rf "${CUDA_MPS_PIPE_DIRECTORY}" "${CUDA_MPS_LOG_DIRECTORY}"
     mkdir -p "${CUDA_MPS_PIPE_DIRECTORY}" "${CUDA_MPS_LOG_DIRECTORY}"
 }
