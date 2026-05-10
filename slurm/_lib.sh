@@ -75,44 +75,57 @@ load_python_env() {
 }
 
 # ------------------------------------------------------------------
+# acquire_gpu <required_vram_mb>
+#
+# Two paths:
+#   1. If /usr/local/bin/gpu_check.sh exists (UIT's preferred dispatcher),
+#      use it and honor exit codes 0 / 10 / 11.
+#   2. Otherwise, trust Slurm's native --gres allocation: Slurm sets
+#      CUDA_VISIBLE_DEVICES for the job, so we just log it and proceed.
+#      The required_vram arg is informational in this branch.
 acquire_gpu() {
     local required_vram="$1"
     echo "[lib] Acquiring GPU with REQUIRED_VRAM=${required_vram} MB"
 
-    if [ ! -x /usr/local/bin/gpu_check.sh ]; then
-        echo "ERROR: /usr/local/bin/gpu_check.sh not found or not executable"
-        echo "       (are you running on a Slurm compute node?)"
-        exit 2
+    if [ -x /usr/local/bin/gpu_check.sh ]; then
+        unset CUDA_VISIBLE_DEVICES
+        set +e
+        local check_out
+        check_out=$(/usr/local/bin/gpu_check.sh "${required_vram}" "${SLURM_JOB_ID}")
+        local exit_code=$?
+        set -e
+
+        case "${exit_code}" in
+            0)
+                echo "[lib] GPU acquired via gpu_check.sh: ${check_out}"
+                export CUDA_VISIBLE_DEVICES="${check_out}"
+                ;;
+            10)
+                echo "[lib] No suitable GPU — Slurm will requeue"
+                echo "${check_out}"
+                exit 0
+                ;;
+            11)
+                echo "[lib] GPU dispatch exhausted retries — fatal"
+                echo "${check_out}"
+                exit 1
+                ;;
+            *)
+                echo "[lib] gpu_check.sh returned unexpected code ${exit_code}"
+                echo "${check_out}"
+                exit 1
+                ;;
+        esac
+    else
+        # Fallback: rely on Slurm's --gres allocation. Slurm auto-sets
+        # CUDA_VISIBLE_DEVICES for jobs with --gres=gpu:* or --gres=mps:*.
+        echo "[lib] gpu_check.sh not present — using Slurm's allocation directly"
+        if [ -n "${CUDA_VISIBLE_DEVICES:-}" ]; then
+            echo "[lib] CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} (set by Slurm)"
+        else
+            echo "[lib] WARN: CUDA_VISIBLE_DEVICES is unset — did this job request --gres?"
+        fi
     fi
-
-    unset CUDA_VISIBLE_DEVICES
-    set +e
-    local check_out
-    check_out=$(/usr/local/bin/gpu_check.sh "${required_vram}" "${SLURM_JOB_ID}")
-    local exit_code=$?
-    set -e
-
-    case "${exit_code}" in
-        0)
-            echo "[lib] GPU acquired: ${check_out}"
-            export CUDA_VISIBLE_DEVICES="${check_out}"
-            ;;
-        10)
-            echo "[lib] No suitable GPU — Slurm will requeue"
-            echo "${check_out}"
-            exit 0
-            ;;
-        11)
-            echo "[lib] GPU dispatch exhausted retries — fatal"
-            echo "${check_out}"
-            exit 1
-            ;;
-        *)
-            echo "[lib] gpu_check.sh returned unexpected code ${exit_code}"
-            echo "${check_out}"
-            exit 1
-            ;;
-    esac
 }
 
 # ------------------------------------------------------------------
