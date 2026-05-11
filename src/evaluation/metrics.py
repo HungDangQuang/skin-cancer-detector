@@ -32,8 +32,9 @@ def pauc_at_tpr(y_true: np.ndarray, y_prob: np.ndarray, min_tpr: float = 0.80) -
     fpr_clipped = fpr[mask]
     tpr_clipped = tpr[mask]
 
-    # Numerical integration (trapezoidal)
-    raw_pauc = float(np.trapz(tpr_clipped, fpr_clipped))
+    # Numerical integration (trapezoidal). np.trapz was removed in NumPy 2.0;
+    # np.trapezoid is the supported name from 2.0 onwards.
+    raw_pauc = float(np.trapezoid(tpr_clipped, fpr_clipped))
 
     # Normalize: max possible pAUC in the unrestricted region = 1.0 * (max_fpr - min_fpr)
     # For the standardized score, normalize by (1 - min_tpr)
