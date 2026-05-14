@@ -1,6 +1,6 @@
 ---
 name: submit-slurm
-description: Submit a Slurm job on the UIT cluster (slurm.uit.edu.vn). Use when the user asks to run training/eval/data-prep on the cluster, mentions sbatch, says "submit job", "queue job", or asks about Slurm. Wraps slurm/submit.sh and forwards env vars.
+description: Submit a Slurm job on the UIT cluster (slurm.uit.edu.vn) AND author new slurm/*.slurm scripts safely. Use when the user asks to run training/eval/data-prep on the cluster, mentions sbatch, says "submit job", "queue job", "create a slurm file/script", "add a new slurm job", or asks about Slurm in general. Wraps slurm/submit.sh and forwards env vars. Enforces the shared-cluster rule that no slurm script may terminate, preempt, or reset other users' running jobs — if resources are exhausted, the job waits in queue.
 ---
 
 # submit-slurm
