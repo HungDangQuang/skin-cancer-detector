@@ -3,6 +3,14 @@
 # UIT Slurm template — copy and customize.
 # Submit with: bash slurm/submit.sh slurm/<your_script>.slurm [VAR=value ...]
 # Logs land in: logs/<job-name>_<jobid>.{out,err,_runtime.log}
+#
+# SHARED-CLUSTER RULE — non-negotiable when authoring new scripts:
+#   This job MUST NOT terminate, preempt, or reset other users' work.
+#   If the cluster is full, let Slurm queue this job (PD state) and wait.
+#   FORBIDDEN: scancel/kill/pkill/killall, nvidia-smi --reset-gpu,
+#              fuser -k, #SBATCH --preempt or priority-bumping --nice,
+#              anything touching /tmp/nvidia-mps (system daemon path).
+#   See .claude/skills/submit-slurm/SKILL.md "Authoring new *.slurm scripts".
 # ============================================================================
 #SBATCH --job-name=skin_template
 #SBATCH --output=logs/template_%j.out

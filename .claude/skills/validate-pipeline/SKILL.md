@@ -96,6 +96,31 @@ for f in slurm/*.slurm; do
         grep -q "${d}" "$f" || echo "  $f missing: ${d}"
     done
 done
+
+echo "--- f) Forbidden disruptive commands (kill other users' work) ---"
+# Hard rule: no script may terminate, preempt, or reset shared resources.
+# See .claude/skills/submit-slurm/SKILL.md "Authoring new *.slurm scripts".
+# Skip bash-comment lines (start with #) but KEEP #SBATCH directives.
+FOUND=$(grep -nE '\bscancel\b|\bpkill\b|\bkillall\b|^[[:space:]]*kill[[:space:]]|nvidia-smi[[:space:]]+(--reset-gpu|-r\b|--gpu-reset)|fuser[[:space:]]+-k|#SBATCH[[:space:]]+--preempt|#SBATCH[[:space:]]+--nice=-' slurm/*.slurm slurm/*.sh 2>/dev/null \
+        | grep -vE ':[0-9]+:[[:space:]]*#[^S]')
+if [ -n "${FOUND}" ]; then
+    echo "  FAIL: forbidden patterns detected:"
+    echo "${FOUND}"
+else
+    echo "  (clean — no scancel/kill/reset/preempt)"
+fi
+
+echo "--- g) MPS pipe dir must be per-job (no shared /tmp/nvidia-mps) ---"
+# CUDA_MPS_PIPE_DIRECTORY must include ${SLURM_JOB_ID:-...} so jobs don't
+# collide with the system-wide MPS daemon at /tmp/nvidia-mps.
+BAD=$(grep -nE 'CUDA_MPS_PIPE_DIRECTORY[[:space:]]*=' slurm/*.slurm slurm/*.sh 2>/dev/null \
+      | grep -vE 'SLURM_JOB_ID|job_tag|\$\$')
+if [ -n "${BAD}" ]; then
+    echo "  FAIL: MPS pipe dir not per-job-unique:"
+    echo "${BAD}"
+else
+    echo "  (clean — MPS pipe dirs are per-job)"
+fi
 ```
 
 A clean run is silent except for the `(clean)` markers. Anything else is a finding to fix.
@@ -136,6 +161,10 @@ config_poc   ok | teacher=efficientnet_b4 student=efficientnet_b0
   (clean — only submit.sh runs sbatch)
 --- e) Missing SBATCH directives ---
   (no output)
+--- f) Forbidden disruptive commands ---
+  (clean — no scancel/kill/reset/preempt)
+--- g) MPS pipe dir per-job ---
+  (clean — MPS pipe dirs are per-job)
 ```
 
-If all five sections pass, submit with confidence. If any fail, fix locally and re-run — don't rely on the cluster to surface the bug.
+If all seven sections pass, submit with confidence. If any fail, fix locally and re-run — don't rely on the cluster to surface the bug. Sections **(f)** and **(g)** are especially important: they enforce the shared-cluster rule that no script may kill or preempt other users' work.

@@ -24,6 +24,33 @@ Submits a Slurm job through the project's `slurm/submit.sh` wrapper, which guara
 
 Run the `validate-pipeline` skill (`.claude/skills/validate-pipeline/`) — it does Python imports + Hydra config dry-load + slurm script lint in seconds. Catches `ImportError`, `ConfigKeyError` (struct mode), unbound Slurm vars, ungated `nvidia-smi`, and hardcoded `/datastore/${USER}/...` — all of which we've actually shipped to the cluster on this project.
 
+## Authoring new `*.slurm` scripts — non-negotiable rules
+
+The UIT cluster is shared across many users. **Any new `slurm/*.slurm` script you write MUST NOT terminate, preempt, or reset other people's work.** If our job can't get the resources it needs, Slurm queues it (`PD` state) and waits — that is the only acceptable behavior.
+
+### NEVER include any of these in a slurm script
+
+| Forbidden | Why |
+|---|---|
+| `scancel <jobid>` for any job we don't own | Cancels someone else's work. |
+| `kill`, `pkill`, `killall` targeting GPU/python processes | Kills other users' training. |
+| `nvidia-smi --reset-gpu`, `nvidia-smi -r`, `nvidia-smi --gpu-reset` | Resets the device for *every* user on it. |
+| `fuser -k`, `lsof | xargs kill`, or anything that signals by file/port | Same blast-radius problem. |
+| `#SBATCH --preempt` flags, `#SBATCH --requeue` combined with priority bumps, `#SBATCH --nice=-N` | Tries to evict lower-priority jobs. Just queue normally. |
+| Manipulating the system-wide MPS daemon (anything that touches `/tmp/nvidia-mps` without a job-specific suffix) | All jobs on the node share that daemon. |
+| Custom `trap` handlers that `kill -- -$$` or `kill -9` parent processes | Risk of broader signal propagation than intended. |
+
+### What to do instead when resources are scarce
+
+- Just submit normally via `bash slurm/submit.sh slurm/<script>.slurm`. Slurm puts the job in **`PD` (pending)** state and runs it as soon as resources are free.
+- If `_lib.sh::acquire_gpu` returns exit code **10** (no GPU available), the script exits with code 0 and Slurm **automatically requeues**. No special handling needed.
+- If you need to bound how long a job waits in queue, use `#SBATCH --time-min=...` (lets the scheduler start it earlier with less time) — never priority/preemption flags.
+- For your own old jobs you want to clean up, use `scancel <jobid>` interactively from the shell — **never** baked into a `*.slurm` file.
+
+Every new slurm script gets its private MPS pipe directory via `setup_mps` (`/tmp/nvidia-mps-job<JOBID>`) — that path is per-job-unique, so the `rm -rf` in there cannot collide with another user's MPS state.
+
+Run `validate-pipeline §3` after writing a new slurm script — its lint catches `scancel`, `--preempt`, `nvidia-smi --reset`, and other forbidden patterns.
+
 ## How to use
 
 ### 1. Pick the right script
