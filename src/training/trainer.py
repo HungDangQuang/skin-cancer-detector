@@ -68,6 +68,7 @@ class Trainer:
 
             self.history["train_loss"].append(train_metrics["loss"])
             self.history["val_loss"].append(val_metrics["loss"])
+            self.history["val_pauc"].append(val_metrics.get("pauc_at_tpr80", 0.0))
 
             logger.info(
                 f"Epoch {epoch}/{epochs} | "
