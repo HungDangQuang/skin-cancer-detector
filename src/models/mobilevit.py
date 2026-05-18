@@ -2,7 +2,7 @@ import timm
 import torch
 
 from .base_model import BaseModel
-from .heads import build_head
+from .heads import build_head, infer_backbone_out_dim
 
 
 class MobileViTModel(BaseModel):
@@ -15,7 +15,7 @@ class MobileViTModel(BaseModel):
         dropout = cfg.model.head.get("dropout", 0.1)
 
         self.backbone = timm.create_model(backbone_name, pretrained=pretrained, num_classes=0)
-        in_features = self.backbone.num_features
+        in_features = infer_backbone_out_dim(self.backbone)
         self.head = build_head(in_features, dropout=dropout)
 
         if cfg.model.get("freeze_backbone", False):
