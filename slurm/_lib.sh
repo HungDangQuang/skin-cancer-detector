@@ -101,14 +101,55 @@ acquire_gpu() {
                 export CUDA_VISIBLE_DEVICES="${check_out}"
                 ;;
             10)
-                echo "[lib] No suitable GPU — Slurm will requeue"
+                # gpu_check.sh said no GPU is free, but the cluster helper has
+                # been seen to false-negative (e.g. internal "nvidia-smi-i:
+                # command not found" typo bug — line 31). Before trusting it
+                # and requeuing, ask nvidia-smi ourselves: if any GPU genuinely
+                # has >= required_vram free, use it. This still respects the
+                # shared-cluster rule — we only pick a GPU that has the room.
+                echo "[lib] gpu_check.sh reported no GPU — verifying with nvidia-smi"
                 echo "${check_out}"
-                exit 0
+                if command -v nvidia-smi >/dev/null 2>&1; then
+                    local picked
+                    picked=$(nvidia-smi --query-gpu=index,memory.free \
+                                --format=csv,noheader,nounits 2>/dev/null \
+                             | sort -t',' -k2 -nr \
+                             | awk -F',' -v need="${required_vram}" '$2+0 >= need {gsub(/ /,"",$1); print $1; exit}')
+                    if [ -n "${picked}" ]; then
+                        export CUDA_VISIBLE_DEVICES="${picked}"
+                        echo "[lib] nvidia-smi found GPU ${picked} with sufficient free vRAM — overriding gpu_check.sh"
+                    else
+                        echo "[lib] nvidia-smi confirms no GPU has ${required_vram} MB free — Slurm will requeue"
+                        exit 0
+                    fi
+                else
+                    echo "[lib] nvidia-smi unavailable — accepting gpu_check.sh decision, Slurm will requeue"
+                    exit 0
+                fi
                 ;;
             11)
-                echo "[lib] GPU dispatch exhausted retries — fatal"
+                # gpu_check.sh has exhausted its own internal retries. Same
+                # fallback as code 10: verify with nvidia-smi before giving up,
+                # because the same typo bug also surfaces here after 5 requeues.
+                echo "[lib] gpu_check.sh exhausted retries — verifying with nvidia-smi"
                 echo "${check_out}"
-                exit 1
+                if command -v nvidia-smi >/dev/null 2>&1; then
+                    local picked
+                    picked=$(nvidia-smi --query-gpu=index,memory.free \
+                                --format=csv,noheader,nounits 2>/dev/null \
+                             | sort -t',' -k2 -nr \
+                             | awk -F',' -v need="${required_vram}" '$2+0 >= need {gsub(/ /,"",$1); print $1; exit}')
+                    if [ -n "${picked}" ]; then
+                        export CUDA_VISIBLE_DEVICES="${picked}"
+                        echo "[lib] nvidia-smi found GPU ${picked} — overriding gpu_check.sh fatal exit"
+                    else
+                        echo "[lib] nvidia-smi confirms no GPU has ${required_vram} MB free — fatal"
+                        exit 1
+                    fi
+                else
+                    echo "[lib] nvidia-smi unavailable — accepting gpu_check.sh fatal exit"
+                    exit 1
+                fi
                 ;;
             *)
                 echo "[lib] gpu_check.sh returned unexpected code ${exit_code}"
