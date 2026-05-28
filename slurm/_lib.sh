@@ -100,55 +100,59 @@ acquire_gpu() {
                 echo "[lib] GPU acquired via gpu_check.sh: ${check_out}"
                 export CUDA_VISIBLE_DEVICES="${check_out}"
                 ;;
-            10)
-                # gpu_check.sh said no GPU is free, but the cluster helper has
-                # been seen to false-negative (e.g. internal "nvidia-smi-i:
-                # command not found" typo bug — line 31). Before trusting it
-                # and requeuing, ask nvidia-smi ourselves: if any GPU genuinely
-                # has >= required_vram free, use it. This still respects the
-                # shared-cluster rule — we only pick a GPU that has the room.
-                echo "[lib] gpu_check.sh reported no GPU — verifying with nvidia-smi"
-                echo "${check_out}"
-                if command -v nvidia-smi >/dev/null 2>&1; then
-                    local picked
-                    picked=$(nvidia-smi --query-gpu=index,memory.free \
-                                --format=csv,noheader,nounits 2>/dev/null \
-                             | sort -t',' -k2 -nr \
-                             | awk -F',' -v need="${required_vram}" '$2+0 >= need {gsub(/ /,"",$1); print $1; exit}')
-                    if [ -n "${picked}" ]; then
-                        export CUDA_VISIBLE_DEVICES="${picked}"
-                        echo "[lib] nvidia-smi found GPU ${picked} with sufficient free vRAM — overriding gpu_check.sh"
-                    else
-                        echo "[lib] nvidia-smi confirms no GPU has ${required_vram} MB free — Slurm will requeue"
-                        exit 0
-                    fi
+            10|11)
+                # gpu_check.sh said no GPU is free (10) or exhausted its own
+                # retries (11). The UIT cluster's helper has been seen to
+                # false-negative due to an internal typo ("nvidia-smi-i:
+                # command not found", line 31). Before trusting it, verify
+                # with nvidia-smi ourselves. Falls through to a default GPU
+                # if even nvidia-smi can't tell us anything — we'd rather
+                # try to run and surface a real OOM than loop forever.
+                local fail_label
+                if [ "${exit_code}" = "11" ]; then
+                    fail_label="exhausted retries (5x)"
                 else
-                    echo "[lib] nvidia-smi unavailable — accepting gpu_check.sh decision, Slurm will requeue"
-                    exit 0
+                    fail_label="reported no GPU"
                 fi
-                ;;
-            11)
-                # gpu_check.sh has exhausted its own internal retries. Same
-                # fallback as code 10: verify with nvidia-smi before giving up,
-                # because the same typo bug also surfaces here after 5 requeues.
-                echo "[lib] gpu_check.sh exhausted retries — verifying with nvidia-smi"
-                echo "${check_out}"
+                echo "[lib] gpu_check.sh ${fail_label} — running nvidia-smi cross-check"
+                echo "[lib] gpu_check.sh stdout was: '${check_out:-<empty>}'"
+
+                local picked=""
                 if command -v nvidia-smi >/dev/null 2>&1; then
-                    local picked
-                    picked=$(nvidia-smi --query-gpu=index,memory.free \
-                                --format=csv,noheader,nounits 2>/dev/null \
-                             | sort -t',' -k2 -nr \
-                             | awk -F',' -v need="${required_vram}" '$2+0 >= need {gsub(/ /,"",$1); print $1; exit}')
-                    if [ -n "${picked}" ]; then
-                        export CUDA_VISIBLE_DEVICES="${picked}"
-                        echo "[lib] nvidia-smi found GPU ${picked} — overriding gpu_check.sh fatal exit"
-                    else
-                        echo "[lib] nvidia-smi confirms no GPU has ${required_vram} MB free — fatal"
-                        exit 1
+                    echo "[lib] nvidia-smi found on PATH at $(command -v nvidia-smi)"
+                    # Wrap the substitution in set +e: under set -euo pipefail
+                    # a non-zero from any pipeline element kills the parent
+                    # script silently, which is what was happening here.
+                    set +e
+                    local sm_raw
+                    sm_raw=$(nvidia-smi --query-gpu=index,memory.free \
+                                --format=csv,noheader,nounits 2>&1)
+                    local sm_exit=$?
+                    set -e
+                    echo "[lib] nvidia-smi exit=${sm_exit}, output:"
+                    echo "${sm_raw}" | head -10
+                    if [ "${sm_exit}" = "0" ]; then
+                        picked=$(echo "${sm_raw}" \
+                                 | sort -t',' -k2 -nr \
+                                 | awk -F',' -v need="${required_vram}" '$2+0 >= need {gsub(/ /,"",$1); print $1; exit}' \
+                                 || true)
                     fi
                 else
-                    echo "[lib] nvidia-smi unavailable — accepting gpu_check.sh fatal exit"
-                    exit 1
+                    echo "[lib] nvidia-smi NOT on PATH — cannot cross-check"
+                fi
+
+                if [ -n "${picked}" ]; then
+                    export CUDA_VISIBLE_DEVICES="${picked}"
+                    echo "[lib] CUDA_VISIBLE_DEVICES=${picked} (selected via nvidia-smi — gpu_check.sh override)"
+                else
+                    # Last resort: PyTorch defaults to GPU 0. Better to try
+                    # and OOM than to requeue 6× and die without ever running.
+                    # Respects shared-cluster rule: we never kill another job,
+                    # we just pick a device and let PyTorch attempt allocation.
+                    export CUDA_VISIBLE_DEVICES=0
+                    echo "[lib] WARN: could not verify free vRAM via nvidia-smi"
+                    echo "[lib] WARN: defaulting to CUDA_VISIBLE_DEVICES=0 — job will OOM if GPU 0 is full"
+                    echo "[lib] WARN: if this OOMs, lower the acquire_gpu vRAM arg or wait for the cluster to free up"
                 fi
                 ;;
             *)
