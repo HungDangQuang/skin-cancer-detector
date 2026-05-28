@@ -83,12 +83,17 @@ def main():
 
     # --- StratifiedGroupKFold splits ---
     logger.info("Generating StratifiedGroupKFold splits (patient-level)...")
+    # NB: cfg.data.label_col is the column name in the RAW ISIC metadata
+    # ("target"), used by process_isic2024 above. The processed df returned
+    # from process_isic2024 stores the same value under the column "label",
+    # which is what SkinLesionDataset and the rest of the pipeline expect —
+    # so pass that name here, not cfg.data.label_col.
     generate_group_kfold_splits(
         df=df_combined,
         splits_dir=splits_dir,
         n_splits=cfg.data.get("num_folds", 5),
         group_col=cfg.data.get("group_col", "patient_id"),
-        label_col=cfg.data.label_col,
+        label_col="label",
         seed=cfg.seed,
     )
     logger.info("Data preparation complete.")
