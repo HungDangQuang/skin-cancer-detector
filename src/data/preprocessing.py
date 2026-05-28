@@ -52,26 +52,32 @@ def process_isic2024(
     if not metadata_csv.exists():
         raise FileNotFoundError(f"Metadata not found: {metadata_csv}")
 
-    metadata = pd.read_csv(metadata_csv)
+    metadata = pd.read_csv(metadata_csv, low_memory=False)
     class_names = {0: "benign", 1: "malignant"}
     records = []
+    skipped = 0  # number of rows where the resized JPG already existed on disk
 
     with h5py.File(hdf5_path, "r") as hdf:
         for _, row in tqdm(metadata.iterrows(), total=len(metadata), desc="Processing ISIC 2024"):
             image_id = row[image_id_col]
             label = int(row[label_col])
             patient_id = str(row.get("patient_id", image_id))
-
-            if image_id not in hdf:
-                continue
-
-            # HDF5 stores JPEG bytes as a byte string dataset
-            jpeg_bytes = hdf[image_id][()]
-            img = Image.open(__import__("io").BytesIO(jpeg_bytes)).convert("RGB")
-
             class_name = class_names[label]
             dst = processed_dir / class_name / f"{image_id}.jpg"
-            resize_and_save(img, dst, size=(image_size, image_size))
+
+            if dst.exists():
+                # Fast-path: a previous run already resized this image. Skip
+                # the HDF5 read + PIL decode + resize + write — the most
+                # expensive part. Still record the row so the returned df is
+                # complete and downstream split generation sees every sample.
+                skipped += 1
+            else:
+                if image_id not in hdf:
+                    continue
+                # HDF5 stores JPEG bytes as a byte string dataset
+                jpeg_bytes = hdf[image_id][()]
+                img = Image.open(__import__("io").BytesIO(jpeg_bytes)).convert("RGB")
+                resize_and_save(img, dst, size=(image_size, image_size))
 
             records.append({
                 "image_id": image_id,
@@ -83,7 +89,11 @@ def process_isic2024(
             })
 
     df = pd.DataFrame(records)
-    print(f"ISIC 2024 — total: {len(df)} | benign: {(df['label']==0).sum()} | malignant: {(df['label']==1).sum()}")
+    print(
+        f"ISIC 2024 — total: {len(df)} | "
+        f"benign: {(df['label']==0).sum()} | malignant: {(df['label']==1).sum()} | "
+        f"skipped (already-on-disk): {skipped}"
+    )
     return df
 
 
@@ -127,6 +137,7 @@ def process_pad_ufes_20(
     }
     class_names = {0: "benign", 1: "malignant"}
     records = []
+    skipped = 0
 
     for _, row in tqdm(metadata.iterrows(), total=len(metadata), desc="Processing PAD-UFES-20"):
         img_id = str(row["img_id"])
@@ -136,15 +147,19 @@ def process_pad_ufes_20(
         if label is None:
             continue
 
-        src = images_dir / f"{img_id}.png"
-        if not src.exists():
-            src = images_dir / f"{img_id}.jpg"
-        if not src.exists():
-            continue
-
         class_name = class_names[label]
         dst = processed_dir / class_name / f"pad_{img_id}.jpg"
-        resize_and_save(src, dst, size=(image_size, image_size))
+
+        if dst.exists():
+            # Fast-path: already processed in a previous run.
+            skipped += 1
+        else:
+            src = images_dir / f"{img_id}.png"
+            if not src.exists():
+                src = images_dir / f"{img_id}.jpg"
+            if not src.exists():
+                continue
+            resize_and_save(src, dst, size=(image_size, image_size))
 
         records.append({
             "image_id": f"pad_{img_id}",
@@ -156,7 +171,11 @@ def process_pad_ufes_20(
         })
 
     df = pd.DataFrame(records)
-    print(f"PAD-UFES-20 — total: {len(df)} | benign: {(df['label']==0).sum()} | malignant: {(df['label']==1).sum()}")
+    print(
+        f"PAD-UFES-20 — total: {len(df)} | "
+        f"benign: {(df['label']==0).sum()} | malignant: {(df['label']==1).sum()} | "
+        f"skipped (already-on-disk): {skipped}"
+    )
     return df
 
 
