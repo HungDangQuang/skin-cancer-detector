@@ -77,130 +77,93 @@ load_python_env() {
 # ------------------------------------------------------------------
 # acquire_gpu <required_vram_mb>
 #
-# Two paths:
-#   1. If /usr/local/bin/gpu_check.sh exists (UIT's preferred dispatcher),
-#      use it and honor exit codes 0 / 10 / 11.
-#   2. Otherwise, trust Slurm's native --gres allocation: Slurm sets
-#      CUDA_VISIBLE_DEVICES for the job, so we just log it and proceed.
-#      The required_vram arg is informational in this branch.
+# Strategy: bypass /usr/local/bin/gpu_check.sh by default. The UIT
+# cluster's helper currently has a typo on line 31 ("nvidia-smi-i"
+# instead of "nvidia-smi -i") that makes it always false-negative, AND
+# it internally issues `scontrol requeue` BEFORE returning control to
+# us. That means any retry/fallback we do in this function never gets
+# to run — Slurm SIGTERMs the allocation to honor the requeue. We have
+# zero authority to talk it out of that.
+#
+# Until the cluster admin fixes the typo, we pick a GPU ourselves via
+# `nvidia-smi --query-gpu`. To opt back into the cluster helper once
+# it's fixed:    export USE_CLUSTER_GPU_CHECK=1
+#
+# This still respects the shared-cluster rule — we only ever pick a
+# GPU that has the requested vRAM free. We never kill another job.
 acquire_gpu() {
     local required_vram="$1"
     echo "[lib] Acquiring GPU with REQUIRED_VRAM=${required_vram} MB"
 
-    if [ -x /usr/local/bin/gpu_check.sh ]; then
+    # Optional opt-in to cluster helper, off by default.
+    if [ "${USE_CLUSTER_GPU_CHECK:-0}" = "1" ] && [ -x /usr/local/bin/gpu_check.sh ]; then
+        echo "[lib] USE_CLUSTER_GPU_CHECK=1 — delegating to /usr/local/bin/gpu_check.sh"
         unset CUDA_VISIBLE_DEVICES
         set +e
         local check_out
         check_out=$(/usr/local/bin/gpu_check.sh "${required_vram}" "${SLURM_JOB_ID:-0}")
         local exit_code=$?
         set -e
-
-        case "${exit_code}" in
-            0)
-                echo "[lib] GPU acquired via gpu_check.sh: ${check_out}"
-                export CUDA_VISIBLE_DEVICES="${check_out}"
-                ;;
-            10|11)
-                # gpu_check.sh said no GPU is free (10) or exhausted retries
-                # (11). The UIT cluster's helper has a typo on line 31
-                # ("nvidia-smi-i: command not found") that makes it always
-                # false-negative. Cross-check with nvidia-smi; if THAT also
-                # fails (e.g. hangs on broken MPS daemon), fall through to a
-                # default GPU rather than requeuing forever.
-                local fail_label
-                if [ "${exit_code}" = "11" ]; then
-                    fail_label="exhausted retries (5x)"
-                else
-                    fail_label="reported no GPU"
-                fi
-                echo "[lib] gpu_check.sh ${fail_label} — running nvidia-smi cross-check"
-                echo "[lib] gpu_check.sh stdout was: '${check_out:-<empty>}'"
-
-                local picked="" sm_out="" sm_exit=1 nvsmi_path=""
-                nvsmi_path=$(command -v nvidia-smi 2>/dev/null || true)
-
-                if [ -n "${nvsmi_path}" ]; then
-                    echo "[lib] Step A: nvidia-smi found at ${nvsmi_path}"
-                    # Run with 30s timeout if available — nvidia-smi has been
-                    # seen to hang here when the MPS daemon is in a bad state.
-                    # All set under `|| true` so neither pipefail nor a hang
-                    # can take the script down silently.
-                    echo "[lib] Step B: querying GPU free memory (30s timeout)..."
-                    if command -v timeout >/dev/null 2>&1; then
-                        sm_out=$(timeout 30s "${nvsmi_path}" \
-                                    --query-gpu=index,memory.free \
-                                    --format=csv,noheader,nounits 2>&1 || true)
-                        sm_exit=$?
-                    else
-                        sm_out=$("${nvsmi_path}" \
-                                    --query-gpu=index,memory.free \
-                                    --format=csv,noheader,nounits 2>&1 || true)
-                        sm_exit=$?
-                    fi
-                    echo "[lib] Step C: nvidia-smi exit=${sm_exit}, ${#sm_out} bytes returned:"
-                    printf '%s\n' "${sm_out:-<empty>}" | sed 's/^/    /' | head -20
-
-                    echo "[lib] Step D: selecting GPU with most free vRAM >= ${required_vram} MB..."
-                    picked=$(printf '%s\n' "${sm_out}" 2>/dev/null \
-                             | sort -t',' -k2 -nr 2>/dev/null \
-                             | awk -F',' -v need="${required_vram}" \
-                                   '$2+0 >= need {gsub(/ /,"",$1); print $1; exit}' \
-                                   2>/dev/null \
-                             || true)
-                    echo "[lib] Step E: picked='${picked:-<none>}'"
-                else
-                    echo "[lib] nvidia-smi NOT on PATH — cannot cross-check"
-                fi
-
-                if [ -n "${picked}" ]; then
-                    export CUDA_VISIBLE_DEVICES="${picked}"
-                    echo "[lib] CUDA_VISIBLE_DEVICES=${picked} (selected via nvidia-smi — gpu_check.sh override)"
-                else
-                    # Last resort: default to GPU 0. Better to try and surface
-                    # a real OOM than to requeue forever. Still respects the
-                    # shared-cluster rule — we don't kill another job, we just
-                    # pick a device and let PyTorch attempt allocation.
-                    export CUDA_VISIBLE_DEVICES=0
-                    echo "[lib] WARN: could not select a GPU via nvidia-smi"
-                    echo "[lib] WARN: defaulting to CUDA_VISIBLE_DEVICES=0 — job will OOM if GPU 0 is full"
-                    echo "[lib] WARN: if this OOMs, lower the acquire_gpu vRAM arg or wait for the cluster to free up"
-                fi
-                ;;
-            *)
-                echo "[lib] gpu_check.sh returned unexpected code ${exit_code}"
-                echo "${check_out}"
-                exit 1
-                ;;
-        esac
-    else
-        # Fallback: no gpu_check.sh helper. Prefer Slurm's CUDA_VISIBLE_DEVICES
-        # if it was set by --gres; otherwise auto-pick the GPU with the most
-        # free vRAM via nvidia-smi.
-        echo "[lib] gpu_check.sh not present — using Slurm's allocation directly"
-        if [ -n "${CUDA_VISIBLE_DEVICES:-}" ]; then
-            echo "[lib] CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} (set by Slurm)"
-        else
-            echo "[lib] CUDA_VISIBLE_DEVICES unset — picking GPU with most free vRAM"
-            if command -v nvidia-smi >/dev/null 2>&1; then
-                local picked
-                picked=$(nvidia-smi --query-gpu=index,memory.free \
-                            --format=csv,noheader,nounits 2>/dev/null \
-                         | sort -t',' -k2 -nr \
-                         | head -1 \
-                         | awk -F',' '{print $1}' \
-                         | tr -d ' ')
-                if [ -n "${picked}" ]; then
-                    export CUDA_VISIBLE_DEVICES="${picked}"
-                    echo "[lib] CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} (picked via nvidia-smi)"
-                else
-                    echo "[lib] WARN: nvidia-smi found no GPUs — defaulting to 0"
-                    export CUDA_VISIBLE_DEVICES=0
-                fi
-            else
-                echo "[lib] WARN: nvidia-smi unavailable — defaulting to CUDA_VISIBLE_DEVICES=0"
-                export CUDA_VISIBLE_DEVICES=0
-            fi
+        if [ "${exit_code}" = "0" ]; then
+            echo "[lib] GPU acquired via gpu_check.sh: ${check_out}"
+            export CUDA_VISIBLE_DEVICES="${check_out}"
+            return 0
         fi
+        # On any non-zero we fall through to the nvidia-smi path. If
+        # gpu_check.sh already issued scontrol requeue, Slurm will kill
+        # us soon — but at least we tried.
+        echo "[lib] gpu_check.sh exited ${exit_code} — falling through to nvidia-smi"
+    fi
+
+    # If Slurm pre-set CUDA_VISIBLE_DEVICES via --gres, honor it as-is.
+    if [ -n "${CUDA_VISIBLE_DEVICES:-}" ]; then
+        echo "[lib] CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} (set by Slurm — using as-is)"
+        return 0
+    fi
+
+    # nvidia-smi-driven GPU selection.
+    local picked="" sm_out="" sm_exit=1 nvsmi_path=""
+    nvsmi_path=$(command -v nvidia-smi 2>/dev/null || true)
+
+    if [ -n "${nvsmi_path}" ]; then
+        echo "[lib] Step A: nvidia-smi at ${nvsmi_path}"
+        echo "[lib] Step B: querying GPU free memory (30s timeout)..."
+        if command -v timeout >/dev/null 2>&1; then
+            sm_out=$(timeout 30s "${nvsmi_path}" \
+                        --query-gpu=index,memory.free \
+                        --format=csv,noheader,nounits 2>&1 || true)
+            sm_exit=$?
+        else
+            sm_out=$("${nvsmi_path}" \
+                        --query-gpu=index,memory.free \
+                        --format=csv,noheader,nounits 2>&1 || true)
+            sm_exit=$?
+        fi
+        echo "[lib] Step C: nvidia-smi exit=${sm_exit}, ${#sm_out} bytes returned:"
+        printf '%s\n' "${sm_out:-<empty>}" | sed 's/^/    /' | head -20
+
+        echo "[lib] Step D: selecting GPU with free vRAM >= ${required_vram} MB..."
+        picked=$(printf '%s\n' "${sm_out}" 2>/dev/null \
+                 | sort -t',' -k2 -nr 2>/dev/null \
+                 | awk -F',' -v need="${required_vram}" \
+                       '$2+0 >= need {gsub(/ /,"",$1); print $1; exit}' \
+                       2>/dev/null \
+                 || true)
+        echo "[lib] Step E: picked='${picked:-<none>}'"
+    else
+        echo "[lib] nvidia-smi NOT on PATH"
+    fi
+
+    if [ -n "${picked}" ]; then
+        export CUDA_VISIBLE_DEVICES="${picked}"
+        echo "[lib] CUDA_VISIBLE_DEVICES=${picked} (selected via nvidia-smi)"
+    else
+        # Last resort — try GPU 0 rather than failing. Still respects the
+        # shared-cluster rule (we never kill another job; we just pick a
+        # device and let PyTorch attempt allocation).
+        export CUDA_VISIBLE_DEVICES=0
+        echo "[lib] WARN: could not select a GPU via nvidia-smi — defaulting to CUDA_VISIBLE_DEVICES=0"
+        echo "[lib] WARN: job will OOM if GPU 0 is full; lower acquire_gpu vRAM or wait for the cluster to free up"
     fi
 }
 
