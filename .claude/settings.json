@@ -54,7 +54,13 @@
       "Bash(nvidia-smi:*)",
       "Bash(bash -n:*)",
       "Bash(chmod +x:*)",
-      "Bash(mkdir -p:*)"
+      "Bash(mkdir -p:*)",
+      "Bash(kaggle competitions list:*)",
+      "Bash(kaggle competitions files:*)",
+      "Bash(kaggle datasets list:*)",
+      "Bash(kaggle datasets files:*)",
+      "Bash(kaggle --version)",
+      "Bash(df -h:*)"
     ],
     "ask": [
       "Bash(pip install:*)",
@@ -67,6 +73,9 @@
       "Bash(sbatch:*)",
       "Bash(scancel:*)",
       "Bash(bash slurm/:*)",
+      "Bash(kaggle competitions download:*)",
+      "Bash(kaggle datasets download:*)",
+      "Bash(unzip:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",

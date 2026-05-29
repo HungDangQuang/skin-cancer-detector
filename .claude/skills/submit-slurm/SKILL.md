@@ -19,6 +19,7 @@ Submits a Slurm job through the project's `slurm/submit.sh` wrapper, which guara
 - Submit without confirming the venv exists. If unsure, run `bash slurm/preflight.sh` first.
 - Submit a job that depends on prior outputs (e.g. `03_poc_student` needs the teacher checkpoint) without first verifying those outputs exist on disk — the cluster allocation will be wasted.
 - Edit `--time`, `--mem`, `--gres` ad-hoc — those defaults are tuned in `docs/SLURM.md §5`. Bump them only if a job actually OOM'd or timed out.
+- Pass `USE_CLUSTER_GPU_CHECK=1` to `submit.sh`. The cluster's `/usr/local/bin/gpu_check.sh` is currently broken (typo on line 31) and issues `scontrol requeue` internally — passing that env var puts the job into an infinite requeue loop. `_lib.sh::acquire_gpu` bypasses the helper by default. Only re-enable once UIT admin patches the typo.
 
 ## Before submitting after any code change
 

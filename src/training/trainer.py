@@ -50,7 +50,7 @@ class Trainer:
             save_last=cb_cfg.checkpoint.save_last,
         ) if cb_cfg.checkpoint.enabled else None
 
-        self.history = {"train_loss": [], "val_loss": [], "train_pauc": [], "val_pauc": []}
+        self.history = {"train_loss": [], "val_loss": [], "val_pauc": []}
 
     def fit(self) -> dict:
         self.datamodule.setup()

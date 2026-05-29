@@ -140,3 +140,31 @@ Raw `sbatch` parses `--output=logs/...` before the script runs. If `logs/` doesn
 ### Shared-cluster rule for `*.slurm` scripts
 
 UIT's cluster is shared. **No `slurm/*.slurm` script we author may terminate, preempt, or reset other users' work.** If resources are exhausted, the job goes into `PD` (pending) state and waits — that is the only acceptable behavior. Forbidden in every script: `scancel`/`kill`/`pkill`/`killall`, `nvidia-smi --reset-gpu`, `fuser -k`, `#SBATCH --preempt`, priority-bumping `--nice`, and any write to `/tmp/nvidia-mps` without a job-unique suffix. `validate-pipeline §3f / §3g` lint enforces this — see `.claude/skills/submit-slurm/SKILL.md` "Authoring new `*.slurm` scripts" for the full table and the queue-don't-evict rationale.
+
+### `/usr/local/bin/gpu_check.sh` is bypassed by default
+
+The cluster's GPU dispatcher has a typo on line 31 (`nvidia-smi-i` instead of `nvidia-smi -i`) that makes it always false-negative AND it issues `scontrol requeue $SLURM_JOB_ID` internally before returning to us — so any fallback we run gets SIGTERM'd by Slurm seconds later. `_lib.sh::acquire_gpu` therefore picks a GPU itself via `nvidia-smi --query-gpu=memory.free` and skips the helper. Opt back in with `USE_CLUSTER_GPU_CHECK=1` only after UIT admin fixes the typo. **Do not** pass that env var to `submit.sh` in the meantime — it puts the job back into the requeue loop.
+
+### timm `num_features` is unreliable as the head input dim
+
+`timm.create_model(name, num_classes=0).num_features` reports the *pre-classifier* channel count, which is NOT always what `forward(x)` emits. MobileNetV3-Large reports 960 but the `conv_head` expansion runs anyway and the forward output is 1280. Building the head with 960 channels then feeding it 1280 → `RuntimeError: mat1 and mat2 shapes cannot be multiplied (BxC1 and C2x1)`. Always use `infer_backbone_out_dim(backbone)` from `src/models/heads.py` — it runs a one-sample dummy forward and returns the true output dim. EfficientNet and MobileViT happen to be self-consistent, but use the helper for new architectures too as a safety net.
+
+### `cfg.data.label_col` is the *raw* column name, not the in-memory one
+
+`configs/data/isic2024.yaml` sets `label_col: target` because ISIC's `train-metadata.csv` uses that column name. `process_isic2024()` reads `target` from the raw CSV but writes the same value into the processed dataframe under the column name `"label"` (matching `SkinLesionDataset`'s schema). When calling `generate_group_kfold_splits()` on the processed dataframe, pass `label_col="label"` — passing `cfg.data.label_col` ("target") gives `KeyError: 'target'`.
+
+### `load_config()` must compose Hydra defaults for the root config
+
+`@hydra.main(...)` composes the `defaults:` list automatically, but our standalone scripts (`prepare_data.py`, etc.) use `src/utils/config.py::load_config("configs/config.yaml")`. Plain `OmegaConf.load` doesn't expand the `defaults:` list, so `cfg.data` is missing → `ConfigKeyError: Missing key data`. `load_config` now detects a `defaults:` key and calls `hydra.compose` to merge the groups. Already-resolved configs (saved `experiments/<run>/config.yaml`) lack `defaults:` and load as-is, so `evaluate.py`/`export_model.py`/`predict.py` are unaffected.
+
+### NumPy 2.0 removed `np.trapz`
+
+`np.trapz(y, x)` is gone — replacement is `np.trapezoid(y, x)` (added in 2.0). The cluster venv has NumPy 2.x. Any new metric/integration code should use `np.trapezoid`.
+
+### `Trainer.history` populates differently from `KDTrainer.history`
+
+`Trainer.history` declares `train_loss`/`val_loss`/`train_pauc`/`val_pauc` but historically only appended to `train_loss` and `val_loss`, leaving `val_pauc` as an empty list. `plot_training_curves` then got `epochs=(N,)` and `val_paucs=()` → matplotlib shape mismatch. Always append `val_pauc` per epoch in any new trainer subclass; `KDTrainer` already does this at `kd_trainer.py:104`.
+
+### `keg` is a shared lab account — `squeue -u keg` shows everyone
+
+When tracking your own jobs, filter by job name: `squeue -u keg --name=poc_teacher`. For postmortems use `sacct -u keg --starttime=$(date -d "1 hour ago" '+%H:%M:%S')`. Per-user job IDs are unique, so any single `squeue -j <jobid>` / `sacct -j <jobid>` still works without a filter.

@@ -125,14 +125,55 @@ fi
 
 A clean run is silent except for the `(clean)` markers. Anything else is a finding to fix.
 
-## 4. Code anti-patterns to look for (manual, in diffs)
+## 4. Code anti-patterns to look for (manual + grep, in diffs)
 
-These don't show up in greps but are easy to spot in `git diff`:
+```bash
+echo "--- h) np.trapz removed in NumPy 2.0 — use np.trapezoid ---"
+# Skip comment lines so the explanatory comment in metrics.py doesn't false-positive.
+FOUND=$(grep -nE '\bnp\.trapz\b|\bnumpy\.trapz\b' src/ scripts/ -r 2>/dev/null \
+        | grep -vE ':[0-9]+:[[:space:]]*#')
+if [ -n "${FOUND}" ]; then
+    echo "  FAIL:"; echo "${FOUND}"
+else
+    echo "  (clean — no np.trapz in code)"
+fi
+
+echo "--- i) timm .num_features used directly instead of infer_backbone_out_dim ---"
+# MobileNetV3 reports num_features=960 but forward() emits 1280. Always prefer
+# infer_backbone_out_dim(backbone) in src/models/heads.py.
+FOUND=$(grep -nE 'self\.backbone\.num_features|backbone\.num_features' src/models/ -r 2>/dev/null \
+        | grep -vE 'heads\.py')
+if [ -n "${FOUND}" ]; then
+    echo "  FAIL:"; echo "${FOUND}"
+else
+    echo "  (clean — using infer_backbone_out_dim)"
+fi
+
+echo "--- j) Trainer history keys declared but never appended in fit() ---"
+# Trainer historically declared val_pauc but never appended → matplotlib crash
+# in plot_training_curves. Each key in `self.history = {...}` must show up
+# with `.append(` in the same file. Use `while read` for portable word-splitting
+# (bash 3.x on macOS doesn't always split unquoted $var by newlines).
+any_missing=0
+for f in src/training/trainer.py src/training/kd_trainer.py; do
+    [ -f "$f" ] || continue
+    grep -oE 'self\.history\s*=\s*\{[^}]*\}' "$f" \
+        | grep -oE '"[a-z_]+"' | tr -d '"' | sort -u \
+        | while IFS= read -r k; do
+            grep -q "history\[\"${k}\"\]\.append" "$f" \
+                || echo "  $f declares history key '${k}' but never .append()s it"
+        done
+done
+```
+
+These are easy to spot in `git diff` even without the grep:
 
 - `OmegaConf.merge(cfg, {"new_top_level_key": ...})` **without** a preceding `OmegaConf.set_struct(cfg, False)` — Hydra emits cfg in struct mode, struct-merge rejects new keys.
 - `from .X import Y` in any `__init__.py` where `Y` doesn't appear as `class Y` or `def Y` in `X.py`. Easiest check: `grep -n "^class \|^def " src/<module>/X.py` and compare.
 - `forward(x)` returning `(B, 1)` shape — `BinaryFocalLoss` and `BinaryDistillationLoss` expect `(B,)`. Always `.squeeze(1)`.
 - A new `*.slurm` script that doesn't `source slurm/_lib.sh` — loses the fallback runtime log.
+- A standalone script that does `OmegaConf.load("configs/config.yaml")` directly. Use `src/utils/config.py::load_config` which composes the Hydra `defaults:` list, otherwise `cfg.data` will be missing.
+- `cfg.data.label_col` passed to `generate_group_kfold_splits()`. That's the *raw* CSV column name — the processed dataframe uses `"label"`. Pass the literal `"label"`.
 
 ## 5. Pipeline prerequisite check
 

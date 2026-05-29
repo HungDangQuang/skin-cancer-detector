@@ -44,6 +44,8 @@ sacct -j <jobid> --format=JobID,JobName,State,Elapsed,MaxRSS,ExitCode,WorkDir
 
 ## Common failure modes
 
+### Training-time (Python / model)
+
 | Symptom | Likely cause | Where to confirm |
 |---|---|---|
 | `val_pauc` stuck at 0 across all epochs | All predictions same class — head bias collapsed | Check `pauc_at_tpr` returns 0 because `mask.sum() < 2` in `src/evaluation/metrics.py:30`; print prob distribution |
@@ -51,9 +53,23 @@ sacct -j <jobid> --format=JobID,JobName,State,Elapsed,MaxRSS,ExitCode,WorkDir
 | `loss=nan` on first iter | LR too high, or label dtype mismatch | Check `cfg.training.optimizer.lr_*` against `configs/training/distillation.yaml` defaults; ensure labels cast to float in the dataset |
 | KD `soft_loss` ≈ 0 from epoch 1 | Teacher logits collapsed (always negative or positive) | `python -c "import torch; ckpt = torch.load('teacher.pth'); print(ckpt['model_state_dict'].keys())"` then run inference on val |
 | `val_pauc` jumps wildly between epochs | Validation set too small (POC has only 36) | Expected for POC; only meaningful with full data |
-| `Job exited code 10` in log | gpu_check.sh requeued — Slurm will retry | Wait; not a failure |
-| `Job exited code 11` in log | 5× requeue exhausted | Lower `REQUIRED_VRAM` arg in `acquire_gpu` call |
-| `import` errors at start | venv outdated | Re-run `bash slurm/setup_env.sh` on login node |
+| `RuntimeError: mat1 and mat2 shapes cannot be multiplied (BxC1 and C2x1)` | timm `model.num_features` doesn't match `forward(x)` output for some backbones (MobileNetV3: reports 960, emits 1280) | Use `infer_backbone_out_dim()` in `src/models/heads.py` — runs a dummy forward to get the true dim |
+| `ValueError: x and y must have same first dimension, but have shapes (N,) and (0,)` (matplotlib) | Trainer's `history["val_pauc"]` (or similar key) never got appended in the fit loop | Confirm every key declared in `self.history = {...}` is `.append()`ed once per epoch in `fit()`; KDTrainer's pattern at `kd_trainer.py:104` is the reference |
+| `AttributeError: module 'numpy' has no attribute 'trapz'` | NumPy 2.0 removed `np.trapz` | Use `np.trapezoid` |
+| `KeyError: 'target'` in `generate_group_kfold_splits` | `cfg.data.label_col` is the *raw CSV* column name; the processed dataframe uses `"label"` | Pass `label_col="label"` to the splits function (see CLAUDE.md gotcha) |
+| `omegaconf.errors.ConfigKeyError: Missing key data` from a standalone script | Plain `OmegaConf.load("configs/config.yaml")` doesn't compose Hydra's `defaults:` list | Use `src/utils/config.py::load_config` (auto-detects Hydra root configs) or switch the script to `@hydra.main` |
+| `import` errors at start (e.g. `cannot import name X from src.<pkg>`) | `__init__.py` re-exports a symbol whose name doesn't match `class X` / `def X` in the submodule | `grep -n "^class \|^def " src/<pkg>/<mod>.py` and align the `__init__.py` re-export |
+
+### Slurm / cluster
+
+| Symptom | Likely cause | Where to confirm / fix |
+|---|---|---|
+| Log shows endless `gpu_check.sh exited 10 — falling through to nvidia-smi` followed by requeue | You set `USE_CLUSTER_GPU_CHECK=1` and re-engaged the buggy helper (it does `scontrol requeue` internally) | Re-submit without that env var. The default path bypasses `gpu_check.sh` entirely — see CLAUDE.md "`/usr/local/bin/gpu_check.sh` is bypassed by default" |
+| `runtime.log` stops mid-`acquire_gpu` with no error | Job was SIGTERM'd by Slurm because something *outside* our script (almost always `gpu_check.sh`'s internal `scontrol requeue`) told Slurm to restart the allocation | Same fix — stop calling `gpu_check.sh`. Check whether `USE_CLUSTER_GPU_CHECK=1` is set |
+| `OSError: [Errno 28] No space left on device` during preprocessing | `/datastore/keg/hungdang` quota exceeded — typically the unzipped `train-image/` JPG folder duplicates what's already in `train-image.hdf5` | `df -h /datastore/keg/hungdang`; delete the redundant zip and the `train-image/` folder; HDF5 is the only file the preprocessor reads |
+| Runtime log empty AND SBATCH `.out` empty | `logs/` didn't exist at sbatch parse time, or job got OOM-killed before our `tee` opened | Always submit via `bash slurm/submit.sh ...` (does `mkdir -p logs` first). Check `sacct -j <jobid>` for OOMKilled state |
+| `import` errors at start | venv outdated or core dep missing | Re-run `bash slurm/setup_env.sh` on login node (or `rm -rf /datastore/keg/hungdang/venv` first if the install was interrupted) |
+| `UserWarning: The NVIDIA driver on your system is too old (found version 12080)` + falls back to CPU | torch wheel built against a newer CUDA than driver supports | `pip install --force-reinstall torch torchvision --index-url https://download.pytorch.org/whl/cu121` (cu121 works for driver 12.8) |
 
 ## Quick checks
 
