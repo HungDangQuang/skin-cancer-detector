@@ -101,13 +101,12 @@ acquire_gpu() {
                 export CUDA_VISIBLE_DEVICES="${check_out}"
                 ;;
             10|11)
-                # gpu_check.sh said no GPU is free (10) or exhausted its own
-                # retries (11). The UIT cluster's helper has been seen to
-                # false-negative due to an internal typo ("nvidia-smi-i:
-                # command not found", line 31). Before trusting it, verify
-                # with nvidia-smi ourselves. Falls through to a default GPU
-                # if even nvidia-smi can't tell us anything — we'd rather
-                # try to run and surface a real OOM than loop forever.
+                # gpu_check.sh said no GPU is free (10) or exhausted retries
+                # (11). The UIT cluster's helper has a typo on line 31
+                # ("nvidia-smi-i: command not found") that makes it always
+                # false-negative. Cross-check with nvidia-smi; if THAT also
+                # fails (e.g. hangs on broken MPS daemon), fall through to a
+                # default GPU rather than requeuing forever.
                 local fail_label
                 if [ "${exit_code}" = "11" ]; then
                     fail_label="exhausted retries (5x)"
@@ -117,26 +116,38 @@ acquire_gpu() {
                 echo "[lib] gpu_check.sh ${fail_label} — running nvidia-smi cross-check"
                 echo "[lib] gpu_check.sh stdout was: '${check_out:-<empty>}'"
 
-                local picked=""
-                if command -v nvidia-smi >/dev/null 2>&1; then
-                    echo "[lib] nvidia-smi found on PATH at $(command -v nvidia-smi)"
-                    # Wrap the substitution in set +e: under set -euo pipefail
-                    # a non-zero from any pipeline element kills the parent
-                    # script silently, which is what was happening here.
-                    set +e
-                    local sm_raw
-                    sm_raw=$(nvidia-smi --query-gpu=index,memory.free \
-                                --format=csv,noheader,nounits 2>&1)
-                    local sm_exit=$?
-                    set -e
-                    echo "[lib] nvidia-smi exit=${sm_exit}, output:"
-                    echo "${sm_raw}" | head -10
-                    if [ "${sm_exit}" = "0" ]; then
-                        picked=$(echo "${sm_raw}" \
-                                 | sort -t',' -k2 -nr \
-                                 | awk -F',' -v need="${required_vram}" '$2+0 >= need {gsub(/ /,"",$1); print $1; exit}' \
-                                 || true)
+                local picked="" sm_out="" sm_exit=1 nvsmi_path=""
+                nvsmi_path=$(command -v nvidia-smi 2>/dev/null || true)
+
+                if [ -n "${nvsmi_path}" ]; then
+                    echo "[lib] Step A: nvidia-smi found at ${nvsmi_path}"
+                    # Run with 30s timeout if available — nvidia-smi has been
+                    # seen to hang here when the MPS daemon is in a bad state.
+                    # All set under `|| true` so neither pipefail nor a hang
+                    # can take the script down silently.
+                    echo "[lib] Step B: querying GPU free memory (30s timeout)..."
+                    if command -v timeout >/dev/null 2>&1; then
+                        sm_out=$(timeout 30s "${nvsmi_path}" \
+                                    --query-gpu=index,memory.free \
+                                    --format=csv,noheader,nounits 2>&1 || true)
+                        sm_exit=$?
+                    else
+                        sm_out=$("${nvsmi_path}" \
+                                    --query-gpu=index,memory.free \
+                                    --format=csv,noheader,nounits 2>&1 || true)
+                        sm_exit=$?
                     fi
+                    echo "[lib] Step C: nvidia-smi exit=${sm_exit}, ${#sm_out} bytes returned:"
+                    printf '%s\n' "${sm_out:-<empty>}" | sed 's/^/    /' | head -20
+
+                    echo "[lib] Step D: selecting GPU with most free vRAM >= ${required_vram} MB..."
+                    picked=$(printf '%s\n' "${sm_out}" 2>/dev/null \
+                             | sort -t',' -k2 -nr 2>/dev/null \
+                             | awk -F',' -v need="${required_vram}" \
+                                   '$2+0 >= need {gsub(/ /,"",$1); print $1; exit}' \
+                                   2>/dev/null \
+                             || true)
+                    echo "[lib] Step E: picked='${picked:-<none>}'"
                 else
                     echo "[lib] nvidia-smi NOT on PATH — cannot cross-check"
                 fi
@@ -145,12 +156,12 @@ acquire_gpu() {
                     export CUDA_VISIBLE_DEVICES="${picked}"
                     echo "[lib] CUDA_VISIBLE_DEVICES=${picked} (selected via nvidia-smi — gpu_check.sh override)"
                 else
-                    # Last resort: PyTorch defaults to GPU 0. Better to try
-                    # and OOM than to requeue 6× and die without ever running.
-                    # Respects shared-cluster rule: we never kill another job,
-                    # we just pick a device and let PyTorch attempt allocation.
+                    # Last resort: default to GPU 0. Better to try and surface
+                    # a real OOM than to requeue forever. Still respects the
+                    # shared-cluster rule — we don't kill another job, we just
+                    # pick a device and let PyTorch attempt allocation.
                     export CUDA_VISIBLE_DEVICES=0
-                    echo "[lib] WARN: could not verify free vRAM via nvidia-smi"
+                    echo "[lib] WARN: could not select a GPU via nvidia-smi"
                     echo "[lib] WARN: defaulting to CUDA_VISIBLE_DEVICES=0 — job will OOM if GPU 0 is full"
                     echo "[lib] WARN: if this OOMs, lower the acquire_gpu vRAM arg or wait for the cluster to free up"
                 fi
