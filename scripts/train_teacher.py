@@ -14,8 +14,10 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 
 from src.data.datamodule import SkinLesionDataModule
+from src.evaluation.evaluator import Evaluator
 from src.models.registry import build_model
 from src.training.trainer import Trainer
+from src.utils.checkpoint import load_checkpoint
 from src.utils.config import save_config
 from src.utils.logger import get_logger
 from src.utils.seed import set_seed
@@ -33,11 +35,12 @@ def main(cfg: DictConfig) -> None:
     OmegaConf.set_struct(cfg, False)
     teacher_cfg = OmegaConf.merge(cfg, {"model": OmegaConf.to_container(cfg.teacher, resolve=True)})
 
-    run_dir = Path(cfg.output_dir) / "teacher" / cfg.teacher.name
+    fold = int(cfg.data.get("fold", 0))
+    run_dir = Path(cfg.output_dir) / "teacher" / cfg.teacher.name / f"fold_{fold}"
     run_dir.mkdir(parents=True, exist_ok=True)
     save_config(teacher_cfg, run_dir / "config.yaml")
 
-    logger.info(f"Training teacher: {cfg.teacher.name}")
+    logger.info(f"Training teacher: {cfg.teacher.name} (fold {fold})")
 
     datamodule = SkinLesionDataModule(teacher_cfg)
     model = build_model(teacher_cfg)
@@ -53,6 +56,16 @@ def main(cfg: DictConfig) -> None:
         save_path=str(run_dir / "training_curves.png"),
     )
     logger.info(f"Teacher training complete. Checkpoint: {run_dir / 'checkpoints' / 'best_model.pth'}")
+
+    best_ckpt = run_dir / "checkpoints" / "best_model.pth"
+    if best_ckpt.exists():
+        logger.info(f"Evaluating best checkpoint on held-out test set: {best_ckpt}")
+        load_checkpoint(str(best_ckpt), model, device=cfg.device)
+        evaluator = Evaluator(model, device=cfg.device)
+        test_metrics = evaluator.evaluate(datamodule.test_dataloader())
+        evaluator.save_metrics(test_metrics, run_dir / "test_metrics.json")
+    else:
+        logger.warning(f"No best checkpoint at {best_ckpt}; skipping test-set evaluation.")
 
 
 if __name__ == "__main__":

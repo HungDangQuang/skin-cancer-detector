@@ -20,12 +20,14 @@ class SkinLesionDataModule:
           test_split.csv       <- held-out test set (fold 0 val)
     """
 
-    def __init__(self, cfg, fold: int = 0):
+    def __init__(self, cfg, fold: int | None = None):
         self.cfg = cfg
         self.data_cfg = cfg.data
         self.train_cfg = cfg.training
         self.splits_dir = Path(self.data_cfg.splits_dir)
-        self.fold = fold
+        # Explicit kwarg wins; otherwise read from Hydra config (cfg.data.fold).
+        # Default to 0 if neither is set (back-compat for old configs).
+        self.fold = fold if fold is not None else int(self.data_cfg.get("fold", 0))
 
         self._train_dataset = None
         self._val_dataset = None

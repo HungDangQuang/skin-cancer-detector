@@ -53,10 +53,20 @@ class Trainer:
         self.history = {"train_loss": [], "val_loss": [], "val_pauc": []}
 
     def fit(self) -> dict:
+        from src.evaluation.metrics import class_prevalence_baselines
+
         self.datamodule.setup()
         train_loader = self.datamodule.train_dataloader()
         val_loader = self.datamodule.val_dataloader()
         epochs = self.cfg.training.epochs
+
+        val_prev = class_prevalence_baselines(self.datamodule._val_dataset.labels)
+        logger.info(
+            f"Val set: {val_prev['n_negative']} benign + {val_prev['n_positive']} malignant "
+            f"({val_prev['positive_rate']*100:.2f}% positive) | "
+            f"majority-class baseline acc={val_prev['majority_class_accuracy']:.4f} | "
+            f"random-classifier AUC=0.5000"
+        )
 
         for epoch in range(1, epochs + 1):
             self.datamodule.set_epoch(epoch)
@@ -74,7 +84,12 @@ class Trainer:
                 f"Epoch {epoch}/{epochs} | "
                 f"train_loss={train_metrics['loss']:.4f} | "
                 f"val_loss={val_metrics['loss']:.4f} "
-                f"val_pauc={val_metrics.get('pauc_at_tpr80', 0):.4f}"
+                f"val_pauc={val_metrics.get('pauc_at_tpr80', 0):.4f} "
+                f"acc={val_metrics.get('accuracy', 0):.4f} "
+                f"prec={val_metrics.get('precision', 0):.4f} "
+                f"sens={val_metrics.get('sensitivity', 0):.4f} "
+                f"spec={val_metrics.get('specificity', 0):.4f} "
+                f"f1={val_metrics.get('f1_score', 0):.4f}"
             )
 
             if self.checkpoint:

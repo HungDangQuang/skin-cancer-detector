@@ -244,6 +244,24 @@ sacct -j <jobid> --format=JobID,JobName,State,Elapsed,MaxRSS,ExitCode,WorkDir
 scancel <jobid>
 ```
 
+### Pulling logs back to your laptop
+
+Logs are written to `/datastore/keg/hungdang/skin-cancer-detector/logs/` on the cluster. To read them in your editor / share with Claude on the Mac, rsync them back after the job finishes:
+
+```bash
+# From your laptop. Pull only the new log files for this jobid:
+rsync -avh --progress \
+    "keg@slurm.uit.edu.vn:/datastore/keg/hungdang/skin-cancer-detector/logs/*_<jobid>*" \
+    logs/
+
+# Or sync the whole logs/ dir (cheap — they're small text files):
+rsync -avh --progress --delete-excluded --include='*.out' --include='*.err' --include='*.log' \
+    keg@slurm.uit.edu.vn:/datastore/keg/hungdang/skin-cancer-detector/logs/ \
+    logs/
+```
+
+Pull *after* you see `[job] DONE` (or the job failed) — tailing a remote log in real-time is faster done with `ssh keg@slurm.uit.edu.vn "tail -f /datastore/keg/hungdang/skin-cancer-detector/logs/<jobname>_<jobid>_runtime.log"`. The Mac copy is for post-hoc analysis only.
+
 ---
 
 ## 7. GPU dispatch — current state

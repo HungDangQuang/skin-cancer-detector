@@ -2,6 +2,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Local environment ≠ runtime environment
+
+The local Mac is for editing only. **Do not install Python dependencies locally** (no `pip install`, no `make install-dev` on the Mac, no expectation that `pytest` / `torch` / `sklearn` will import here). The code runs on the UIT Slurm cluster (`slurm.uit.edu.vn`, venv at `/datastore/keg/venv`), and that is the only environment that has the full dependency set.
+
+Consequences for verification:
+- After editing `src/`, `configs/`, or `slurm/`, run the **`validate-pipeline`** skill (static checks — Python AST + Hydra config compose + slurm lint, no imports needed) instead of trying to import/run code.
+- Real correctness verification (pytest, training smoke test) happens on the cluster — submit `slurm/01_prepare_poc.slurm` → `02_poc_teacher.slurm` → `03_poc_student.slurm` or invoke the `poc-smoke-test` skill.
+- Do not propose `pip install <x>` to fix a `ModuleNotFoundError` you hit locally — it's expected; the import will resolve on the cluster.
+
 ## Commands
 
 ```bash
@@ -105,6 +114,43 @@ External test sets (HAM10000, Fitzpatrick17k) are **never used for training** �
 
 Each student is trained twice (with KD / without KD) using identical hyperparameters, data splits, and seed. `compute_kd_delta()` computes the effectiveness delta between the two runs. 5-fold CV is used; 30 total training runs (3 arch × 2 KD conditions × 5 folds).
 
+### Run-dir convention (fold-aware)
+
+Each training script writes results to a fold-scoped subdirectory so a Slurm array can populate all 5 folds without overwriting:
+
+```
+experiments/runs/
+  teacher/efficientnet_b4/fold_{0..4}/
+    checkpoints/best_model.pth
+    config.yaml
+    test_metrics.json          ← auto-eval on held-out test set, written at end of training
+    training_curves.png
+  kd_efficientnet_b4_to_efficientnet_b0/fold_{0..4}/...
+  kd_efficientnet_b4_to_mobilenetv3_large/fold_{0..4}/...
+  kd_efficientnet_b4_to_mobilevit_s/fold_{0..4}/...
+```
+
+`scripts/train_teacher.py` and `scripts/train_student.py` reload the best checkpoint from `checkpoints/best_model.pth` after training and run `Evaluator.evaluate(test_dataloader())`, saving the result alongside as `test_metrics.json`. The val-set metrics logged each epoch are *biased* (early-stopping optimizes against val); the `test_metrics.json` is the unbiased generalization number — quote that, not val_pauc, for verdicts.
+
+### 5-fold CV via Slurm array
+
+`slurm/11_train_teacher.slurm` and `slurm/12_train_student.slurm` are declared as Slurm array jobs (`#SBATCH --array=0-4%2`) so submitting once trains all 5 folds, with at most 2 folds running concurrently to stay under the shared-account 5-job concurrency cap. Each task receives `SLURM_ARRAY_TASK_ID` and forwards it as `data.fold=${SLURM_ARRAY_TASK_ID}`. Submit + log pattern:
+
+```bash
+# Submit (one command, kicks off 5 jobs that share an array JOBID):
+bash slurm/submit.sh slurm/11_train_teacher.slurm
+
+# Logs:
+logs/train_teacher_<arrayid>_<taskid>.out      # SBATCH-redirected per task
+logs/train_teacher_<arrayid>_<taskid>_runtime.log   # fallback tee log
+
+# Aggregate after all 5 finish:
+bash slurm/submit.sh slurm/22_aggregate_folds.slurm \
+    RUN_DIR=experiments/runs/teacher/efficientnet_b4
+```
+
+`scripts/aggregate_folds.py` reads `fold_*/test_metrics.json`, computes mean ± std (+ min/max + per-fold) for every numeric metric, and writes `aggregated.json` (machine-readable) and `aggregated.md` (thesis-grade table). Cite the **aggregated mean ± std** for any reportable claim — a single fold's number has wide variance.
+
 ## Recurring gotchas
 
 These have all bitten this repo at least once. Run the `validate-pipeline` skill after touching `src/`, `configs/`, or `slurm/` to catch them before submitting cluster jobs.
@@ -168,3 +214,11 @@ The cluster's GPU dispatcher has a typo on line 31 (`nvidia-smi-i` instead of `n
 ### `keg` is a shared lab account — `squeue -u keg` shows everyone
 
 When tracking your own jobs, filter by job name: `squeue -u keg --name=poc_teacher`. For postmortems use `sacct -u keg --starttime=$(date -d "1 hour ago" '+%H:%M:%S')`. Per-user job IDs are unique, so any single `squeue -j <jobid>` / `sacct -j <jobid>` still works without a filter.
+
+### `pauc_at_tpr()` is mis-scaled — values run ~[0.9, 5.0] not [0, 0.2]
+
+[src/evaluation/metrics.py:37](src/evaluation/metrics.py#L37) integrates raw TPR instead of `(TPR − min_tpr)` and divides by `0.2`, so the value lives roughly in `[0.9, 5.0]` instead of the documented `[0, 0.2]`. Random ≈ 0.9, perfect ≈ 5.0. The ranking is monotonic so within-run trends are still meaningful, but every `val_pauc=…` line in the trainer logs, the `pauc_at_tpr80` field in `scripts/evaluate.py` JSON output, and the `delta_pauc` from `compute_kd_delta()` are on this stretched scale — **don't quote them as the ISIC 2024 official metric**. For absolute verdicts and cross-run comparison, lean on the threshold-based metrics (`acc`, `sens`, `spec`, `f1`) which are computed from sklearn directly and are correct. Fix: replace the integrand with the standard sklearn-based formulation (`roc_auc_score(1 - y_true, -y_prob, max_fpr=0.2)`); also update `tests/test_metrics.py` which currently asserts `pauc > 0.9` for a perfect classifier (would become `pauc ≈ 0.2`).
+
+### Baseline (no-KD) student training is broken — KDTrainer is unconditionally coupled to KD config
+
+`KDTrainer.__init__` reads `cfg.training.distillation` at [src/training/kd_trainer.py:57](src/training/kd_trainer.py#L57), but `configs/training/baseline.yaml` intentionally has no `distillation:` block. Any `training=baseline` override therefore crashes immediately with `ConfigAttributeError: Missing key distillation` — confirmed by jobs 26729 / 26730 / 26731 on 2026-05-30. **This blocks the entire baseline arm of the KD-vs-baseline experiment** (the experiment design wants 3 archs × 2 conditions × 5 folds = 30 runs; the baseline column is currently unrunnable). Fix: add `use_kd: true/false` flags to the two training configs and gate the distillation-config read + `BinaryDistillationLoss` construction behind it, falling through to `Trainer` + `BinaryFocalLoss` when off. Do **not** submit baseline jobs to the cluster until this is fixed — guaranteed crash, wastes the queue slot.

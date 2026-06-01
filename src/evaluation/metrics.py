@@ -55,6 +55,27 @@ def youden_threshold(y_true: np.ndarray, y_prob: np.ndarray) -> float:
     return float(thresholds[best_idx])
 
 
+def class_prevalence_baselines(labels: list[int] | np.ndarray) -> dict:
+    """
+    Reference baselines a binary classifier must beat to add value.
+
+    Returns class counts + the accuracy you'd get by predicting the majority
+    class everywhere (the floor that "good accuracy" claims must clear).
+    """
+    labels = np.asarray(labels)
+    n = int(len(labels))
+    n_pos = int((labels == 1).sum())
+    n_neg = n - n_pos
+    majority = max(n_pos, n_neg)
+    return {
+        "n_total": n,
+        "n_positive": n_pos,
+        "n_negative": n_neg,
+        "positive_rate": float(n_pos / n) if n > 0 else 0.0,
+        "majority_class_accuracy": float(majority / n) if n > 0 else 0.0,
+    }
+
+
 def compute_metrics(
     y_true: list[int],
     y_prob: np.ndarray,
@@ -93,7 +114,11 @@ def compute_metrics(
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
     metrics["sensitivity"] = float(tp / (tp + fn)) if (tp + fn) > 0 else 0.0  # recall / TPR
     metrics["specificity"] = float(tn / (tn + fp)) if (tn + fp) > 0 else 0.0  # TNR
+    metrics["precision"] = float(tp / (tp + fp)) if (tp + fp) > 0 else 0.0    # PPV
+    metrics["recall"] = metrics["sensitivity"]                                # alias for clarity
     metrics["f1_score"] = float(f1_score(y_true, y_pred, zero_division=0))
+    total = tp + fp + tn + fn
+    metrics["accuracy"] = float((tp + tn) / total) if total > 0 else 0.0
     metrics["tp"] = int(tp)
     metrics["fp"] = int(fp)
     metrics["tn"] = int(tn)

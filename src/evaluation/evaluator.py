@@ -52,8 +52,12 @@ class Evaluator:
         logger.info(
             f"pAUC@TPR80={metrics['pauc_at_tpr80']:.4f} | "
             f"AUC={metrics['auc_roc']:.4f} | "
-            f"Sensitivity={metrics['sensitivity']:.4f} | "
-            f"Specificity={metrics['specificity']:.4f} | "
+            f"Acc={metrics['accuracy']:.4f} | "
+            f"Prec={metrics['precision']:.4f} | "
+            f"Recall={metrics['recall']:.4f} | "
+            f"Sens={metrics['sensitivity']:.4f} | "
+            f"Spec={metrics['specificity']:.4f} | "
+            f"F1={metrics['f1_score']:.4f} | "
             f"Threshold={thresh:.4f}"
         )
         return metrics

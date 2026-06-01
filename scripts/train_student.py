@@ -19,6 +19,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 
 from src.data.datamodule import SkinLesionDataModule
+from src.evaluation.evaluator import Evaluator
 from src.models.registry import build_model
 from src.training.kd_trainer import KDTrainer
 from src.utils.checkpoint import load_checkpoint
@@ -34,20 +35,21 @@ logger = get_logger(__name__)
 def main(cfg: DictConfig) -> None:
     set_seed(cfg.seed)
 
+    fold = int(cfg.data.get("fold", 0))
     teacher_ckpt = cfg.get(
         "teacher_checkpoint",
-        f"{cfg.output_dir}/teacher/{cfg.teacher.name}/checkpoints/best_model.pth"
+        f"{cfg.output_dir}/teacher/{cfg.teacher.name}/fold_{fold}/checkpoints/best_model.pth"
     )
 
     if not Path(teacher_ckpt).exists():
         logger.error(
             f"Teacher checkpoint not found: {teacher_ckpt}\n"
-            "Run scripts/train_teacher.py first."
+            f"Run scripts/train_teacher.py for fold {fold} first."
         )
         sys.exit(1)
 
     student_name = cfg.student.name
-    run_dir = Path(cfg.output_dir) / f"kd_{cfg.teacher.name}_to_{student_name}"
+    run_dir = Path(cfg.output_dir) / f"kd_{cfg.teacher.name}_to_{student_name}" / f"fold_{fold}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
     # Hydra emits cfg in struct mode; merging in a new top-level "model" key
@@ -57,7 +59,7 @@ def main(cfg: DictConfig) -> None:
     student_cfg = OmegaConf.merge(cfg, {"model": OmegaConf.to_container(cfg.student, resolve=True)})
 
     save_config(cfg, run_dir / "config.yaml")
-    logger.info(f"KD: {cfg.teacher.name} -> {student_name}")
+    logger.info(f"KD: {cfg.teacher.name} -> {student_name} (fold {fold})")
 
     teacher = build_model(teacher_cfg)
     load_checkpoint(teacher_ckpt, teacher, device=cfg.device)
@@ -78,6 +80,16 @@ def main(cfg: DictConfig) -> None:
         save_path=str(run_dir / "training_curves.png"),
     )
     logger.info(f"KD training complete. Checkpoint: {run_dir / 'checkpoints' / 'best_model.pth'}")
+
+    best_ckpt = run_dir / "checkpoints" / "best_model.pth"
+    if best_ckpt.exists():
+        logger.info(f"Evaluating best student checkpoint on held-out test set: {best_ckpt}")
+        load_checkpoint(str(best_ckpt), student, device=cfg.device)
+        evaluator = Evaluator(student, device=cfg.device)
+        test_metrics = evaluator.evaluate(datamodule.test_dataloader())
+        evaluator.save_metrics(test_metrics, run_dir / "test_metrics.json")
+    else:
+        logger.warning(f"No best checkpoint at {best_ckpt}; skipping test-set evaluation.")
 
 
 if __name__ == "__main__":
