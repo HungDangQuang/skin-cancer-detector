@@ -1,4 +1,4 @@
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, open_dict
 
 from .efficientnet import EfficientNetModel
 from .mobilenet import MobileNetV3Model
@@ -46,6 +46,7 @@ def build_model_from_name(model_name: str, base_cfg) -> tuple:
             f"Teacher: {base_cfg.teacher.name}, Student: {base_cfg.student.name}"
         )
 
-    merged_cfg = OmegaConf.merge(base_cfg, {"model": OmegaConf.to_container(model_subcfg, resolve=True)})
+    with open_dict(base_cfg):
+        merged_cfg = OmegaConf.merge(base_cfg, {"model": OmegaConf.to_container(model_subcfg, resolve=True)})
     model = MODEL_REGISTRY[model_name](merged_cfg)
     return model, merged_cfg
