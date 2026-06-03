@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from omegaconf import OmegaConf, open_dict
 
 from .efficientnet import EfficientNetModel
@@ -41,10 +43,22 @@ def build_model_from_name(model_name: str, base_cfg) -> tuple:
     elif base_cfg.student.name == model_name:
         model_subcfg = base_cfg.student
     else:
-        raise ValueError(
-            f"Model '{model_name}' not found in cfg.teacher or cfg.student. "
-            f"Teacher: {base_cfg.teacher.name}, Student: {base_cfg.student.name}"
-        )
+        # base_cfg's composed teacher/student doesn't match the requested name
+        # (e.g. evaluate.py loading configs/config.yaml — student is always
+        # efficientnet_b0 by default). Fall back to the standalone group config
+        # so callers don't need to also pass a Hydra override.
+        configs_dir = Path(__file__).resolve().parents[2] / "configs"
+        for group in ("student", "teacher"):
+            candidate = configs_dir / group / f"{model_name}.yaml"
+            if candidate.is_file():
+                model_subcfg = OmegaConf.load(candidate)
+                break
+        else:
+            raise ValueError(
+                f"Model '{model_name}' not in cfg.teacher / cfg.student and "
+                f"no configs/{{teacher,student}}/{model_name}.yaml found. "
+                f"Teacher: {base_cfg.teacher.name}, Student: {base_cfg.student.name}"
+            )
 
     with open_dict(base_cfg):
         merged_cfg = OmegaConf.merge(base_cfg, {"model": OmegaConf.to_container(model_subcfg, resolve=True)})
