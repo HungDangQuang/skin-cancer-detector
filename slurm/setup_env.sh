@@ -46,4 +46,4 @@ echo
 echo "Setup complete."
 echo "  venv:        ${VENV_DIR}"
 echo "  project:     ${PROJECT_DIR}"
-echo "  next steps:  sbatch slurm/01_prepare_poc.slurm"
+echo "  next steps:  bash slurm/submit.sh slurm/01_prepare_poc.slurm"
