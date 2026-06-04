@@ -1,6 +1,7 @@
 # Student baseline training config (NO knowledge distillation)
 # Identical to distillation.yaml except no distillation block.
 # Used as the controlled comparison branch.
+use_kd: false       # plain Trainer + BinaryFocalLoss, no teacher
 epochs: 50
 batch_size: 64
 grad_clip: 1.0

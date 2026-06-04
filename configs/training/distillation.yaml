@@ -1,4 +1,5 @@
 # Student KD training config
+use_kd: true        # KDTrainer + frozen teacher + BinaryDistillationLoss
 epochs: 50
 batch_size: 64
 grad_clip: 1.0
