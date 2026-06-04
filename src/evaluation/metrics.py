@@ -9,10 +9,12 @@ from sklearn.metrics import (
 
 def pauc_at_tpr(y_true: np.ndarray, y_prob: np.ndarray, min_tpr: float = 0.80) -> float:
     """
-    Partial AUC above a minimum TPR threshold (ISIC 2024 official metric).
+    Partial AUC above a minimum TPR threshold — the ISIC 2024 official metric.
 
-    Computes the area under the ROC curve restricted to the region where
-    TPR >= min_tpr, then normalizes to [0, max_possible_pauc].
+    Implements the competition's exact formulation: relabel/flip so the
+    "TPR >= min_tpr" region of the original ROC maps to the "FPR <= max_fpr"
+    region (max_fpr = 1 - min_tpr), take sklearn's McClish-corrected partial
+    AUC, then invert the McClish scaling to recover the true partial-area value.
 
     Args:
         y_true: Binary ground truth labels (0/1).
@@ -20,26 +22,26 @@ def pauc_at_tpr(y_true: np.ndarray, y_prob: np.ndarray, min_tpr: float = 0.80) -
         min_tpr: Minimum TPR threshold (default 0.80).
 
     Returns:
-        Normalized pAUC in [0.0, 0.2] (for min_tpr=0.80).
+        Partial AUC in [0.5*max_fpr**2, max_fpr] — i.e. ~[0.02, 0.20] for
+        min_tpr=0.80: random ≈ 0.02, perfect = 0.20.
     """
-    fpr, tpr, _ = roc_curve(y_true, y_prob)
+    y_true = np.asarray(y_true)
+    y_prob = np.asarray(y_prob)
 
-    # Keep only the region where TPR >= min_tpr
-    mask = tpr >= min_tpr
-    if mask.sum() < 2:
+    # Undefined with a single class present — roc_auc_score would raise.
+    if len(np.unique(y_true)) < 2:
         return 0.0
 
-    fpr_clipped = fpr[mask]
-    tpr_clipped = tpr[mask]
+    max_fpr = 1.0 - min_tpr
+    # Flip labels and scores: TPR >= min_tpr (original) == FPR <= max_fpr here.
+    v_gt = 1 - y_true
+    v_pred = -y_prob
+    scaled = roc_auc_score(v_gt, v_pred, max_fpr=max_fpr)  # McClish-corrected, in [0.5, 1]
 
-    # Numerical integration (trapezoidal). np.trapz was removed in NumPy 2.0;
-    # np.trapezoid is the supported name from 2.0 onwards.
-    raw_pauc = float(np.trapezoid(tpr_clipped, fpr_clipped))
-
-    # Normalize: max possible pAUC in the unrestricted region = 1.0 * (max_fpr - min_fpr)
-    # For the standardized score, normalize by (1 - min_tpr)
-    max_pauc = 1.0 - min_tpr
-    return raw_pauc / max_pauc if max_pauc > 0 else 0.0
+    # Invert McClish: scaled = 0.5*(1 + (pAUC - min_area)/(max_area - min_area)),
+    # with min_area = 0.5*max_fpr**2 (area under the diagonal) and max_area = max_fpr.
+    min_area = 0.5 * max_fpr ** 2
+    return float(min_area + (max_fpr - min_area) / 0.5 * (scaled - 0.5))
 
 
 def youden_threshold(y_true: np.ndarray, y_prob: np.ndarray) -> float:

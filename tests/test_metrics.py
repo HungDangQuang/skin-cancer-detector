@@ -14,7 +14,8 @@ def test_pauc_perfect_classifier():
     # Perfect: malignant gets prob=1, benign gets prob=0
     y_prob = np.array([0.0] * 100 + [1.0] * 10)
     pauc = pauc_at_tpr(y_true, y_prob, min_tpr=0.80)
-    assert pauc > 0.9  # should be close to 1.0
+    # ISIC 2024 metric: perfect classifier reaches the max partial area = max_fpr = 0.2.
+    assert pauc == pytest.approx(0.2, abs=1e-6)
 
 
 def test_pauc_random_classifier():
@@ -22,7 +23,8 @@ def test_pauc_random_classifier():
     y_true = np.array([0] * 100 + [1] * 10)
     y_prob = rng.random(110)
     pauc = pauc_at_tpr(y_true, y_prob, min_tpr=0.80)
-    assert 0.0 <= pauc <= 1.0
+    # Bounded by [0.5*max_fpr**2, max_fpr] = [0.02, 0.20]; random sits near 0.02.
+    assert 0.0 <= pauc <= 0.2 + 1e-6
 
 
 def test_youden_threshold_range():
