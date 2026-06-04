@@ -8,6 +8,8 @@ def build_transforms(cfg, split: str = "train"):
     """
     Build an Albumentations transform pipeline from config.
 
+    Train applies random augmentation; val/test apply only Resize + Normalize.
+
     Args:
         cfg: augmentation config (OmegaConf DictConfig)
         split: 'train', 'val', or 'test'
@@ -24,8 +26,13 @@ def build_transforms(cfg, split: str = "train"):
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
             A.RandomRotate90(p=0.5),
-            A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.2, rotate_limit=45, p=0.5),
+            # Full continuous rotation: lesions have no canonical orientation,
+            # so allow any angle (proposal §3.5) rather than ±45°.
+            A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.2, rotate_limit=180, p=0.5),
             A.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1, p=0.5),
+            # Low-p CLAHE: simulates smartphone lighting/contrast variance. Runs
+            # on uint8, so it must precede Normalize.
+            A.CLAHE(clip_limit=2.0, p=0.2),
             A.GaussianBlur(blur_limit=(3, 7), p=0.2),
             A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ToTensorV2(),

@@ -2,6 +2,8 @@
 Offline preprocessing script helpers.
 Run via: python scripts/prepare_data.py
 """
+import hashlib
+import io
 from pathlib import Path
 
 import h5py
@@ -20,6 +22,29 @@ def resize_and_save(src: Image.Image | Path, dst_path: Path, size: tuple[int, in
     img.save(dst_path)
 
 
+def is_uninformative(
+    img: Image.Image,
+    std_threshold: float = 8.0,
+    extreme_frac_threshold: float = 0.97,
+) -> bool:
+    """Heuristic check for blank / near-uniform / no-signal images.
+
+    Operates on the (already resized) RGB image. Returns True when the image
+    carries essentially no usable signal and should be dropped:
+      - global grayscale std < std_threshold  → flat / near-uniform tile, or
+      - > extreme_frac_threshold of pixels are near-black or near-white
+        → all-dark vignette crops and blown-out / washed-out tiles.
+
+    Thresholds are intentionally conservative (drop only the clearly bad) and
+    are tunable from the call site; verify the drop list on the cluster.
+    """
+    gray = np.asarray(img.convert("L"), dtype=np.float32)
+    if gray.std() < std_threshold:
+        return True
+    extreme_frac = float((gray <= 10).mean() + (gray >= 245).mean())
+    return extreme_frac > extreme_frac_threshold
+
+
 # ------------------------------------------------------------------
 # ISIC 2024 SLICE-3D
 # ------------------------------------------------------------------
@@ -30,6 +55,7 @@ def process_isic2024(
     image_size: int = 224,
     image_id_col: str = "isic_id",
     label_col: str = "target",
+    min_size: int = 32,
 ) -> pd.DataFrame:
     """
     Extract and resize images from ISIC 2024 HDF5 archive.
@@ -55,6 +81,8 @@ def process_isic2024(
     metadata = pd.read_csv(metadata_csv, low_memory=False)
     class_names = {0: "benign", 1: "malignant"}
     records = []
+    excluded = []  # (image_id, reason) for corrupt / small / dup / uninformative images
+    seen_hashes: set[str] = set()  # exact-duplicate detection across the dataset
     skipped = 0  # number of rows where the resized JPG already existed on disk
 
     with h5py.File(hdf5_path, "r") as hdf:
@@ -65,19 +93,56 @@ def process_isic2024(
             class_name = class_names[label]
             dst = processed_dir / class_name / f"{image_id}.jpg"
 
-            if dst.exists():
-                # Fast-path: a previous run already resized this image. Skip
-                # the HDF5 read + PIL decode + resize + write — the most
-                # expensive part. Still record the row so the returned df is
-                # complete and downstream split generation sees every sample.
-                skipped += 1
+            try:
+                if dst.exists():
+                    # Fast-path: a previous run already resized this image, so
+                    # skip the HDF5 read + resize. Still load it back so the
+                    # quality filter runs (a pre-filter run may have written a
+                    # bad image to disk).
+                    img = Image.open(dst).convert("RGB")
+                    is_new = False
+                else:
+                    if image_id not in hdf:
+                        continue
+                    # HDF5 stores JPEG bytes as a byte string dataset
+                    jpeg_bytes = hdf[image_id][()]
+                    img = Image.open(io.BytesIO(jpeg_bytes)).convert("RGB")
+                    if min(img.size) < min_size:
+                        # Native crop too small to carry detail once upscaled to
+                        # image_size. Only checkable on the fresh decode — the
+                        # fast-path image on disk is already resized to 224.
+                        excluded.append({"image_id": image_id, "reason": f"too_small: {img.size}"})
+                        continue
+                    img = img.resize((image_size, image_size), Image.LANCZOS)
+                    is_new = True
+            except (OSError, ValueError, Image.DecompressionBombError) as e:
+                excluded.append({"image_id": image_id, "reason": f"corrupt: {e}"})
+                continue
+
+            if is_uninformative(img):
+                excluded.append({"image_id": image_id, "reason": "uninformative"})
+                # Drop a previously-saved bad image so the on-disk dataset
+                # stays consistent with the split CSVs.
+                if not is_new and dst.exists():
+                    dst.unlink()
+                continue
+
+            # Exact-duplicate detection on the resized pixels: first occurrence
+            # kept, later identical images dropped so the same lesion cannot land
+            # in two folds.
+            img_hash = hashlib.md5(img.tobytes()).hexdigest()
+            if img_hash in seen_hashes:
+                excluded.append({"image_id": image_id, "reason": "duplicate"})
+                if not is_new and dst.exists():
+                    dst.unlink()
+                continue
+            seen_hashes.add(img_hash)
+
+            if is_new:
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                img.save(dst)
             else:
-                if image_id not in hdf:
-                    continue
-                # HDF5 stores JPEG bytes as a byte string dataset
-                jpeg_bytes = hdf[image_id][()]
-                img = Image.open(__import__("io").BytesIO(jpeg_bytes)).convert("RGB")
-                resize_and_save(img, dst, size=(image_size, image_size))
+                skipped += 1
 
             records.append({
                 "image_id": image_id,
@@ -88,11 +153,16 @@ def process_isic2024(
                 "source": "isic2024",
             })
 
+    if excluded:
+        processed_dir.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(excluded).to_csv(processed_dir / "excluded_images.csv", index=False)
+
     df = pd.DataFrame(records)
     print(
         f"ISIC 2024 — total: {len(df)} | "
         f"benign: {(df['label']==0).sum()} | malignant: {(df['label']==1).sum()} | "
-        f"skipped (already-on-disk): {skipped}"
+        f"skipped (already-on-disk): {skipped} | "
+        f"excluded (corrupt/small/dup/uninformative): {len(excluded)}"
     )
     return df
 
@@ -105,6 +175,7 @@ def process_pad_ufes_20(
     raw_dir: str | Path,
     processed_dir: str | Path,
     image_size: int = 224,
+    min_size: int = 32,
 ) -> pd.DataFrame:
     """
     Process PAD-UFES-20 dataset and map 6 classes to binary labels.
@@ -137,6 +208,8 @@ def process_pad_ufes_20(
     }
     class_names = {0: "benign", 1: "malignant"}
     records = []
+    excluded = []  # (image_id, reason) for corrupt / small / dup / uninformative images
+    seen_hashes: set[str] = set()  # exact-duplicate detection across the dataset
     skipped = 0
 
     for _, row in tqdm(metadata.iterrows(), total=len(metadata), desc="Processing PAD-UFES-20"):
@@ -150,31 +223,68 @@ def process_pad_ufes_20(
         class_name = class_names[label]
         dst = processed_dir / class_name / f"pad_{img_id}.jpg"
 
-        if dst.exists():
-            # Fast-path: already processed in a previous run.
-            skipped += 1
+        try:
+            if dst.exists():
+                # Fast-path: already processed; reload it so the filter runs.
+                img = Image.open(dst).convert("RGB")
+                is_new = False
+            else:
+                src = images_dir / f"{img_id}.png"
+                if not src.exists():
+                    src = images_dir / f"{img_id}.jpg"
+                if not src.exists():
+                    continue
+                img = Image.open(src).convert("RGB")
+                if min(img.size) < min_size:
+                    excluded.append({"image_id": f"pad_{img_id}", "reason": f"too_small: {img.size}"})
+                    continue
+                img = img.resize((image_size, image_size), Image.LANCZOS)
+                is_new = True
+        except (OSError, ValueError, Image.DecompressionBombError) as e:
+            excluded.append({"image_id": f"pad_{img_id}", "reason": f"corrupt: {e}"})
+            continue
+
+        if is_uninformative(img):
+            excluded.append({"image_id": f"pad_{img_id}", "reason": "uninformative"})
+            if not is_new and dst.exists():
+                dst.unlink()
+            continue
+
+        img_hash = hashlib.md5(img.tobytes()).hexdigest()
+        if img_hash in seen_hashes:
+            excluded.append({"image_id": f"pad_{img_id}", "reason": "duplicate"})
+            if not is_new and dst.exists():
+                dst.unlink()
+            continue
+        seen_hashes.add(img_hash)
+
+        if is_new:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            img.save(dst)
         else:
-            src = images_dir / f"{img_id}.png"
-            if not src.exists():
-                src = images_dir / f"{img_id}.jpg"
-            if not src.exists():
-                continue
-            resize_and_save(src, dst, size=(image_size, image_size))
+            skipped += 1
 
         records.append({
             "image_id": f"pad_{img_id}",
-            "patient_id": str(row.get("patient_id", img_id)),
+            # Namespace the group key so a PAD patient_id can never collide with
+            # an ISIC patient_id and leak across folds in StratifiedGroupKFold.
+            "patient_id": f"pad_{row.get('patient_id', img_id)}",
             "image_path": str(dst),
             "label": label,
             "class_name": class_name,
             "source": "pad_ufes_20",
         })
 
+    if excluded:
+        processed_dir.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(excluded).to_csv(processed_dir / "excluded_images.csv", index=False)
+
     df = pd.DataFrame(records)
     print(
         f"PAD-UFES-20 — total: {len(df)} | "
         f"benign: {(df['label']==0).sum()} | malignant: {(df['label']==1).sum()} | "
-        f"skipped (already-on-disk): {skipped}"
+        f"skipped (already-on-disk): {skipped} | "
+        f"excluded (corrupt/small/dup/uninformative): {len(excluded)}"
     )
     return df
 
