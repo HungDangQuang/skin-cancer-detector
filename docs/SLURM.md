@@ -104,6 +104,7 @@ data/raw/isic2024/
 ```bash
 bash slurm/submit.sh slurm/10_prepare_data.slurm
 ```
+Drops corrupt / too-small / blank / exact-duplicate images (logged to `data/processed/<dataset>/excluded_images.csv`) and writes patient-grouped 5-fold splits + `test_split.csv`. The quality filter re-runs on already-on-disk images, so warm re-runs still decode every image (not instant). Spec: [`PREPROCESSING.md`](PREPROCESSING.md).
 
 ### 3.3 Train teacher
 ```bash

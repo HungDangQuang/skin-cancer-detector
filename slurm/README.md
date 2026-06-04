@@ -188,11 +188,11 @@ rsync -avh --progress --partial \
 
 Required structure under `data/raw/isic2024/`: `train-image.hdf5`, `train-metadata.csv`.
 
-### 4.2 Preprocess + 5-fold splits (~45 min cold, ~2 min warm — idempotent)
+### 4.2 Preprocess + 5-fold splits (~45 min cold — idempotent)
 ```bash
 bash slurm/submit.sh slurm/10_prepare_data.slurm
 ```
-The script skips re-extracting images whose JPG already exists on disk, so retries after a downstream bug fix are fast.
+The script skips re-**writing** images whose JPG already exists on disk. Note: it still re-**reads** every image on a warm re-run, because the quality filter (corrupt / too-small / blank / exact-duplicate) and dedup re-run on the on-disk copies too — so a re-run after the filter changed will clean a previously-unfiltered dataset, but warm runs are **not** trivially fast. Dropped images are logged per dataset to `data/processed/<dataset>/excluded_images.csv`, and PAD `patient_id`s are namespaced (`pad_…`) so they can't collide with ISIC across folds. Full cleaning + augmentation spec: [`docs/PREPROCESSING.md`](../docs/PREPROCESSING.md).
 
 ### 4.3 Teacher (~24 h, GPU)
 ```bash
