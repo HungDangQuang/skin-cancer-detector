@@ -300,14 +300,28 @@ def generate_group_kfold_splits(
     group_col: str = "patient_id",
     label_col: str = "label",
     seed: int = 42,
+    test_holdout_splits: int = 6,
 ) -> list[dict]:
     """
-    Generate StratifiedGroupKFold splits ensuring:
-      - All images of the same patient stay in the same fold (no leakage)
-      - Each fold preserves the benign:malignant ratio
+    Leak-free split layout:
+      1. Carve a patient-disjoint, label-stratified **held-out test set** —
+         1/test_holdout_splits of the data (~17% with the default 6) — that NO
+         fold ever trains or validates on.
+      2. Run StratifiedGroupKFold(n_splits) on the remaining dev pool for the
+         train/val folds.
 
-    Saves fold CSVs to splits_dir/fold_{i}/{train,val}_split.csv
-    Also saves a held-out test split (fold 0 val) to splits_dir/test_split.csv
+    Both steps group by `group_col` (no patient leakage) and stratify by
+    `label_col` (benign:malignant ratio preserved). Because every fold's model
+    is later evaluated on the SAME independent test_split, the per-fold test
+    metrics are unbiased and directly comparable (e.g. paired KD vs baseline).
+
+    NOTE: this replaces the previous design where test_split.csv was fold 0's
+    val set — under which folds 1..4 trained on the test samples (leakage; their
+    test metrics were optimistically inflated).
+
+    Saves:
+      splits_dir/test_split.csv                 <- independent held-out test
+      splits_dir/fold_{i}/{train,val}_split.csv
 
     Returns:
         List of dicts with 'fold', 'train_df', 'val_df' for each fold.
@@ -315,17 +329,25 @@ def generate_group_kfold_splits(
     splits_dir = Path(splits_dir)
     splits_dir.mkdir(parents=True, exist_ok=True)
 
+    # --- Step 1: held-out test = first fold of a group-stratified split ---
+    holdout = StratifiedGroupKFold(n_splits=test_holdout_splits, shuffle=True, random_state=seed)
+    dev_idx, test_idx = next(holdout.split(df, df[label_col].values, df[group_col].values))
+    dev_df = df.iloc[dev_idx].reset_index(drop=True)
+    test_df = df.iloc[test_idx].reset_index(drop=True)
+    test_df.to_csv(splits_dir / "test_split.csv", index=False)
+
+    # --- Step 2: n_splits-fold CV on the dev pool only (test patients excluded) ---
     sgkf = StratifiedGroupKFold(n_splits=n_splits, shuffle=True, random_state=seed)
-    groups = df[group_col].values
-    labels = df[label_col].values
+    dev_groups = dev_df[group_col].values
+    dev_labels = dev_df[label_col].values
 
     folds = []
-    for fold_idx, (train_idx, val_idx) in enumerate(sgkf.split(df, labels, groups)):
+    for fold_idx, (train_idx, val_idx) in enumerate(sgkf.split(dev_df, dev_labels, dev_groups)):
         fold_dir = splits_dir / f"fold_{fold_idx}"
         fold_dir.mkdir(exist_ok=True)
 
-        train_df = df.iloc[train_idx].reset_index(drop=True)
-        val_df = df.iloc[val_idx].reset_index(drop=True)
+        train_df = dev_df.iloc[train_idx].reset_index(drop=True)
+        val_df = dev_df.iloc[val_idx].reset_index(drop=True)
 
         train_df.to_csv(fold_dir / "train_split.csv", index=False)
         val_df.to_csv(fold_dir / "val_split.csv", index=False)
@@ -334,13 +356,15 @@ def generate_group_kfold_splits(
 
         print(
             f"Fold {fold_idx} — train: {len(train_df)} "
-            f"(mal={( train_df[label_col]==1).sum()}) | "
+            f"(mal={(train_df[label_col]==1).sum()}) | "
             f"val: {len(val_df)} "
             f"(mal={(val_df[label_col]==1).sum()})"
         )
 
-    # Use fold 0 val as held-out test set (committed to git, never changed)
-    folds[0]["val_df"].to_csv(splits_dir / "test_split.csv", index=False)
-    print(f"\nTest split saved: {len(folds[0]['val_df'])} samples (fold 0 val)")
+    print(
+        f"\nHeld-out test: {len(test_df)} samples "
+        f"(mal={(test_df[label_col]==1).sum()}) — patient-disjoint + stratified, "
+        f"1/{test_holdout_splits} of data, independent of all {n_splits} folds"
+    )
 
     return folds

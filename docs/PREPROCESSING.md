@@ -42,10 +42,14 @@ across folds.
 ✅ **Keep as-is.** Patient-level `StratifiedGroupKFold(K=5)`, grouped by
 `patient_id`, stratified by `label`. 4 folds train / 1 fold val, rotated 5×.
 
-Caveat to fix separately (code, not spec): the committed `test_split.csv` is
-fold 0's val set, so it is **not** independent of folds 1–4's train sets. For
-in-domain reporting use the per-fold CV val/test metrics (proposal §4.5), not
-that single file, or carve a true held-out test set before CV.
+**FIXED 2026-06-06.** `test_split.csv` is now an **independent held-out test set**:
+`generate_group_kfold_splits` first carves a patient-disjoint, label-stratified
+holdout (`1/test_holdout_splits` ≈ 17% with the default 6) and runs the 5-fold CV
+on the *remaining* dev pool only. So every fold's model is evaluated on the same
+data it never trained on → per-fold test metrics are unbiased and paired-comparable.
+(Previously `test_split.csv` was fold 0's val set, which folds 1–4 trained on —
+their test metrics were optimistically inflated, visible in teacher job 28060
+where the clean fold 0 scored well below folds 1–4.)
 
 ---
 
@@ -109,7 +113,7 @@ To align the proposal §2.2/§3.5 with the corrected spec, the proposal should:
 - [x] `preprocessing.py`: min-size filter (`min_size=32`, fresh-decode only); exact-duplicate dedup (md5 of resized pixels, first kept); widened `except` to include `Image.DecompressionBombError`; PAD `patient_id` namespaced (`pad_…`) against cross-dataset GroupKFold collision. *(done 2026-06-04)*
 - [x] Loss/config: `focal_alpha` (`training.loss.alpha`) and `undersample_ratio` (`data.undersample_ratio`) were **already** config-driven — sweepable via Hydra overrides, no change needed.
 - [ ] Add the `ratio × α` ablation to the experiment plan.
-- [ ] (separate) fix the `test_split.csv` independence issue.
+- [x] fix the `test_split.csv` independence issue — independent patient-disjoint holdout carved before CV (`test_holdout_splits`, default 6). *(done 2026-06-06)*
 
 ### Known limitations of the implemented filters (verify on cluster)
 - Dedup is **per-dataset** (`seen_hashes` resets between ISIC and PAD) and **exact-pixel only** — an ISIC↔PAD exact dup or a near-duplicate won't be caught. Intra-dataset exact dups (the main risk) are covered.

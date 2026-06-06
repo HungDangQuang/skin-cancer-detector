@@ -95,6 +95,7 @@ def main():
         group_col=cfg.data.get("group_col", "patient_id"),
         label_col="label",
         seed=cfg.seed,
+        test_holdout_splits=cfg.data.get("test_holdout_splits", 6),
     )
     logger.info("Data preparation complete.")
 

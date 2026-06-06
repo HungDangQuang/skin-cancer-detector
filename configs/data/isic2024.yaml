@@ -25,6 +25,10 @@ split_strategy: stratified_group_kfold
 num_folds: 5
 group_col: patient_id
 random_seed: 42
+# Independent held-out test set: 1/test_holdout_splits of the data (≈17% with 6),
+# carved patient-disjoint + stratified BEFORE the CV folds, so every fold tests
+# on the same data it never trained on. (Replaces the old test=fold0-val design.)
+test_holdout_splits: 6
 
 # Which fold to train on. Override via Hydra (e.g. data.fold=2) or from a
 # Slurm array via `data.fold=${SLURM_ARRAY_TASK_ID}`. The full 5-fold sweep

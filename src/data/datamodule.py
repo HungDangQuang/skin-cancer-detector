@@ -17,7 +17,7 @@ class SkinLesionDataModule:
           fold_0/val_split.csv
           fold_1/train_split.csv
           ...
-          test_split.csv       <- held-out test set (fold 0 val)
+          test_split.csv       <- independent held-out test (patient-disjoint from all folds)
     """
 
     def __init__(self, cfg, fold: int | None = None):
