@@ -214,6 +214,10 @@ def process_pad_ufes_20(
 
     for _, row in tqdm(metadata.iterrows(), total=len(metadata), desc="Processing PAD-UFES-20"):
         img_id = str(row["img_id"])
+        # PAD's metadata stores img_id WITH the file extension (e.g.
+        # "PAT_8_15_820.png"); strip it for the processed filename/id so we
+        # don't produce "pad_..png.jpg".
+        stem = Path(img_id).stem
         diagnostic = str(row["diagnostic"]).upper()
         label = LABEL_MAP.get(diagnostic)
 
@@ -221,7 +225,7 @@ def process_pad_ufes_20(
             continue
 
         class_name = class_names[label]
-        dst = processed_dir / class_name / f"pad_{img_id}.jpg"
+        dst = processed_dir / class_name / f"pad_{stem}.jpg"
 
         try:
             if dst.exists():
@@ -229,30 +233,34 @@ def process_pad_ufes_20(
                 img = Image.open(dst).convert("RGB")
                 is_new = False
             else:
-                src = images_dir / f"{img_id}.png"
+                # img_id already carries the extension; fall back to stem+ext
+                # in case a mirror stored bare ids.
+                src = images_dir / img_id
                 if not src.exists():
-                    src = images_dir / f"{img_id}.jpg"
+                    src = images_dir / f"{stem}.png"
+                if not src.exists():
+                    src = images_dir / f"{stem}.jpg"
                 if not src.exists():
                     continue
                 img = Image.open(src).convert("RGB")
                 if min(img.size) < min_size:
-                    excluded.append({"image_id": f"pad_{img_id}", "reason": f"too_small: {img.size}"})
+                    excluded.append({"image_id": f"pad_{stem}", "reason": f"too_small: {img.size}"})
                     continue
                 img = img.resize((image_size, image_size), Image.LANCZOS)
                 is_new = True
         except (OSError, ValueError, Image.DecompressionBombError) as e:
-            excluded.append({"image_id": f"pad_{img_id}", "reason": f"corrupt: {e}"})
+            excluded.append({"image_id": f"pad_{stem}", "reason": f"corrupt: {e}"})
             continue
 
         if is_uninformative(img):
-            excluded.append({"image_id": f"pad_{img_id}", "reason": "uninformative"})
+            excluded.append({"image_id": f"pad_{stem}", "reason": "uninformative"})
             if not is_new and dst.exists():
                 dst.unlink()
             continue
 
         img_hash = hashlib.md5(img.tobytes()).hexdigest()
         if img_hash in seen_hashes:
-            excluded.append({"image_id": f"pad_{img_id}", "reason": "duplicate"})
+            excluded.append({"image_id": f"pad_{stem}", "reason": "duplicate"})
             if not is_new and dst.exists():
                 dst.unlink()
             continue
@@ -265,10 +273,10 @@ def process_pad_ufes_20(
             skipped += 1
 
         records.append({
-            "image_id": f"pad_{img_id}",
+            "image_id": f"pad_{stem}",
             # Namespace the group key so a PAD patient_id can never collide with
             # an ISIC patient_id and leak across folds in StratifiedGroupKFold.
-            "patient_id": f"pad_{row.get('patient_id', img_id)}",
+            "patient_id": f"pad_{row.get('patient_id', stem)}",
             "image_path": str(dst),
             "label": label,
             "class_name": class_name,
@@ -280,6 +288,12 @@ def process_pad_ufes_20(
         pd.DataFrame(excluded).to_csv(processed_dir / "excluded_images.csv", index=False)
 
     df = pd.DataFrame(records)
+    if df.empty:
+        raise RuntimeError(
+            f"process_pad_ufes_20: 0 of {len(metadata)} rows produced an image. "
+            f"Check that img_id values (e.g. {str(metadata['img_id'].iloc[0])!r}) match "
+            f"files in {images_dir}, and that diagnostic codes are in {sorted(LABEL_MAP)}."
+        )
     print(
         f"PAD-UFES-20 — total: {len(df)} | "
         f"benign: {(df['label']==0).sum()} | malignant: {(df['label']==1).sum()} | "
