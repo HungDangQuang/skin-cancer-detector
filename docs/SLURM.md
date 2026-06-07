@@ -104,12 +104,13 @@ data/raw/isic2024/
 auto-detects it and concatenates it into every fold). Download the "Download
 all" bundle in a browser from [data.mendeley.com/datasets/zr7vgbcyr2/1](https://data.mendeley.com/datasets/zr7vgbcyr2/1)
 (Mendeley gates the bundle behind a browser session — there is no clean curl),
-rsync it to the cluster, then stage it into the expected layout:
+rsync it into the repo's data area on the cluster, then stage it:
 ```bash
-# from your laptop, after the browser download:
-rsync -avh --progress ~/Downloads/zr7vgbcyr2-1.zip ${USER}@slurm.uit.edu.vn:~/
+# from your laptop, after the browser download (Kaggle mirror works too):
+rsync -avh --progress ~/Downloads/zr7vgbcyr2-1.zip \
+  ${USER}@slurm.uit.edu.vn:/datastore/keg/hungdang/skin-cancer-detector/data/raw/
 # on the cluster LOGIN node, from the repo root (just unzip work, not a GPU job):
-bash scripts/setup_pad_ufes_20.sh ~/zr7vgbcyr2-1.zip
+bash scripts/setup_pad_ufes_20.sh data/raw/zr7vgbcyr2-1.zip
 ```
 `setup_pad_ufes_20.sh` extracts the nested `imgs_part_*.zip` archives and
 consolidates everything into the layout the preprocessing reads:
@@ -118,6 +119,12 @@ data/raw/pad_ufes_20/
 ├── metadata.csv      # cols: img_id, diagnostic
 └── images/           # <img_id>.png  (≈2298 files)
 ```
+> 💽 The bundle is ~3–4 GB and the shared volume is tight. The helper stages
+> in-place (moves, not `/tmp` copies) to halve peak usage; if you're still short
+> on space, pass `--rm-zip` to delete the source zip the moment staging
+> succeeds: `bash scripts/setup_pad_ufes_20.sh data/raw/zr7vgbcyr2-1.zip --rm-zip`.
+> Check headroom first with `df -h .`. A `No space left on device` mid-copy
+> leaves a partial `images/` — `rm -rf data/raw/pad_ufes_20/images` and retry.
 > ⚠️ Adding PAD-UFES-20 changes the concatenated dataframe, so **all fold CSVs
 > and `test_split.csv` are regenerated** in §3.2 — any existing teacher/student
 > checkpoints were trained on the old splits and must be retrained.
