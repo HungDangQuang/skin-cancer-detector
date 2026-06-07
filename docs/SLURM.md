@@ -100,6 +100,28 @@ data/raw/isic2024/
 └── train-metadata.csv
 ```
 
+**Optional — add PAD-UFES-20** (extra malignant samples; `prepare_data.py`
+auto-detects it and concatenates it into every fold). Download the "Download
+all" bundle in a browser from [data.mendeley.com/datasets/zr7vgbcyr2/1](https://data.mendeley.com/datasets/zr7vgbcyr2/1)
+(Mendeley gates the bundle behind a browser session — there is no clean curl),
+rsync it to the cluster, then stage it into the expected layout:
+```bash
+# from your laptop, after the browser download:
+rsync -avh --progress ~/Downloads/zr7vgbcyr2-1.zip ${USER}@slurm.uit.edu.vn:~/
+# on the cluster LOGIN node, from the repo root (just unzip work, not a GPU job):
+bash scripts/setup_pad_ufes_20.sh ~/zr7vgbcyr2-1.zip
+```
+`setup_pad_ufes_20.sh` extracts the nested `imgs_part_*.zip` archives and
+consolidates everything into the layout the preprocessing reads:
+```
+data/raw/pad_ufes_20/
+├── metadata.csv      # cols: img_id, diagnostic
+└── images/           # <img_id>.png  (≈2298 files)
+```
+> ⚠️ Adding PAD-UFES-20 changes the concatenated dataframe, so **all fold CSVs
+> and `test_split.csv` are regenerated** in §3.2 — any existing teacher/student
+> checkpoints were trained on the old splits and must be retrained.
+
 ### 3.2 Preprocess + 5-fold splits
 ```bash
 bash slurm/submit.sh slurm/10_prepare_data.slurm

@@ -12,6 +12,13 @@ images, **native ~128×128**, non-dermoscopic; **malignant ≈ 0.9%** (~3,600
 positives); deployment domain = plain smartphone photos. PAD-UFES-20 ≈ 2,298
 smartphone clinical images, added for extra malignant samples.
 
+**Obtaining the raw data.** ISIC 2024 → Kaggle (`train-image.hdf5` +
+`train-metadata.csv`). PAD-UFES-20 → Mendeley `zr7vgbcyr2` v1; stage it with
+`bash scripts/setup_pad_ufes_20.sh <bundle.zip>`, which extracts the nested
+`imgs_part_*.zip` and writes `data/raw/pad_ufes_20/{metadata.csv, images/}`.
+PAD is **optional**: `prepare_data.py` concatenates it only if that dir exists,
+else it runs ISIC-only. See [SLURM.md §3.1](SLURM.md) for the cluster steps.
+
 ---
 
 ## 1. Cleaning & unification (offline, `process_isic2024` / `process_pad_ufes_20`)

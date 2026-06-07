@@ -8,11 +8,16 @@ Steps before running:
        data/raw/isic2024/train-image.hdf5
        data/raw/isic2024/train-metadata.csv
 
-  2. Download PAD-UFES-20:
+  2. (Optional) Download PAD-UFES-20 for extra malignant samples:
        https://data.mendeley.com/datasets/zr7vgbcyr2/1
-     Extract to: data/raw/pad_ufes_20/
-       data/raw/pad_ufes_20/images/
-       data/raw/pad_ufes_20/metadata.csv
+     Stage it with the helper (extracts the nested imgs_part_*.zip and
+     arranges the layout below automatically):
+       bash scripts/setup_pad_ufes_20.sh <zr7vgbcyr2-1.zip>
+     Resulting layout (what process_pad_ufes_20 reads):
+       data/raw/pad_ufes_20/images/        <- <img_id>.png
+       data/raw/pad_ufes_20/metadata.csv   <- cols: img_id, diagnostic
+     If this dir is absent, prepare runs ISIC-only. Adding it regenerates
+     ALL fold/test splits, so any prior checkpoints must be retrained.
 
   3. Run:
        python scripts/prepare_data.py
