@@ -25,6 +25,7 @@ Cluster rules from `HuongDanSuDungSlurm.pdf`:
 | `11_train_teacher.slurm` | Full B4 teacher (50 epochs) | sbatch |
 | `12_train_student.slurm` | Full KD student dispatcher | sbatch |
 | `20_evaluate.slurm` | Evaluate any checkpoint | sbatch |
+| `21_benchmark_mobile.slurm` | Mobile deployability: params + FP32 size + CPU latency (CPU only) | sbatch |
 | `_template.slurm` | Copy-and-customize starting point | reference |
 
 **Key invariant**: every `*.slurm` script begins with `source "${SLURM_SUBMIT_DIR}/slurm/_lib.sh"`. The library handles `set -euo pipefail`, `mkdir -p logs`, **fallback `tee` log** at `logs/<job>_<jobid>_runtime.log` (so output survives even if SBATCH redirect fails), diagnostic header, and helper functions `load_python_env`, `acquire_gpu`, `setup_mps`.
@@ -167,6 +168,18 @@ bash slurm/submit.sh slurm/20_evaluate.slurm \
 
 Metrics JSON contains: `pauc_at_tpr80` (primary), `auc_roc`, `sensitivity`, `specificity`, `f1_score`, threshold (Youden's J), TP/FP/TN/FN.
 
+### Mobile deployability benchmark
+
+Params + FP32 size + single-core CPU latency are architecture-level (weight-independent), so benchmark one checkpoint per architecture, any fold. CPU-only — no GPU:
+
+```bash
+bash slurm/submit.sh slurm/21_benchmark_mobile.slurm \
+    MODEL=mobilenetv3_large \
+    CKPT=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth
+```
+
+Output (default `reports/mobile_benchmark/<MODEL>.json`): `params_millions`, `fp32_size_mb`, `cpu_latency_ms_median`, `cpu_latency_ms_p90`, `image_size`. INT8/TFLite quantization is de-scoped — FP32 backbones run as-is.
+
 ---
 
 ## 5. Resource budget
@@ -180,6 +193,7 @@ Metrics JSON contains: `pauc_at_tpr80` (primary), `auc_roc`, `sensitivity`, `spe
 | `11_train_teacher` | 4 | 16 G | 14 G | 24 h | B4, batch 32 |
 | `12_train_student` | 4 | 16 G | 18 G | 18 h | KD, batch 64 |
 | `20_evaluate` | 1 | 8 G | 6 G | 1 h | inference |
+| `21_benchmark_mobile` | none | 4 G | — | 15 m | CPU only, single-thread latency |
 
 Peak MPS at 3 students in parallel: 12 of 20 limit.
 

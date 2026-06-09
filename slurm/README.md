@@ -18,6 +18,7 @@ Step-by-step to run the project on the UIT cluster. For deeper background see [`
 | `11_train_teacher.slurm` | Full B4 teacher (50 epochs) | sbatch |
 | `12_train_student.slurm` | Full KD student | sbatch |
 | `20_evaluate.slurm` | Evaluate any checkpoint | sbatch |
+| `21_benchmark_mobile.slurm` | Mobile deployability: params + FP32 size + CPU latency (CPU only) | sbatch |
 
 **Working dir on cluster:** `/datastore/keg/hungdang/skin-cancer-detector`. Override with `DATASTORE_USER_DIR=...` if your account is elsewhere.
 
@@ -224,6 +225,19 @@ bash slurm/submit.sh slurm/20_evaluate.slurm \
 
 Metrics JSON contains `pauc_at_tpr80`, `auc_roc`, `sensitivity`, `specificity`, `f1_score`, threshold, TP/FP/TN/FN.
 
+### Mobile deployability benchmark
+
+Architecture-level deployability numbers (params, FP32 size, single-core CPU latency). These are weight-independent, so benchmark **one checkpoint per architecture** (any fold) — CPU-only, no GPU requested:
+
+```bash
+bash slurm/submit.sh slurm/21_benchmark_mobile.slurm \
+    MODEL=efficientnet_b0 \
+    CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+# OUT defaults to reports/mobile_benchmark/<MODEL>.json
+```
+
+Output JSON contains `params_millions`, `fp32_size_mb`, `cpu_latency_ms_median`, `cpu_latency_ms_p90`, `image_size`. (INT8/TFLite quantization is intentionally de-scoped — backbones run FP32 as-is.)
+
 ---
 
 ## 6. Tracking a job
@@ -313,6 +327,7 @@ Until UIT admin fixes that typo, every job's log starts with:
 | `11_train_teacher` | 4 | 16 G | 14 G | 24 h | B4, batch 32 |
 | `12_train_student` | 4 | 16 G | 18 G | 18 h | KD, batch 64 |
 | `20_evaluate` | 1 | 8 G | 6 G | 1 h | Inference |
+| `21_benchmark_mobile` | 1 | 4 G | — | 15 m | CPU only, single-thread latency |
 
 Cluster ceilings: 20 MPS, 5 concurrent jobs, 32 vCPU, 72 h max per job. vRAM ≤44 G on L40, ≤80 G on A100.
 
