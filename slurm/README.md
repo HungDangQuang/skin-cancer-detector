@@ -246,7 +246,26 @@ bash slurm/submit.sh slurm/14_ablation_pad.slurm ARM=isic_pad
 ```
 
 Both write `test_metrics.json` (now incl. `auprc`, `sens_at_90spec`,
-`sens_at_95spec`) and `predictions.csv` (`y_true,y_prob,y_pred,source`) per fold.
+`sens_at_95spec`), `val_metrics.json` (best-epoch val metrics — for the
+val−test overfitting gap), and `predictions.csv` (`y_true,y_prob,y_pred,source`)
+per fold.
+
+**Anti-overfitting knobs** (`AUG`, `DROP_PATH` env vars — single-token, forwarded
+by `submit.sh`):
+
+```bash
+# Stronger augmentation + stochastic depth on a student run:
+bash slurm/submit.sh slurm/12_train_student.slurm \
+    STUDENT=mobilenetv3_large AUG=heavy DROP_PATH=0.1
+# Teacher with stochastic depth:
+bash slurm/submit.sh slurm/11_train_teacher.slurm \
+    TEACHER=convnextv2_base AUG=heavy DROP_PATH=0.2
+```
+
+Both default to `AUG=light` + `DROP_PATH=0.0` (original behavior), so existing
+runs are unchanged unless you pass these. `DROP_PATH` maps to the student's
+(script 12) or teacher's (script 11) `drop_path_rate`; verify the backbone
+accepts it on the cluster before a full run.
 
 ---
 

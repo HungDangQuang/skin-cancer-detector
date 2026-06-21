@@ -8,4 +8,9 @@ num_classes: 1    # binary sigmoid output
 head:
   dropout: 0.3
 
+# Stochastic depth (anti-overfit regularizer; strong on ConvNeXt). Default 0.0 =
+# off (preserves the original behavior). Enable per-run, e.g.
+# `teacher.drop_path_rate=0.2`. Verify the backbone accepts it on the cluster.
+drop_path_rate: 0.0
+
 freeze_backbone: false

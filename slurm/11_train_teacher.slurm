@@ -38,11 +38,16 @@ setup_mps
 
 TEACHER="${TEACHER:-efficientnet_b4}"
 FOLDS="${FOLDS:-0 1 2 3 4}"
-echo "[job] Training teacher (full) | teacher ${TEACHER} | folds ${FOLDS}"
+# Anti-overfit knobs (single-token → safe through submit.sh --export). Defaults
+# reproduce the original behavior (augmentation=light, drop_path_rate=0.0).
+#   AUG=heavy DROP_PATH=0.2   → stronger aug + stochastic depth on the teacher.
+AUG="${AUG:-light}"
+DROP_PATH="${DROP_PATH:-0.0}"
+echo "[job] Training teacher (full) | teacher ${TEACHER} | folds ${FOLDS} | aug=${AUG} drop_path=${DROP_PATH}"
 nvidia-smi || true
 for FOLD in ${FOLDS}; do
     echo "[job] === teacher ${TEACHER} | fold ${FOLD} (start $(date '+%F %T')) ==="
-    python scripts/train_teacher.py "teacher=${TEACHER}" "data.fold=${FOLD}"
+    python scripts/train_teacher.py "teacher=${TEACHER}" "data.fold=${FOLD}" "augmentation=${AUG}" "teacher.drop_path_rate=${DROP_PATH}"
 done
 
 echo "[job] DONE"

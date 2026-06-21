@@ -1,5 +1,24 @@
+import timm
 import torch
 import torch.nn as nn
+
+
+def create_timm_backbone(backbone_name: str, pretrained: bool = True, drop_path_rate: float = 0.0) -> nn.Module:
+    """
+    Create a timm feature backbone (``num_classes=0``), optionally with
+    stochastic depth.
+
+    ``drop_path_rate`` (stochastic depth) is a regularizer that helps fight
+    overfitting, strongest on deep ViT/ConvNeXt backbones. It is passed to
+    ``timm.create_model`` ONLY when > 0, so backbones whose constructor doesn't
+    accept the kwarg are not broken at the default (0.0). An arch that does not
+    support it WITH ``drop_path_rate > 0`` raises a clear ``TypeError`` —
+    verify per-arch on the cluster before a full run.
+    """
+    kwargs = {"pretrained": pretrained, "num_classes": 0}
+    if drop_path_rate and drop_path_rate > 0:
+        kwargs["drop_path_rate"] = drop_path_rate
+    return timm.create_model(backbone_name, **kwargs)
 
 
 def build_head(in_features: int, dropout: float = 0.3) -> nn.Module:

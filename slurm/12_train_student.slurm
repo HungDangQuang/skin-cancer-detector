@@ -49,11 +49,16 @@ STUDENT="${STUDENT:-efficientnet_b0}"
 TEACHER="${TEACHER:-efficientnet_b4}"
 TRAINING="${TRAINING:-distillation}"
 FOLDS="${FOLDS:-0 1 2 3 4}"
-echo "[job] Student: ${STUDENT} | Teacher: ${TEACHER} | Training mode: ${TRAINING} | folds ${FOLDS}"
+# Anti-overfit knobs (single-token → safe through submit.sh --export). Defaults
+# reproduce the original behavior (augmentation=light, drop_path_rate=0.0).
+#   AUG=heavy DROP_PATH=0.1   → stronger aug + stochastic depth on the student.
+AUG="${AUG:-light}"
+DROP_PATH="${DROP_PATH:-0.0}"
+echo "[job] Student: ${STUDENT} | Teacher: ${TEACHER} | Training: ${TRAINING} | folds ${FOLDS} | aug=${AUG} drop_path=${DROP_PATH}"
 nvidia-smi || true
 for FOLD in ${FOLDS}; do
     echo "[job] === ${TRAINING}: ${TEACHER} -> ${STUDENT} | fold ${FOLD} (start $(date '+%F %T')) ==="
-    python scripts/train_student.py "student=${STUDENT}" "teacher=${TEACHER}" "training=${TRAINING}" "data.fold=${FOLD}"
+    python scripts/train_student.py "student=${STUDENT}" "teacher=${TEACHER}" "training=${TRAINING}" "data.fold=${FOLD}" "augmentation=${AUG}" "student.drop_path_rate=${DROP_PATH}"
 done
 
 echo "[job] DONE"

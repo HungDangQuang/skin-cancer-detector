@@ -105,6 +105,37 @@ val/test get Resize + Normalize + ToTensorV2 (✅ already correct).
 | MixUp | ❌→⚠️ | (a) Same-label MixUp (as proposal phrases it) removes MixUp's between-class smoothing benefit. (b) In the **KD branch** the teacher soft-label target must be mixed identically to the input, or supervision is inconsistent. **Default off.** If added: cross-class, and mix teacher logits the same way. |
 | Stronger aug on malignant | ❌ | Train/test skew on positives (see §3). |
 
+### 4.1 Augmentation is config-driven (since 2026-06-21)
+
+`build_transforms` ([src/data/transforms.py](../src/data/transforms.py)) builds the
+pipeline **from `configs/augmentation/{light,heavy}.yaml`**, not from a hard-coded
+list (it previously ignored those YAMLs entirely — switching presets did nothing).
+`Resize` is always prepended and `ToTensorV2` always appended; `Normalize`
+defaults to ImageNet stats if omitted.
+
+- **`light` (default)** reproduces the exact pipeline that was hard-coded before,
+  so the original 30-run results are reproducible with `augmentation=light`.
+- **`heavy`** is a *strictly stronger* anti-overfit variant (higher p, wider
+  ColorJitter, + `GaussNoise`) for the rare-class manifold. Enable per-run with
+  `augmentation=heavy` (requires retraining).
+- **MixUp / CutMix / CoarseDropout(CutOut) stay excluded and are now ENFORCED in
+  code**: `build_transforms` raises `ValueError` if any appears in the config
+  (`_FORBIDDEN_OPS`), so the design decision above can't be silently undone via
+  YAML. To revisit, update this doc first, then add a builder + remove from the
+  forbidden set.
+- Supported ops: `HorizontalFlip, VerticalFlip, RandomRotate90, ShiftScaleRotate,
+  RandomScale, Rotate, ColorJitter, CLAHE, GaussianBlur, GaussNoise, Normalize`.
+  Any other name raises (typo-safe).
+
+### 4.2 Stochastic depth (`drop_path_rate`) — model-side anti-overfit knob
+
+Each model config (`configs/{teacher,student}/*.yaml`) has `drop_path_rate: 0.0`
+(off by default → no behavior change). `create_timm_backbone`
+([src/models/heads.py](../src/models/heads.py)) passes it to `timm.create_model`
+only when `> 0`. Enable per-run: `student.drop_path_rate=0.1` /
+`teacher.drop_path_rate=0.2` (strongest on the ViT/ConvNeXt SOTA set). Verify the
+backbone accepts the kwarg on the cluster before a full run.
+
 ---
 
 ## 5. Proposal text changes implied by this spec
@@ -122,6 +153,8 @@ To align the proposal §2.2/§3.5 with the corrected spec, the proposal should:
 - [x] `preprocessing.py`: min-size filter (`min_size=32`, fresh-decode only); exact-duplicate dedup (md5 of resized pixels, first kept); widened `except` to include `Image.DecompressionBombError`; PAD `patient_id` namespaced (`pad_…`) against cross-dataset GroupKFold collision. *(done 2026-06-04)*
 - [x] Loss/config: `focal_alpha` (`training.loss.alpha`) and `undersample_ratio` (`data.undersample_ratio`) were **already** config-driven — sweepable via Hydra overrides, no change needed.
 - [x] Add the `ratio × α` ablation to the experiment plan — `slurm/13_ablation_sampler.slurm` (§7). *(wired 2026-06-21)*
+- [x] `transforms.py`: make augmentation **config-driven** (read `configs/augmentation/{light,heavy}.yaml`); `light` == prior hard-coded behavior, `heavy` == stronger safe variant; MixUp/CutMix/CutOut enforced-forbidden via `raise`. *(done 2026-06-21, §4.1)*
+- [x] Models: add `drop_path_rate` (stochastic depth) knob, default 0.0/off, via `create_timm_backbone`. *(done 2026-06-21, §4.2)*
 - [x] fix the `test_split.csv` independence issue — independent patient-disjoint holdout carved before CV (`test_holdout_splits`, default 6). *(done 2026-06-06)*
 
 ### Known limitations of the implemented filters (verify on cluster)

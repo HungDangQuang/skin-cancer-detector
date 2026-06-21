@@ -169,6 +169,21 @@ bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2  
 > **students** `{efficientnet_b0, mobilenetv3_large, mobilevit_s (baseline); mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2 (SOTA)}`.
 > The SOTA set needs `timm>=1.0` — re-run `slurm/setup_env.sh` after pulling.
 
+### 3.4b Anti-overfitting knobs (`AUG`, `DROP_PATH`)
+`11_train_teacher` and `12_train_student` accept two opt-in env vars (defaults
+reproduce the original behavior, so existing runs are unchanged):
+- `AUG=light|heavy` (default `light`) → `augmentation=<AUG>`; `heavy` is the
+  stronger anti-overfit pipeline (see docs/PREPROCESSING.md §4.1).
+- `DROP_PATH=<float>` (default `0.0`) → stochastic depth on the student (script 12)
+  or teacher (script 11). Recommended student ~0.1, teacher/ViT ~0.2. Verify the
+  backbone accepts the kwarg on the cluster first.
+```bash
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large AUG=heavy DROP_PATH=0.1
+bash slurm/submit.sh slurm/11_train_teacher.slurm  TEACHER=convnextv2_base   AUG=heavy DROP_PATH=0.2
+```
+Each fold also writes `val_metrics.json` (best-epoch val metrics) → compute the
+**val − test** gap (esp. AUPRC/pAUC) as the overfitting signal.
+
 ### 3.5 Controlled comparison (no KD)
 ```bash
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientnet_b0    TRAINING=baseline
