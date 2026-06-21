@@ -22,8 +22,10 @@ Cluster rules from `HuongDanSuDungSlurm.pdf`:
 | `02_poc_teacher.slurm` | POC teacher (2 epochs) | sbatch |
 | `03_poc_student.slurm` | POC KD student (2 epochs) | sbatch |
 | `10_prepare_data.slurm` | Real ISIC 2024 preprocessing + 5-fold splits | sbatch |
-| `11_train_teacher.slurm` | Full B4 teacher (50 epochs) | sbatch |
-| `12_train_student.slurm` | Full KD student dispatcher | sbatch |
+| `11_train_teacher.slurm` | Full teacher (50 epochs), `TEACHER=` selects backbone | sbatch |
+| `12_train_student.slurm` | Full KD student dispatcher, `STUDENT=`/`TEACHER=` | sbatch |
+| `13_ablation_sampler.slurm` | Ablation A — undersampler `SAMP=off\|3\|5\|10` (KD, reuses teacher) | sbatch |
+| `14_ablation_pad.slurm` | Ablation B — `ARM=isic_only\|isic_pad` (baseline, identical test) | sbatch |
 | `20_evaluate.slurm` | Evaluate any checkpoint | sbatch |
 | `21_benchmark_mobile.slurm` | Mobile deployability: params + FP32 size + CPU latency (CPU only) | sbatch |
 | `_template.slurm` | Copy-and-customize starting point | reference |
@@ -137,16 +139,35 @@ bash slurm/submit.sh slurm/10_prepare_data.slurm
 Drops corrupt / too-small / blank / exact-duplicate images (logged to `data/processed/<dataset>/excluded_images.csv`) and writes patient-grouped 5-fold splits + `test_split.csv`. The quality filter re-runs on already-on-disk images, so warm re-runs still decode every image (not instant). Spec: [`PREPROCESSING.md`](PREPROCESSING.md).
 
 ### 3.3 Train teacher
+Pick the teacher with `TEACHER=` (default `efficientnet_b4`, the baseline backbone).
 ```bash
-bash slurm/submit.sh slurm/11_train_teacher.slurm
+bash slurm/submit.sh slurm/11_train_teacher.slurm                              # baseline B4
+bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnetv2_m     # SOTA teachers
+bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=convnextv2_base
+bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=maxvit_base
 ```
+Output: `experiments/runs/teacher/<TEACHER>/fold_{0..4}/`.
 
-### 3.4 KD-train all 3 students
+### 3.4 KD-train students
+`STUDENT=` picks the student, `TEACHER=` picks which trained teacher to distill from
+(must already be trained in §3.3 with the same `TEACHER`). Run-dir is
+`experiments/runs/kd_<TEACHER>_to_<STUDENT>/fold_{0..4}/`.
+
+Baseline backbones (default teacher B4):
 ```bash
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientnet_b0
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilevit_s
 ```
+SOTA students (mobile-/on-device-latency-optimized) from a SOTA teacher:
+```bash
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=fastvit_sa12            TEACHER=efficientnetv2_m
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2    TEACHER=efficientnetv2_m
+```
+> Model sets — **teachers** `{efficientnet_b4 (baseline), efficientnetv2_m, convnextv2_base, maxvit_base}`,
+> **students** `{efficientnet_b0, mobilenetv3_large, mobilevit_s (baseline); mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2 (SOTA)}`.
+> The SOTA set needs `timm>=1.0` — re-run `slurm/setup_env.sh` after pulling.
 
 ### 3.5 Controlled comparison (no KD)
 ```bash
@@ -154,6 +175,30 @@ bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientnet_b0    TRA
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large  TRAINING=baseline
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilevit_s        TRAINING=baseline
 ```
+
+### 3.6 Data-strategy ablations (prove PAD mixing + the sampler help)
+Single-variable ablations so the data strategy is *measured*, not assumed. Each
+is a 5-fold array; aggregate with `22_aggregate_folds.slurm` and compare with the
+`analyze-evaluation` skill. The new `test_metrics.json` carries `auprc` +
+`sens_at_90/95spec`; `predictions.csv` carries a `source` column for ISIC-vs-PAD
+per-domain breakdowns.
+
+```bash
+# A) Sampler (KD MobileNetV3, teacher reused; ratio-5 == the main run):
+bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=off   # natural ~1018:1
+bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=3
+bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=10
+
+# B) PAD mixing (baseline so the teacher can't leak PAD via soft labels;
+#    ISIC-only vs ISIC+PAD on the IDENTICAL combined held-out test):
+bash slurm/submit.sh slurm/14_ablation_pad.slurm ARM=isic_only
+bash slurm/submit.sh slurm/14_ablation_pad.slurm ARM=isic_pad
+```
+
+`13` overrides `data.use_weighted_sampler`/`data.undersample_ratio` + `run_suffix`;
+`14` overrides `data.train_sources` (filters TRAIN+VAL only) + `run_suffix`. Both
+land in isolated run-dirs (`…__samp_off`, `…__train_isic_only`, …) so the main 30
+runs are never overwritten.
 
 ---
 
@@ -190,8 +235,10 @@ Output (default `reports/mobile_benchmark/<MODEL>.json`): `params_millions`, `fp
 | `02_poc_teacher` | 2 | 8 G | 8 G | 1 h | 2 epochs B4 |
 | `03_poc_student` | 2 | 8 G | 10 G | 1 h | T+S in memory |
 | `10_prepare_data` | none | 16 G | — | 4 h | HDF5 decode |
-| `11_train_teacher` | 4 | 16 G | 14 G | 24 h | B4, batch 32 |
-| `12_train_student` | 4 | 16 G | 18 G | 18 h | KD, batch 64 |
+| `11_train_teacher` | 4 | 16 G | 20 G | 24 h | teacher (B4 / SOTA), batch 32 |
+| `12_train_student` | 4 | 16 G | 22 G | 18 h | KD, frozen teacher + student, batch 64 |
+| `13_ablation_sampler` | 4 | 16 G | 22 G | 18 h | KD student, teacher reused; per arm × 5 folds |
+| `14_ablation_pad` | 4 | 16 G | 12 G | 18 h | baseline student (no teacher); per arm × 5 folds |
 | `20_evaluate` | 1 | 8 G | 6 G | 1 h | inference |
 | `21_benchmark_mobile` | none | 4 G | — | 15 m | CPU only, single-thread latency |
 

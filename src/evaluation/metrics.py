@@ -1,5 +1,6 @@
 import numpy as np
 from sklearn.metrics import (
+    average_precision_score,
     confusion_matrix,
     f1_score,
     roc_auc_score,
@@ -57,6 +58,50 @@ def youden_threshold(y_true: np.ndarray, y_prob: np.ndarray) -> float:
     return float(thresholds[best_idx])
 
 
+def sensitivity_at_specificity(
+    y_true: np.ndarray,
+    y_prob: np.ndarray,
+    spec_levels: tuple[float, ...] = (0.90, 0.95),
+) -> dict:
+    """
+    Sensitivity (TPR) reachable at fixed-specificity operating points.
+
+    Clinicians fix an acceptable false-alarm rate (a specificity floor) and read
+    off the resulting sensitivity, rather than letting Youden's J pick the
+    threshold. For each target specificity we keep only thresholds whose
+    specificity is still >= target, then report the best achievable sensitivity
+    (and the threshold that achieves it) among them.
+
+    Returns a flat dict, e.g. {"sens_at_90spec": .., "thresh_at_90spec": ..}.
+    Thresholds are clamped to <= 1.0 (roc_curve emits an inf sentinel first).
+    """
+    y_true = np.asarray(y_true)
+    y_prob = np.asarray(y_prob)
+    out: dict = {}
+
+    if len(np.unique(y_true)) < 2:
+        for s in spec_levels:
+            tag = int(round(s * 100))
+            out[f"sens_at_{tag}spec"] = 0.0
+            out[f"thresh_at_{tag}spec"] = 1.0
+        return out
+
+    fpr, tpr, thresholds = roc_curve(y_true, y_prob)
+    specificity = 1.0 - fpr
+    for s in spec_levels:
+        tag = int(round(s * 100))
+        ok = specificity >= s
+        if ok.any():
+            # among thresholds meeting the specificity floor, take the highest TPR
+            idx = int(np.argmax(np.where(ok, tpr, -1.0)))
+            out[f"sens_at_{tag}spec"] = float(tpr[idx])
+            out[f"thresh_at_{tag}spec"] = min(float(thresholds[idx]), 1.0)
+        else:
+            out[f"sens_at_{tag}spec"] = 0.0
+            out[f"thresh_at_{tag}spec"] = 1.0
+    return out
+
+
 def class_prevalence_baselines(labels: list[int] | np.ndarray) -> dict:
     """
     Reference baselines a binary classifier must beat to add value.
@@ -111,7 +156,15 @@ def compute_metrics(
 
     # Standard metrics
     metrics["auc_roc"] = float(roc_auc_score(y_true, y_prob))
+    # AUPRC is the honest summary under heavy imbalance (AUC-ROC is optimistic
+    # at ~0.4% prevalence). Its random-classifier baseline equals the positive
+    # prevalence, so we store that alongside to keep auprc interpretable.
+    metrics["auprc"] = float(average_precision_score(y_true, y_prob))
+    metrics["prevalence"] = float((y_true == 1).mean())
     metrics["threshold"] = threshold
+
+    # Threshold-free operating points clinicians actually pick (sens @ fixed spec)
+    metrics.update(sensitivity_at_specificity(y_true, y_prob))
 
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
     metrics["sensitivity"] = float(tp / (tp + fn)) if (tp + fn) > 0 else 0.0  # recall / TPR
@@ -136,6 +189,7 @@ def compute_kd_delta(metrics_no_kd: dict, metrics_with_kd: dict) -> dict:
     return {
         "delta_pauc": metrics_with_kd["pauc_at_tpr80"] - metrics_no_kd["pauc_at_tpr80"],
         "delta_auc": metrics_with_kd["auc_roc"] - metrics_no_kd["auc_roc"],
+        "delta_auprc": metrics_with_kd.get("auprc", 0.0) - metrics_no_kd.get("auprc", 0.0),
         "delta_sensitivity": metrics_with_kd["sensitivity"] - metrics_no_kd["sensitivity"],
         "delta_specificity": metrics_with_kd["specificity"] - metrics_no_kd["specificity"],
     }

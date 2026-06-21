@@ -38,3 +38,8 @@ fold: 0
 # Dynamic undersampling: 1 malignant : 5 benign per epoch (resampled each epoch)
 use_weighted_sampler: true
 undersample_ratio: 5
+
+# PAD ablation knob. null = train on all sources (ISIC+PAD, the default strategy).
+# Set to a list (e.g. [isic2024]) to restrict TRAIN+VAL to those source datasets;
+# the held-out TEST set is unaffected so both arms share an identical test.
+train_sources: null

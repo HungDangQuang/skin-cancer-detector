@@ -72,9 +72,10 @@ def write_markdown_summary(agg: dict, run_dir: Path, out_path: Path) -> None:
     headline rates first, then confusion counts, then anything else, then a
     per-fold matrix so the reader can recompute mean/std and verify."""
     headline_metrics = [
-        "pauc_at_tpr80", "auc_roc", "accuracy",
+        "pauc_at_tpr80", "auc_roc", "auprc", "accuracy",
         "precision", "recall",
         "sensitivity", "specificity", "f1_score",
+        "sens_at_90spec", "sens_at_95spec",
     ]
     count_metrics = ["tp", "fp", "tn", "fn", "threshold"]
 

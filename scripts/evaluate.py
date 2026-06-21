@@ -44,8 +44,13 @@ def main():
     datamodule.setup()
 
     evaluator = Evaluator(model, device=cfg.device)
-    metrics = evaluator.evaluate(datamodule.test_dataloader())
+    metrics = evaluator.evaluate(
+        datamodule.test_dataloader(), sources=datamodule.test_sources()
+    )
     evaluator.save_metrics(metrics, args.output)
+    evaluator.save_predictions(
+        metrics, Path(args.output).with_name(Path(args.output).stem + "_predictions.csv")
+    )
 
     plot_confusion_matrix(
         y_true=metrics["_y_true"],

@@ -15,8 +15,10 @@ Step-by-step to run the project on the UIT cluster. For deeper background see [`
 | `02_poc_teacher.slurm` | POC teacher, 2 epochs | sbatch |
 | `03_poc_student.slurm` | POC KD student, 2 epochs | sbatch |
 | `10_prepare_data.slurm` | Real ISIC 2024 preprocessing + 5-fold splits | sbatch |
-| `11_train_teacher.slurm` | Full B4 teacher (50 epochs) | sbatch |
-| `12_train_student.slurm` | Full KD student | sbatch |
+| `11_train_teacher.slurm` | Full teacher (50 epochs), `TEACHER=` selects backbone | sbatch |
+| `12_train_student.slurm` | Full KD student, `STUDENT=`/`TEACHER=` | sbatch |
+| `13_ablation_sampler.slurm` | Data-strategy ablation A — sampler `SAMP=off\|3\|5\|10` (KD, reuses teacher) | sbatch |
+| `14_ablation_pad.slurm` | Data-strategy ablation B — `ARM=isic_only\|isic_pad` (baseline, identical test) | sbatch |
 | `20_evaluate.slurm` | Evaluate any checkpoint | sbatch |
 | `21_benchmark_mobile.slurm` | Mobile deployability: params + FP32 size + CPU latency (CPU only) | sbatch |
 
@@ -196,21 +198,55 @@ bash slurm/submit.sh slurm/10_prepare_data.slurm
 The script skips re-**writing** images whose JPG already exists on disk. Note: it still re-**reads** every image on a warm re-run, because the quality filter (corrupt / too-small / blank / exact-duplicate) and dedup re-run on the on-disk copies too — so a re-run after the filter changed will clean a previously-unfiltered dataset, but warm runs are **not** trivially fast. Dropped images are logged per dataset to `data/processed/<dataset>/excluded_images.csv`, and PAD `patient_id`s are namespaced (`pad_…`) so they can't collide with ISIC across folds. Full cleaning + augmentation spec: [`docs/PREPROCESSING.md`](../docs/PREPROCESSING.md).
 
 ### 4.3 Teacher (~24 h, GPU)
+`TEACHER=` selects the backbone (default `efficientnet_b4`). SOTA set needs `timm>=1.0`.
 ```bash
-bash slurm/submit.sh slurm/11_train_teacher.slurm
+bash slurm/submit.sh slurm/11_train_teacher.slurm                            # baseline B4
+bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnetv2_m   # SOTA: also convnextv2_base, maxvit_base
 ```
 
 ### 4.4 Students × {KD, baseline} (~18 h each)
+`STUDENT=` picks the student; for KD, `TEACHER=` picks which trained teacher to distill from
+(default B4). Run-dir: `kd_<TEACHER>_to_<STUDENT>/`.
 ```bash
-# KD
+# KD — baseline backbones (default teacher B4)
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientnet_b0
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilevit_s
+# KD — SOTA students (mobile-latency-optimized) from a SOTA teacher
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=fastvit_sa12            TEACHER=efficientnetv2_m
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2    TEACHER=efficientnetv2_m
 # Baseline (no KD)
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientnet_b0    TRAINING=baseline
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large  TRAINING=baseline
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilevit_s        TRAINING=baseline
 ```
+
+### 4.5 Data-strategy ablations (prove PAD mixing + sampler help)
+
+Controlled single-variable ablations that turn the data strategy from an
+*assumption* into a *measured* result. Each kicks off a 5-fold array; aggregate
+each run-dir with `22_aggregate_folds.slurm`, then compare with
+`analyze-evaluation`. Prereq for the sampler ablation: a trained teacher (§4.3).
+
+```bash
+# A) SAMPLER — best student (KD MobileNetV3), vary ONLY the undersampler.
+#    Reuses the existing teacher; ratio-5 == the main run (already trained).
+bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=off    # no resampling (natural ~1018:1)
+bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=3      # 1:3
+bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=10     # 1:10
+# -> experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large__{samp_off,ratio3,ratio10}/
+
+# B) PAD mixing — baseline (no KD, so the teacher can't leak PAD via soft labels),
+#    train ISIC-only vs ISIC+PAD, judged on the IDENTICAL combined held-out test.
+bash slurm/submit.sh slurm/14_ablation_pad.slurm ARM=isic_only
+bash slurm/submit.sh slurm/14_ablation_pad.slurm ARM=isic_pad
+# -> experiments/runs/baseline_mobilenetv3_large__train_{isic_only,isic_pad}/
+#    Per-domain (ISIC vs PAD) split comes from predictions.csv's `source` column.
+```
+
+Both write `test_metrics.json` (now incl. `auprc`, `sens_at_90spec`,
+`sens_at_95spec`) and `predictions.csv` (`y_true,y_prob,y_pred,source`) per fold.
 
 ---
 
@@ -324,8 +360,8 @@ Until UIT admin fixes that typo, every job's log starts with:
 | `02_poc_teacher` | 2 | 8 G | 8 G | 1 h | 2 epochs B4 |
 | `03_poc_student` | 2 | 8 G | 10 G | 1 h | Teacher + student in memory |
 | `10_prepare_data` | none | 16 G | — | 4 h | HDF5 decode (idempotent across re-runs) |
-| `11_train_teacher` | 4 | 16 G | 14 G | 24 h | B4, batch 32 |
-| `12_train_student` | 4 | 16 G | 18 G | 18 h | KD, batch 64 |
+| `11_train_teacher` | 4 | 16 G | 20 G | 24 h | teacher (B4 / SOTA), batch 32 |
+| `12_train_student` | 4 | 16 G | 22 G | 18 h | KD, frozen teacher + student, batch 64 |
 | `20_evaluate` | 1 | 8 G | 6 G | 1 h | Inference |
 | `21_benchmark_mobile` | 1 | 4 G | — | 15 m | CPU only, single-thread latency |
 

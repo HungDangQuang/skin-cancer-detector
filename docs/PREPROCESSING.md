@@ -76,7 +76,9 @@ orthogonal**, and as specified they risk over-correcting.
 **Required experiment (proposal methodology upgrade):** ablate
 `undersampling_ratio × focal_α` (e.g. ratios {1:3, 1:5, raw} × α {0.25, 0.5})
 on a fixed fold and report a small table. This both fixes the over-correction
-risk and turns an assumption into a result.
+risk and turns an assumption into a result. **Now wired** as
+`slurm/13_ablation_sampler.slurm` (`SAMP=off|3|5|10`, toggles
+`data.use_weighted_sampler`/`data.undersample_ratio`) — see §7.
 
 ---
 
@@ -119,7 +121,7 @@ To align the proposal §2.2/§3.5 with the corrected spec, the proposal should:
 - [x] `transforms.py`: widen rotation to full 0–360° (`rotate_limit=180`); add low-p CLAHE (`p=0.2`, before Normalize); aug kept class-symmetric. *(done 2026-06-04)*
 - [x] `preprocessing.py`: min-size filter (`min_size=32`, fresh-decode only); exact-duplicate dedup (md5 of resized pixels, first kept); widened `except` to include `Image.DecompressionBombError`; PAD `patient_id` namespaced (`pad_…`) against cross-dataset GroupKFold collision. *(done 2026-06-04)*
 - [x] Loss/config: `focal_alpha` (`training.loss.alpha`) and `undersample_ratio` (`data.undersample_ratio`) were **already** config-driven — sweepable via Hydra overrides, no change needed.
-- [ ] Add the `ratio × α` ablation to the experiment plan.
+- [x] Add the `ratio × α` ablation to the experiment plan — `slurm/13_ablation_sampler.slurm` (§7). *(wired 2026-06-21)*
 - [x] fix the `test_split.csv` independence issue — independent patient-disjoint holdout carved before CV (`test_holdout_splits`, default 6). *(done 2026-06-06)*
 
 ### Known limitations of the implemented filters (verify on cluster)
@@ -129,3 +131,35 @@ To align the proposal §2.2/§3.5 with the corrected spec, the proposal should:
 
 > The α/ratio interaction (§3) remains an empirical claim to confirm via the
 > cluster ablation, not an asserted fact.
+
+---
+
+## 7. Data-strategy ablation harness (prove PAD + sampler help)
+
+The two pillars of the data strategy — **PAD mixing** and the **undersampler** —
+were design assumptions with no counterfactual in the 30-run experiment (which
+ablates only KD vs baseline). These make them *measurable*. Both are
+single-variable, 5-fold, and land in isolated run-dirs via `run_suffix`.
+
+| Ablation | Script | Varies | Held fixed | Read the verdict from |
+|---|---|---|---|---|
+| **Sampler** | `13_ablation_sampler.slurm` | `data.use_weighted_sampler` / `data.undersample_ratio` (`SAMP=off\|3\|5\|10`) | KD, **teacher reused**, seed, folds, loss | pAUC / sens / AUPRC vs the main ratio-5 run |
+| **PAD mixing** | `14_ablation_pad.slurm` | `data.train_sources` (`ARM=isic_only\|isic_pad`) — filters **TRAIN+VAL only** | **baseline (no KD)**, identical combined test | per-domain rows (PAD-source) of the combined test |
+
+Two design rules that make the comparisons honest:
+- **PAD ablation runs baseline, not KD.** A KD teacher trained on ISIC+PAD would
+  leak PAD knowledge into the ISIC-only arm via soft labels. Baseline (no teacher)
+  isolates the single variable = whether PAD is in the student's training data.
+- **The test set is never filtered.** `train_sources` only touches train+val, so
+  both arms are judged on the *same* held-out combined test; its PAD portion is
+  trained on by neither arm. `SkinLesionDataModule._filter_to_sources` enforces
+  this (and raises if a filter empties a split).
+
+**Enabling metrics (foundation):** `Evaluator.save_predictions` now writes
+`predictions.csv` (`y_true,y_prob,y_pred,source`) next to every `test_metrics.json`,
+and `compute_metrics` adds `auprc` (+ `prevalence` baseline) and
+`sens_at_90spec`/`sens_at_95spec`. AUPRC is the honest summary at ~0.4% prevalence
+(AUC-ROC is optimistic); the `source` column drives the ISIC-vs-PAD breakdown; and
+PR-curve / bootstrap CIs are recomputable offline from the saved predictions.
+`source_from_path()` derives the origin tag from the processed path
+(`data/processed/<dataset>/…`).

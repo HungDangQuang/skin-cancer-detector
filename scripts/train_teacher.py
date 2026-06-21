@@ -62,8 +62,11 @@ def main(cfg: DictConfig) -> None:
         logger.info(f"Evaluating best checkpoint on held-out test set: {best_ckpt}")
         load_checkpoint(str(best_ckpt), model, device=cfg.device)
         evaluator = Evaluator(model, device=cfg.device)
-        test_metrics = evaluator.evaluate(datamodule.test_dataloader())
+        test_metrics = evaluator.evaluate(
+            datamodule.test_dataloader(), sources=datamodule.test_sources()
+        )
         evaluator.save_metrics(test_metrics, run_dir / "test_metrics.json")
+        evaluator.save_predictions(test_metrics, run_dir / "predictions.csv")
     else:
         logger.warning(f"No best checkpoint at {best_ckpt}; skipping test-set evaluation.")
 

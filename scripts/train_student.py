@@ -42,6 +42,10 @@ def main(cfg: DictConfig) -> None:
     # configs/training/{distillation,baseline}.yaml set this flag.
     use_kd = bool(cfg.training.get("use_kd", True))
     student_name = cfg.student.name
+    # Optional tag to fork an ablation into its own run-dir subtree (e.g.
+    # "__samp_off", "__ratio3") so it never overwrites the main 30-run results.
+    # Set via Hydra CLI: run_suffix=__samp_off (forwarded by the ablation slurm).
+    run_suffix = str(cfg.get("run_suffix", "") or "")
 
     # Hydra emits cfg in struct mode; merging in a new top-level "model" key
     # below would otherwise raise ConfigKeyError.
@@ -64,7 +68,7 @@ def main(cfg: DictConfig) -> None:
             )
             sys.exit(1)
 
-        run_dir = Path(cfg.output_dir) / f"kd_{cfg.teacher.name}_to_{student_name}" / f"fold_{fold}"
+        run_dir = Path(cfg.output_dir) / f"kd_{cfg.teacher.name}_to_{student_name}{run_suffix}" / f"fold_{fold}"
         run_dir.mkdir(parents=True, exist_ok=True)
         save_config(cfg, run_dir / "config.yaml")
 
@@ -78,7 +82,7 @@ def main(cfg: DictConfig) -> None:
         # Baseline (no KD): the controlled-comparison branch. Identical student,
         # data, hyperparameters, and seed as the KD branch — only the loss
         # differs (focal-only via Trainer, no teacher/soft labels).
-        run_dir = Path(cfg.output_dir) / f"baseline_{student_name}" / f"fold_{fold}"
+        run_dir = Path(cfg.output_dir) / f"baseline_{student_name}{run_suffix}" / f"fold_{fold}"
         run_dir.mkdir(parents=True, exist_ok=True)
         save_config(cfg, run_dir / "config.yaml")
         logger.info(f"Baseline (no KD): {student_name} (fold {fold})")
@@ -101,8 +105,11 @@ def main(cfg: DictConfig) -> None:
         logger.info(f"Evaluating best student checkpoint on held-out test set: {best_ckpt}")
         load_checkpoint(str(best_ckpt), student, device=cfg.device)
         evaluator = Evaluator(student, device=cfg.device)
-        test_metrics = evaluator.evaluate(datamodule.test_dataloader())
+        test_metrics = evaluator.evaluate(
+            datamodule.test_dataloader(), sources=datamodule.test_sources()
+        )
         evaluator.save_metrics(test_metrics, run_dir / "test_metrics.json")
+        evaluator.save_predictions(test_metrics, run_dir / "predictions.csv")
     else:
         logger.warning(f"No best checkpoint at {best_ckpt}; skipping test-set evaluation.")
 

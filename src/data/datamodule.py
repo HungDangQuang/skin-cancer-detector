@@ -2,9 +2,33 @@ from pathlib import Path
 
 from torch.utils.data import DataLoader
 
+from src.utils.logger import get_logger
+
 from .dataset import SkinLesionDataset
 from .sampler import DynamicUndersampledSampler
 from .transforms import build_transforms
+
+logger = get_logger(__name__)
+
+
+def source_from_path(image_path: str) -> str:
+    """
+    Tag a processed image with its origin dataset from its path.
+
+    Processed images live under data/processed/<dataset>/<class>/..., so the
+    dataset name is recoverable from the path. Used to compute per-domain
+    (ISIC vs PAD) eval breakdowns — the key metric for the PAD ablation.
+    """
+    p = str(image_path).replace("\\", "/")
+    if "/isic2024/" in p or "isic2024" in p:
+        return "isic2024"
+    if "/pad_ufes_20/" in p or "pad_ufes_20" in p:
+        return "pad_ufes_20"
+    if "/ham10000/" in p or "ham10000" in p:
+        return "ham10000"
+    if "/fitzpatrick17k/" in p or "fitzpatrick" in p:
+        return "fitzpatrick17k"
+    return "unknown"
 
 
 class SkinLesionDataModule:
@@ -53,6 +77,17 @@ class SkinLesionDataModule:
             transform=val_transform,
         )
 
+        # PAD ablation: optionally restrict TRAIN+VAL to a subset of source
+        # datasets (e.g. ["isic2024"] to train ISIC-only). The TEST set is left
+        # untouched on purpose, so both the ISIC-only and ISIC+PAD arms are
+        # judged on the identical held-out test (its PAD portion is never trained
+        # on by either arm) — that is what makes the PAD comparison fair.
+        train_sources = self.data_cfg.get("train_sources", None)
+        if train_sources:
+            keep = list(train_sources)
+            self._filter_to_sources(self._train_dataset, keep, "train")
+            self._filter_to_sources(self._val_dataset, keep, "val")
+
         # Dynamic undersampling sampler (1:5 ratio, resampled each epoch)
         if self.data_cfg.get("use_weighted_sampler", True):
             self._train_sampler = DynamicUndersampledSampler(
@@ -93,3 +128,35 @@ class SkinLesionDataModule:
             num_workers=self.cfg.num_workers,
             pin_memory=True,
         )
+
+    def _filter_to_sources(self, dataset: SkinLesionDataset, keep: list[str], split: str) -> None:
+        """Drop rows whose origin dataset is not in ``keep`` (in place, row-reset).
+
+        Used by the PAD ablation to train ISIC-only without re-running prepare.
+        Mutating ``dataset.df`` here is intentional and must happen BEFORE the
+        sampler is built, so the sampler sees the filtered label distribution.
+        """
+        col = dataset.image_col
+        srcs = dataset.df[col].astype(str).map(source_from_path)
+        mask = srcs.isin(keep)
+        n0 = len(dataset.df)
+        dataset.df = dataset.df[mask].reset_index(drop=True)
+        n1 = len(dataset.df)
+        if n1 == 0:
+            raise ValueError(
+                f"train_sources={keep} filtered the {split} split to 0 rows "
+                f"(had {n0}). Check the source tags / paths in the split CSV."
+            )
+        logger.info(
+            f"train_sources={keep}: {split} split filtered {n0} -> {n1} rows "
+            f"({n0 - n1} dropped)."
+        )
+
+    def test_sources(self) -> list[str]:
+        """
+        Per-sample origin tag for the test set, row-aligned to test_dataloader()
+        (shuffle=False). Lets Evaluator.save_predictions record a `source` column
+        so ISIC-vs-PAD per-domain metrics can be computed offline.
+        """
+        col = self._test_dataset.image_col
+        return [source_from_path(p) for p in self._test_dataset.df[col].astype(str)]

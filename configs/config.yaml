@@ -9,6 +9,10 @@ defaults:
 seed: 42
 experiment_name: kd-skin-cancer
 output_dir: experiments/runs
+# Appended to the run-dir name (after the run-type, before /fold_N) so an
+# ablation lands in its own subtree without overwriting the main 30 runs.
+# e.g. run_suffix=__samp_off, run_suffix=__ratio3. Empty = main run.
+run_suffix: ""
 
 device: cuda  # cuda or cpu
 num_workers: 4
