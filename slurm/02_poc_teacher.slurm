@@ -1,9 +1,11 @@
 #!/bin/bash
 # ============================================================================
-# Step 2 (POC) — train teacher (EfficientNet-B4) for 2 epochs on synthetic data.
+# Step 2 (POC) — train teacher for 2 epochs on synthetic data.
 # Prereq:  Step 1 completed (data/splits/poc/ exists).
-# Submit:  bash slurm/submit.sh slurm/02_poc_teacher.slurm
-# Output:  experiments/poc/teacher/efficientnet_b4/checkpoints/best_model.pth
+# Submit:  bash slurm/submit.sh slurm/02_poc_teacher.slurm                       # default efficientnet_b4
+#          bash slurm/submit.sh slurm/02_poc_teacher.slurm TEACHER=convnextv2_base   # smoke-test a SOTA teacher
+#   TEACHER in {efficientnet_b4, efficientnetv2_m, convnextv2_base, maxvit_base}
+# Output:  experiments/poc/teacher/${TEACHER}/checkpoints/best_model.pth
 # ============================================================================
 #SBATCH --job-name=poc_teacher
 #SBATCH --output=logs/poc_teacher_%j.out
@@ -17,8 +19,11 @@
 
 source "${SLURM_SUBMIT_DIR:-$(pwd)}/slurm/_lib.sh"
 load_python_env
-acquire_gpu 8192     # 8 GB: B4 + batch 16 @ 224
+acquire_gpu 12288    # 12 GB: covers SOTA teachers (convnextv2/maxvit) at batch 16 @ 224
 setup_mps
+
+TEACHER="${TEACHER:-efficientnet_b4}"
+echo "[job] POC teacher: ${TEACHER}"
 
 echo "[job] GPU info"
 if command -v nvidia-smi >/dev/null 2>&1; then
@@ -29,6 +34,6 @@ else
 fi
 
 echo "[job] Training POC teacher"
-python scripts/train_teacher.py --config-name config_poc
+python scripts/train_teacher.py --config-name config_poc "teacher=${TEACHER}"
 
 echo "[job] DONE"

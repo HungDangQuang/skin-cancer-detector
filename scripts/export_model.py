@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import torch
 
-from src.models.registry import build_model_from_name
+from src.models.registry import MODEL_REGISTRY, build_model_from_name
 from src.utils.checkpoint import load_checkpoint
 from src.utils.config import load_config
 from src.utils.logger import get_logger
@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", required=True,
-                        choices=["efficientnet_b4", "efficientnet_b0", "mobilenetv3_large", "mobilevit_s"])
+                        choices=sorted(MODEL_REGISTRY.keys()))
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--format", choices=["onnx", "torchscript"], default="onnx")
     parser.add_argument("--output", default="exports/model")

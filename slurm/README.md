@@ -132,6 +132,8 @@ ls data/splits/poc/fold_0/
 
 ```bash
 bash slurm/submit.sh slurm/02_poc_teacher.slurm
+# Different teacher arch (smoke-test a SOTA teacher before a full run):
+bash slurm/submit.sh slurm/02_poc_teacher.slurm TEACHER=convnextv2_base
 # note the "Submitted batch job <jobid>" line, then:
 tail -f logs/poc_teacher_<jobid>_runtime.log
 ```
@@ -154,6 +156,8 @@ bash slurm/submit.sh slurm/03_poc_student.slurm
 # Different student arch:
 bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv3_large
 bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilevit_s
+# SOTA pair (TEACHER must match the one POC-trained in 3.2 first):
+bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv4_conv_medium TEACHER=convnextv2_base
 ```
 
 Verify:
@@ -376,8 +380,8 @@ Until UIT admin fixes that typo, every job's log starts with:
 | Script | mps | mem | vRAM | time | Notes |
 |---|---|---|---|---|---|
 | `01_prepare_poc` | none | 4 G | — | 15 m | CPU only |
-| `02_poc_teacher` | 2 | 8 G | 8 G | 1 h | 2 epochs B4 |
-| `03_poc_student` | 2 | 8 G | 10 G | 1 h | Teacher + student in memory |
+| `02_poc_teacher` | 2 | 8 G | 12 G | 1 h | 2 epochs; `TEACHER=` (covers SOTA teachers) |
+| `03_poc_student` | 2 | 8 G | 14 G | 1 h | Teacher + student in memory; `STUDENT=`/`TEACHER=` |
 | `10_prepare_data` | none | 16 G | — | 4 h | HDF5 decode (idempotent across re-runs) |
 | `11_train_teacher` | 4 | 16 G | 20 G | 24 h | teacher (B4 / SOTA), batch 32 |
 | `12_train_student` | 4 | 16 G | 22 G | 18 h | KD, frozen teacher + student, batch 64 |

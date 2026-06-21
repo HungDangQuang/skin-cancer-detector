@@ -78,11 +78,15 @@ bash slurm/submit.sh slurm/01_prepare_poc.slurm
 # → tail -f logs/prepare_poc_<ID>.out
 
 bash slurm/submit.sh slurm/02_poc_teacher.slurm
+# Different teacher arch (e.g. smoke-test a SOTA teacher before a full run):
+bash slurm/submit.sh slurm/02_poc_teacher.slurm TEACHER=convnextv2_base
 
 bash slurm/submit.sh slurm/03_poc_student.slurm
 # Different student arch:
 bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv3_large
 bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilevit_s
+# Smoke-test a SOTA pair (TEACHER must match the one POC-trained above):
+bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv4_conv_medium TEACHER=convnextv2_base
 ```
 
 **Always submit via `submit.sh`, not raw `sbatch`** — it ensures `logs/` exists before sbatch parses the `--output` directive (Slurm 23 silently drops output if the parent dir is missing).
@@ -247,8 +251,8 @@ Output (default `reports/mobile_benchmark/<MODEL>.json`): `params_millions`, `fp
 | Script | mps | mem | vRAM | time | Notes |
 |---|---|---|---|---|---|
 | `01_prepare_poc` | none | 4 G | — | 15 m | CPU only |
-| `02_poc_teacher` | 2 | 8 G | 8 G | 1 h | 2 epochs B4 |
-| `03_poc_student` | 2 | 8 G | 10 G | 1 h | T+S in memory |
+| `02_poc_teacher` | 2 | 8 G | 12 G | 1 h | 2 epochs; `TEACHER=` (covers SOTA teachers) |
+| `03_poc_student` | 2 | 8 G | 14 G | 1 h | T+S in memory; `STUDENT=`/`TEACHER=` |
 | `10_prepare_data` | none | 16 G | — | 4 h | HDF5 decode |
 | `11_train_teacher` | 4 | 16 G | 20 G | 24 h | teacher (B4 / SOTA), batch 32 |
 | `12_train_student` | 4 | 16 G | 22 G | 18 h | KD, frozen teacher + student, batch 64 |
