@@ -98,5 +98,19 @@
   },
   "env": {
     "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -z \"$f\" ] && exit 0; rel=${f#*/skin-cancer-detector/}; case \"$rel\" in src/data/*|scripts/prepare_data.py) skill=review-preprocessing ;; src/training/*|src/models/*|scripts/train_teacher.py|scripts/train_student.py) skill=review-training ;; slurm/*|docs/SLURM*) skill=review-slurm ;; *) exit 0 ;; esac; case \"$rel\" in src/*|configs/*|slurm/*) vp=\" Then run validate-pipeline (static checks) before concluding.\" ;; *) vp=\"\" ;; esac; msg=\"[modification-workflow] You edited ${rel}. Before finishing this task: (1) run the ${skill} skill to review the change; (2) update any affected slurm script AND its docs; (3) keep CLAUDE.md / docs / memory current.${vp}\"; jq -cn --arg m \"$msg\" '{hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:$m},suppressOutput:true}'",
+            "statusMessage": "Routing modification-workflow review reminder"
+          }
+        ]
+      }
+    ]
   }
 }

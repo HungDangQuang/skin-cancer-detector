@@ -4,12 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Local environment ≠ runtime environment
 
-The local Mac is for editing only. **Do not install Python dependencies locally** (no `pip install`, no `make install-dev` on the Mac, no expectation that `pytest` / `torch` / `sklearn` will import here). The code runs on the UIT Slurm cluster (`slurm.uit.edu.vn`, venv at `/datastore/keg/venv`), and that is the only environment that has the full dependency set.
+The local Mac is for editing only. **Do not install Python dependencies locally** (no `pip install`, no `make install-dev` on the Mac, no expectation that `pytest` / `torch` / `sklearn` will import here). The code runs on the UIT Slurm cluster (`slurm.uit.edu.vn`, venv at `${DATASTORE_USER_DIR:-/datastore/keg/hungdang}/venv` — created by `slurm/setup_env.sh`), and that is the only environment that has the full dependency set.
 
 Consequences for verification:
 - After editing `src/`, `configs/`, or `slurm/`, run the **`validate-pipeline`** skill (static checks — Python AST + Hydra config compose + slurm lint, no imports needed) instead of trying to import/run code.
 - Real correctness verification (pytest, training smoke test) happens on the cluster — submit `slurm/01_prepare_poc.slurm` → `02_poc_teacher.slurm` → `03_poc_student.slurm` or invoke the `poc-smoke-test` skill.
 - Do not propose `pip install <x>` to fix a `ModuleNotFoundError` you hit locally — it's expected; the import will resolve on the cluster.
+
+## Modification workflow (mandatory after any code/config/slurm change)
+
+Every edit to project source must be **reviewed, verified, and documented before the task is considered done** — not left for a follow-up. After modifying a file, run this loop automatically (don't wait to be asked). A `PostToolUse` hook in `.claude/settings.json` injects a `[modification-workflow]` reminder naming the right review skill for the edited path; treat that reminder as a required step, not a suggestion.
+
+1. **Code** the change.
+2. **Review** with the area-specific skill, routed by what you touched:
+   - `src/data/**`, `scripts/prepare_data.py` → **`review-preprocessing`**
+   - `src/training/**`, `src/models/**`, `scripts/train_{teacher,student}.py` → **`review-training`**
+   - `slurm/**`, `slurm/README.md`, `docs/SLURM.md` → **`review-slurm`**
+3. **Propagate to Slurm (if any).** If the change alters how a job is invoked, what it consumes, or what it produces, update the matching `slurm/*.slurm` script **and** its docs (`slurm/README.md`, `docs/SLURM.md`) in the same task. A code change that silently desyncs from its slurm wrapper is a defect.
+4. **Verify.** Run **`validate-pipeline`** (static checks — the only verification possible on the Mac). Real correctness (pytest / `poc-smoke-test`) is a cluster step; state explicitly that it's deferred to the cluster rather than claiming it passed.
+5. **Document.** Keep the docs and knowledge current: `CLAUDE.md` "Recurring gotchas" for anything non-obvious, the relevant `docs/*.md`, and auto-memory (`MEMORY.md` + the matching memory file). The end state of every task is up-to-date docs, not a TODO to update them later.
 
 ## Commands
 
@@ -73,9 +86,9 @@ This is a **binary skin cancer classification** project (benign=0, malignant=1) 
 
 ### Two-stage training pipeline
 
-**Stage 1 — Teacher**: `EfficientNet-B4` trained standalone using `Trainer` + `BinaryFocalLoss`.
+**Stage 1 — Teacher**: a high-capacity backbone trained standalone using `Trainer` + `BinaryFocalLoss`. Teachers: `efficientnet_b4` (baseline) and the SOTA set `{efficientnetv2_m, convnextv2_base, maxvit_base}`. Pick via `teacher=<name>` (Hydra) or `TEACHER=<name>` (slurm).
 
-**Stage 2 — Student**: One of `{EfficientNet-B0, MobileNetV3-Large, MobileViT-S}` trained with `KDTrainer` using `BinaryDistillationLoss`:
+**Stage 2 — Student**: one of the baseline backbones `{efficientnet_b0, mobilenetv3_large, mobilevit_s}` or the SOTA mobile-/on-device-latency-optimized set `{mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2}`, trained with `KDTrainer` using `BinaryDistillationLoss`:
 ```
 L_total = 0.3 * L_focal(student, true_labels) + 0.7 * T² * L_BCE(sigmoid(s/T), sigmoid(t/T))
 ```
@@ -93,20 +106,20 @@ Override at the CLI: `python scripts/train_student.py student=mobilenetv3_large 
 
 ### Data flow
 
-1. `scripts/prepare_data.py` creates fold CSVs via `StratifiedGroupKFold` (grouped by `patient_id` to prevent leakage) under `splits_dir/fold_{0..4}/train_split.csv` and `val_split.csv`, plus a held-out `test_split.csv`.
+1. `scripts/prepare_data.py` creates fold CSVs via `StratifiedGroupKFold` (grouped by `patient_id` to prevent leakage) under `splits_dir/fold_{0..4}/train_split.csv` and `val_split.csv`, plus an **independent** `test_split.csv` — carved patient-disjoint + stratified *before* the CV (`test_holdout_splits`, default 6 ≈ 17%), so no fold trains on test patients. (Pre-2026-06-06 this was fold 0's val set → folds 1–4 leaked; see "Recurring gotchas".)
 2. `SkinLesionDataModule` reads those CSVs and wraps them in `SkinLesionDataset` (expects columns `image_path`, `label`).
 3. `DynamicUndersampledSampler` maintains a ~1:5 malignant:benign ratio, reshuffled each epoch via `datamodule.set_epoch(epoch)`.
 4. `build_transforms` returns Albumentations pipelines; PIL images are converted to numpy internally before being passed to Albumentations.
 
 ### Model registry
 
-`src/models/registry.py` maps string names → classes. All models inherit from `BaseModel` (ABC), expose `forward(x) -> Tensor (B,)` returning a single raw logit, and share `freeze_backbone()` / `unfreeze()` helpers. Backbones are loaded from `timm`; the classification head is always `Dropout → Linear(in_features, 1)` via `build_head()`.
+`src/models/registry.py` maps string names → classes. All models inherit from `BaseModel` (ABC), expose `forward(x) -> Tensor (B,)` returning a single raw logit, and share `freeze_backbone()` / `unfreeze()` helpers. Backbones are loaded from `timm`; the classification head is always `Dropout → Linear(in_features, 1)` via `build_head()`. The SOTA set (efficientnetv2_m, convnextv2_base, maxvit_base, mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2) all use one generic wrapper `TimmBackboneModel` (`src/models/timm_backbone.py`) — there's no per-arch logic, so a single class covers them; the older family wrappers (`EfficientNetModel`/`MobileNetV3Model`/`MobileViTModel`) remain for the baseline backbones. The SOTA set requires `timm>=1.0` (mobilenetv4/fastvit/efficientformerv2 are not in 0.9.x).
 
-To add a new architecture: create a class in `src/models/`, add it to `MODEL_REGISTRY` in `registry.py`, and create a matching config under `configs/student/` or `configs/teacher/`.
+To add a new architecture: register it against `TimmBackboneModel` (or a new class if it needs custom logic) in `MODEL_REGISTRY`, and create a matching config under `configs/student/` or `configs/teacher/`. Use `infer_backbone_out_dim(backbone)` for the head input dim, never `backbone.num_features`.
 
 ### Evaluation
 
-Primary metric: **pAUC@TPR≥80%** (ISIC 2024 official metric), normalized to [0, 0.2]. Decision threshold is selected via Youden's J statistic. `compute_metrics()` in `src/evaluation/metrics.py` returns `pauc_at_tpr80`, `auc_roc`, `sensitivity`, `specificity`, `f1_score`, and raw TP/FP/TN/FN counts.
+Primary metric: **pAUC@TPR≥80%** (ISIC 2024 official metric), normalized to [0, 0.2]. Decision threshold is selected via Youden's J statistic. `compute_metrics()` in `src/evaluation/metrics.py` returns `pauc_at_tpr80`, `auc_roc`, `auprc` (+ `prevalence` = its random baseline), `sensitivity`, `specificity`, `f1_score`, fixed-specificity operating points `sens_at_90spec`/`sens_at_95spec`, and raw TP/FP/TN/FN counts. `Evaluator.save_predictions()` also writes `predictions.csv` (`y_true,y_prob,y_pred,source`) next to `test_metrics.json` so PR-curve / AUPRC / per-domain (ISIC-vs-PAD) / bootstrap CIs are recomputable offline without re-running inference. Use **AUPRC**, not AUC-ROC, as the headline at ~0.4% prevalence (AUC-ROC is optimistic).
 
 External test sets (HAM10000, Fitzpatrick17k) are **never used for training** — only for post-hoc cross-domain and fairness evaluation.
 
@@ -116,7 +129,7 @@ Each student is trained twice (with KD / without KD) using identical hyperparame
 
 ### Run-dir convention (fold-aware)
 
-Each training script writes results to a fold-scoped subdirectory so a Slurm array can populate all 5 folds without overwriting:
+Each training script writes results to a fold-scoped subdirectory so one job can populate all 5 folds without overwriting:
 
 ```
 experiments/runs/
@@ -132,21 +145,21 @@ experiments/runs/
 
 `scripts/train_teacher.py` and `scripts/train_student.py` reload the best checkpoint from `checkpoints/best_model.pth` after training and run `Evaluator.evaluate(test_dataloader())`, saving the result alongside as `test_metrics.json`. The val-set metrics logged each epoch are *biased* (early-stopping optimizes against val); the `test_metrics.json` is the unbiased generalization number — quote that, not val_pauc, for verdicts.
 
-### 5-fold CV via Slurm array
+### 5-fold CV — one job per model (folds loop sequentially)
 
-`slurm/11_train_teacher.slurm` and `slurm/12_train_student.slurm` are declared as Slurm array jobs (`#SBATCH --array=0-4%2`) so submitting once trains all 5 folds, with at most 2 folds running concurrently to stay under the shared-account 5-job concurrency cap. Each task receives `SLURM_ARRAY_TASK_ID` and forwards it as `data.fold=${SLURM_ARRAY_TASK_ID}`. Submit + log pattern:
+`slurm/11_train_teacher.slurm` and `slurm/12_train_student.slurm` are **single** jobs (no Slurm array): each loops `for FOLD in ${FOLDS:-0 1 2 3 4}` internally and calls the training script once per fold, so **one model = one job = one of the 5 concurrency slots**. (This replaced the earlier `#SBATCH --array=0-4%2` design — that ran 2 folds at once but consumed 2 slots and produced 5 separate array tasks per model.) `--time=72:00:00` (the cluster cap) covers all 5 folds back-to-back. `FOLDS="0 1 2"` + `FOLDS="3 4"` splits a heavy run (e.g. `maxvit_base`) across two jobs if 5 sequential folds risk exceeding 72 h. Submit + log pattern:
 
 ```bash
-# Submit (one command, kicks off 5 jobs that share an array JOBID):
-bash slurm/submit.sh slurm/11_train_teacher.slurm
+# Submit (one command = one job that trains all 5 folds):
+bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnetv2_m
 
-# Logs:
-logs/train_teacher_<arrayid>_<taskid>.out      # SBATCH-redirected per task
-logs/train_teacher_<arrayid>_<taskid>_runtime.log   # fallback tee log
+# Logs (single job id, not array):
+logs/train_teacher_<jobid>.out             # SBATCH-redirected
+logs/train_teacher_<jobid>_runtime.log     # fallback tee log
 
-# Aggregate after all 5 finish:
+# Aggregate after the job finishes all 5 folds:
 bash slurm/submit.sh slurm/22_aggregate_folds.slurm \
-    RUN_DIR=experiments/runs/teacher/efficientnet_b4
+    RUN_DIR=experiments/runs/teacher/efficientnetv2_m
 ```
 
 `scripts/aggregate_folds.py` reads `fold_*/test_metrics.json`, computes mean ± std (+ min/max + per-fold) for every numeric metric, and writes `aggregated.json` (machine-readable) and `aggregated.md` (thesis-grade table). Cite the **aggregated mean ± std** for any reportable claim — a single fold's number has wide variance.
@@ -199,6 +212,14 @@ The cluster's GPU dispatcher has a typo on line 31 (`nvidia-smi-i` instead of `n
 
 `configs/data/isic2024.yaml` sets `label_col: target` because ISIC's `train-metadata.csv` uses that column name. `process_isic2024()` reads `target` from the raw CSV but writes the same value into the processed dataframe under the column name `"label"` (matching `SkinLesionDataset`'s schema). When calling `generate_group_kfold_splits()` on the processed dataframe, pass `label_col="label"` — passing `cfg.data.label_col` ("target") gives `KeyError: 'target'`.
 
+### `patient_id` must be namespaced when datasets are concatenated
+
+`generate_group_kfold_splits()` groups by `patient_id` to keep all of a patient's lesions in one fold (no leakage). When ISIC 2024 and PAD-UFES-20 are concatenated, a PAD `patient_id` could numerically collide with an ISIC one, silently merging two unrelated patients into one group (or worse, splitting the same logical group). `process_pad_ufes_20()` therefore writes `patient_id` as `pad_{raw_id}`. Keep any new auxiliary dataset's group key namespaced the same way. Also note: the offline cleaner drops corrupt / too-small (`min_size`) / blank (`is_uninformative`) / exact-duplicate (md5 of resized pixels) images and logs them to `data/processed/<ds>/excluded_images.csv` — dedup is per-dataset and exact-pixel only. See `docs/PREPROCESSING.md` for the full spec and which proposal augmentations were intentionally NOT implemented.
+
+### PAD-UFES-20 `img_id` already includes the file extension — FIXED 2026-06-07
+
+PAD's `metadata.csv` stores `img_id` **with** the extension (e.g. `PAT_8_15_820.png`), and the image files on disk are named identically. The old `process_pad_ufes_20()` did `images_dir / f"{img_id}.png"` → looked for `PAT_8_15_820.png.png`, matched nothing, and `continue`d on **every** row → empty `records` → `KeyError: 'label'` on the summary line (job 28239, the first time PAD ever ran — the repo had been ISIC-only). Fixed: look up `images_dir / img_id` as-is first (then `stem+.png/.jpg` fallbacks for a bare-id mirror), derive processed names from `Path(img_id).stem` (so no `pad_….png.jpg`), and **raise a clear `RuntimeError`** ("0 of N rows produced an image…") instead of a cryptic `KeyError` when nothing matches. Lesson for any new auxiliary dataset: never assume the metadata id is extension-free — probe `head -3 metadata.csv` + `ls images/` first.
+
 ### `load_config()` must compose Hydra defaults for the root config
 
 `@hydra.main(...)` composes the `defaults:` list automatically, but our standalone scripts (`prepare_data.py`, etc.) use `src/utils/config.py::load_config("configs/config.yaml")`. Plain `OmegaConf.load` doesn't expand the `defaults:` list, so `cfg.data` is missing → `ConfigKeyError: Missing key data`. `load_config` now detects a `defaults:` key and calls `hydra.compose` to merge the groups. Already-resolved configs (saved `experiments/<run>/config.yaml`) lack `defaults:` and load as-is, so `evaluate.py`/`export_model.py`/`predict.py` are unaffected.
@@ -215,10 +236,20 @@ The cluster's GPU dispatcher has a typo on line 31 (`nvidia-smi-i` instead of `n
 
 When tracking your own jobs, filter by job name: `squeue -u keg --name=poc_teacher`. For postmortems use `sacct -u keg --starttime=$(date -d "1 hour ago" '+%H:%M:%S')`. Per-user job IDs are unique, so any single `squeue -j <jobid>` / `sacct -j <jobid>` still works without a filter.
 
-### `pauc_at_tpr()` is mis-scaled — values run ~[0.9, 5.0] not [0, 0.2]
+### `pauc_at_tpr()` — FIXED 2026-06-04, now the real ISIC 2024 metric
 
-[src/evaluation/metrics.py:37](src/evaluation/metrics.py#L37) integrates raw TPR instead of `(TPR − min_tpr)` and divides by `0.2`, so the value lives roughly in `[0.9, 5.0]` instead of the documented `[0, 0.2]`. Random ≈ 0.9, perfect ≈ 5.0. The ranking is monotonic so within-run trends are still meaningful, but every `val_pauc=…` line in the trainer logs, the `pauc_at_tpr80` field in `scripts/evaluate.py` JSON output, and the `delta_pauc` from `compute_kd_delta()` are on this stretched scale — **don't quote them as the ISIC 2024 official metric**. For absolute verdicts and cross-run comparison, lean on the threshold-based metrics (`acc`, `sens`, `spec`, `f1`) which are computed from sklearn directly and are correct. Fix: replace the integrand with the standard sklearn-based formulation (`roc_auc_score(1 - y_true, -y_prob, max_fpr=0.2)`); also update `tests/test_metrics.py` which currently asserts `pauc > 0.9` for a perfect classifier (would become `pauc ≈ 0.2`).
+Historically [src/evaluation/metrics.py](src/evaluation/metrics.py) integrated raw TPR and divided by 0.2, so values ran ~[0.9, 5.0] instead of [0, 0.2] — they were **not** the official metric. `pauc_at_tpr()` now implements the competition's exact formulation: flip labels/scores (`v_gt = 1 - y_true`, `v_pred = -y_prob`), take `roc_auc_score(v_gt, v_pred, max_fpr=1-min_tpr)` (McClish-corrected), then invert the McClish scaling. Range is now **[0.5·max_fpr², max_fpr] ≈ [0.02, 0.20]** for min_tpr=0.80 (random ≈ 0.02, perfect = 0.20). `tests/test_metrics.py` asserts perfect ≈ 0.2. `val_pauc=…` logs, the `pauc_at_tpr80` JSON field, and `delta_pauc` are now quotable as the ISIC 2024 metric. (The threshold metrics `acc/sens/spec/f1` remain sklearn-direct and correct as before.)
 
-### Baseline (no-KD) student training is broken — KDTrainer is unconditionally coupled to KD config
+### Baseline (no-KD) student training — FIXED 2026-06-04 via `use_kd` flag
 
-`KDTrainer.__init__` reads `cfg.training.distillation` at [src/training/kd_trainer.py:57](src/training/kd_trainer.py#L57), but `configs/training/baseline.yaml` intentionally has no `distillation:` block. Any `training=baseline` override therefore crashes immediately with `ConfigAttributeError: Missing key distillation` — confirmed by jobs 26729 / 26730 / 26731 on 2026-05-30. **This blocks the entire baseline arm of the KD-vs-baseline experiment** (the experiment design wants 3 archs × 2 conditions × 5 folds = 30 runs; the baseline column is currently unrunnable). Fix: add `use_kd: true/false` flags to the two training configs and gate the distillation-config read + `BinaryDistillationLoss` construction behind it, falling through to `Trainer` + `BinaryFocalLoss` when off. Do **not** submit baseline jobs to the cluster until this is fixed — guaranteed crash, wastes the queue slot.
+Previously `KDTrainer.__init__` read `cfg.training.distillation` unconditionally and `train_student.py` always built a `KDTrainer`, so any `training=baseline` run crashed with `ConfigAttributeError: Missing key distillation` (jobs 26729/26730/26731, 2026-05-30). Now `scripts/train_student.py` reads `use_kd = cfg.training.get("use_kd", True)` and branches: **`use_kd: true`** (`distillation.yaml`) → `KDTrainer` + frozen teacher + `BinaryDistillationLoss`, run-dir `kd_<teacher>_to_<student>/`; **`use_kd: false`** (`baseline.yaml`) → plain `Trainer` + `BinaryFocalLoss`, no teacher load, run-dir `baseline_<student>/`. The baseline arm of the 30-run experiment is now runnable: `bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=<s> TRAINING=baseline`.
+
+### Data-strategy ablations: `run_suffix` isolation + the two design traps (added 2026-06-21)
+
+The data strategy (PAD mixing + undersampler) is ablated by `slurm/13_ablation_sampler.slurm` and `slurm/14_ablation_pad.slurm`. Three things that will silently invalidate a result if forgotten:
+
+- **`run_suffix` (root `config.yaml`, default `""`)** is appended to the run-dir name (`kd_<teacher>_to_<student><suffix>/fold_N`) so an ablation arm never overwrites the main 30 runs. The ablation slurms set it (`__samp_off`, `__ratio3`, `__train_isic_only`, …). A new ablation that forgets `run_suffix` will clobber a real run.
+- **`data.train_sources`** (in `configs/data/isic2024.yaml`, default `null`) filters **TRAIN+VAL only** — `SkinLesionDataModule._filter_to_sources` deliberately leaves the **test set whole** so both PAD-ablation arms share an identical held-out test (its PAD portion trained on by neither). Don't "helpfully" filter the test too; that breaks the comparison. It raises if a filter empties a split.
+- **The PAD ablation must run baseline (no KD).** A teacher trained on ISIC+PAD leaks PAD via soft labels into the ISIC-only arm, confounding "does PAD data help". `14_ablation_pad.slurm` defaults `TRAINING=baseline` for this reason — only switch to KD if you also train a matched ISIC-only teacher.
+
+Per-domain (ISIC vs PAD) verdicts read the `source` column in `predictions.csv` (written by `Evaluator.save_predictions`, derived via `source_from_path`). Quote **AUPRC** over AUC-ROC at this prevalence.
