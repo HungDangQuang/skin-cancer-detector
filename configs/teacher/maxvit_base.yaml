@@ -1,0 +1,13 @@
+name: maxvit_base
+role: teacher
+paradigm: hybrid_cnn_transformer
+# MaxViT-Base is resolution-locked to 224 by its windowed attention — matches
+# the pipeline's image_size: 224. Do not feed a different resolution.
+backbone: maxvit_base_tf_224.in1k
+pretrained: true
+num_classes: 1    # binary sigmoid output
+
+head:
+  dropout: 0.2
+
+freeze_backbone: false

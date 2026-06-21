@@ -1,0 +1,11 @@
+name: mobilenetv4_conv_medium
+role: student
+paradigm: nas_optimized
+backbone: mobilenetv4_conv_medium.e500_r224_in1k
+pretrained: true
+num_classes: 1    # binary sigmoid output
+
+head:
+  dropout: 0.2
+
+freeze_backbone: false

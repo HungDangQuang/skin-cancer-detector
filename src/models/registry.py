@@ -5,14 +5,25 @@ from omegaconf import OmegaConf, open_dict
 from .efficientnet import EfficientNetModel
 from .mobilenet import MobileNetV3Model
 from .mobilevit import MobileViTModel
+from .timm_backbone import TimmBackboneModel
 
 MODEL_REGISTRY: dict = {
+    # --- Baseline set (kept for the SOTA-vs-baseline comparison) ---
     # Teacher
     "efficientnet_b4": EfficientNetModel,
     # Students
     "efficientnet_b0": EfficientNetModel,
     "mobilenetv3_large": MobileNetV3Model,
     "mobilevit_s": MobileViTModel,
+    # --- SOTA set (generic timm wrapper) ---
+    # Teachers (high-capacity, frozen during KD)
+    "efficientnetv2_m": TimmBackboneModel,
+    "convnextv2_base": TimmBackboneModel,
+    "maxvit_base": TimmBackboneModel,
+    # Students (mobile-/on-device-latency-optimized)
+    "mobilenetv4_conv_medium": TimmBackboneModel,
+    "fastvit_sa12": TimmBackboneModel,
+    "efficientformerv2_s2": TimmBackboneModel,
 }
 
 

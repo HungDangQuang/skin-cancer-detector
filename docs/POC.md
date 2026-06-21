@@ -14,8 +14,14 @@ All models inherit from `src/models/base_model.py` and output a **single raw log
 | Student | `efficientnet_b0` | `efficientnet_b0` | ~5M | `configs/student/efficientnet_b0.yaml` |
 | Student | `mobilenetv3_large` | `mobilenetv3_large_100` | ~5M | `configs/student/mobilenetv3_large.yaml` |
 | Student | `mobilevit_s` | `mobilevit_s` | ~5M | `configs/student/mobilevit_s.yaml` |
+| Teacher (SOTA) | `efficientnetv2_m` | `tf_efficientnetv2_m.in21k_ft_in1k` | ~54M | `configs/teacher/efficientnetv2_m.yaml` |
+| Teacher (SOTA) | `convnextv2_base` | `convnextv2_base.fcmae_ft_in22k_in1k` | ~89M | `configs/teacher/convnextv2_base.yaml` |
+| Teacher (SOTA) | `maxvit_base` | `maxvit_base_tf_224.in1k` | ~119M | `configs/teacher/maxvit_base.yaml` |
+| Student (SOTA) | `mobilenetv4_conv_medium` | `mobilenetv4_conv_medium.e500_r224_in1k` | ~9M | `configs/student/mobilenetv4_conv_medium.yaml` |
+| Student (SOTA) | `fastvit_sa12` | `fastvit_sa12.apple_in1k` | ~11M | `configs/student/fastvit_sa12.yaml` |
+| Student (SOTA) | `efficientformerv2_s2` | `efficientformerv2_s2.snap_dist_in1k` | ~13M | `configs/student/efficientformerv2_s2.yaml` |
 
-Registry: `src/models/registry.py` — `build_model(cfg)` dispatches on `cfg.model.name`.
+Registry: `src/models/registry.py` — `build_model(cfg)` dispatches on `cfg.model.name`. The 6 SOTA models share one generic wrapper `TimmBackboneModel` and require **`timm>=1.0`**.
 
 ---
 
@@ -31,8 +37,8 @@ Registry: `src/models/registry.py` — `build_model(cfg)` dispatches on `cfg.mod
 | Group | Options |
 |---|---|
 | `data/` | `isic2024` (primary), `pad_ufes_20` (augment), `ham10000` / `fitzpatrick17k` (external eval only) |
-| `teacher/` | `efficientnet_b4` |
-| `student/` | `efficientnet_b0`, `mobilenetv3_large`, `mobilevit_s` |
+| `teacher/` | `efficientnet_b4`; SOTA: `efficientnetv2_m`, `convnextv2_base`, `maxvit_base` |
+| `student/` | `efficientnet_b0`, `mobilenetv3_large`, `mobilevit_s`; SOTA: `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2` |
 | `training/` | `default`, `baseline` (no KD), `distillation` (KD), `ablation`, `poc` |
 | `augmentation/` | `light`, `heavy` |
 
