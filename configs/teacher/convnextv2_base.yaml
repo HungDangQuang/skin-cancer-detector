@@ -1,0 +1,11 @@
+name: convnextv2_base
+role: teacher
+paradigm: modern_cnn
+backbone: convnextv2_base.fcmae_ft_in22k_in1k
+pretrained: true
+num_classes: 1    # binary sigmoid output
+
+head:
+  dropout: 0.3
+
+freeze_backbone: false

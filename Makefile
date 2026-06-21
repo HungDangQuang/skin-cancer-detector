@@ -1,4 +1,4 @@
-.PHONY: install install-dev prepare train evaluate test lint format clean
+.PHONY: install install-dev prepare prepare-poc train-teacher train-student-b0 train-student-mobilenet train-student-mobilevit poc-teacher poc-student poc-all evaluate test lint format clean
 
 install:
 	pip install -e .
@@ -11,14 +11,35 @@ install-dev:
 prepare:
 	python scripts/prepare_data.py
 
-train:
-	python scripts/train.py
+# POC fixtures — synthetic data so you don't need ISIC 2024.
+prepare-poc:
+	python scripts/prepare_poc_data.py
 
-train-efficientnet:
-	python scripts/train.py model=efficientnet_b3
+# Step 1: Train teacher
+train-teacher:
+	python scripts/train_teacher.py
 
-train-resnet:
-	python scripts/train.py model=resnet50
+# Step 2: Train each student via KD
+train-student-b0:
+	python scripts/train_student.py student=efficientnet_b0
+
+train-student-mobilenet:
+	python scripts/train_student.py student=mobilenetv3_large
+
+train-student-mobilevit:
+	python scripts/train_student.py student=mobilevit_s
+
+# Train all students sequentially
+train-all-students: train-student-b0 train-student-mobilenet train-student-mobilevit
+
+# POC (Proof-of-Concept) — smoke test the whole pipeline with 2 epochs.
+poc-teacher:
+	python scripts/train_teacher.py --config-name config_poc
+
+poc-student:
+	python scripts/train_student.py --config-name config_poc student=efficientnet_b0
+
+poc-all: prepare-poc poc-teacher poc-student
 
 evaluate:
 	python scripts/evaluate.py

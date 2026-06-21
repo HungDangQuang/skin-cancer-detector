@@ -7,10 +7,12 @@ from torch.utils.data import Dataset
 
 class SkinLesionDataset(Dataset):
     """
-    Dataset for skin lesion classification.
+    Binary skin lesion dataset for ISIC 2024 + PAD-UFES-20.
 
-    Reads image paths and labels from a CSV split file.
-    CSV must have columns: 'image_path', 'label' (integer).
+    Reads image paths and labels from a split CSV file.
+    CSV must have columns: 'image_path', 'label' (0=benign, 1=malignant).
+
+    Labels are returned as float for BCEWithLogitsLoss compatibility.
     """
 
     def __init__(
@@ -40,9 +42,13 @@ class SkinLesionDataset(Dataset):
 
     @property
     def labels(self) -> list[int]:
-        """Return all labels (for weighted sampler)."""
         return self.df[self.label_col].tolist()
 
     @property
     def class_counts(self) -> dict[int, int]:
         return self.df[self.label_col].value_counts().to_dict()
+
+    def malignant_ratio(self) -> float:
+        counts = self.class_counts
+        total = sum(counts.values())
+        return counts.get(1, 0) / total if total > 0 else 0.0

@@ -1,0 +1,41 @@
+# Ablation study config — runs on EfficientNet-B0, fold 0 only
+epochs: 50
+batch_size: 64
+grad_clip: 1.0
+
+optimizer:
+  name: adamw
+  lr_backbone: 1.0e-4
+  lr_head: 1.0e-3
+  weight_decay: 1.0e-4
+  betas: [0.9, 0.999]
+
+scheduler:
+  name: cosine
+  T_max: 50
+  eta_min: 1.0e-6
+  warmup_epochs: 3
+
+loss:
+  name: focal_loss
+  gamma: 2.0
+  alpha: 0.25
+
+ablation:
+  enabled: true
+  architecture: efficientnet_b0
+  fold: 0
+  temperature_sweep: [1.0, 2.0, 4.0, 8.0]
+  alpha_sweep: [0.1, 0.3, 0.5, 0.7]
+
+callbacks:
+  early_stopping:
+    enabled: true
+    patience: 10
+    monitor: val_loss
+    mode: min
+  checkpoint:
+    enabled: true
+    monitor: val_pauc_at_tpr80
+    mode: max
+    save_last: true

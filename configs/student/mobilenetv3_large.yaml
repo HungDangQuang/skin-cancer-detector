@@ -1,0 +1,11 @@
+name: mobilenetv3_large
+role: student
+paradigm: nas_optimized
+backbone: mobilenetv3_large_100
+pretrained: true
+num_classes: 1    # binary sigmoid output
+
+head:
+  dropout: 0.2
+
+freeze_backbone: false

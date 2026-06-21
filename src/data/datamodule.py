@@ -2,36 +2,74 @@ from pathlib import Path
 
 from torch.utils.data import DataLoader
 
+from src.utils.logger import get_logger
+
 from .dataset import SkinLesionDataset
-from .sampler import build_weighted_sampler
+from .sampler import DynamicUndersampledSampler
 from .transforms import build_transforms
+
+logger = get_logger(__name__)
+
+
+def source_from_path(image_path: str) -> str:
+    """
+    Tag a processed image with its origin dataset from its path.
+
+    Processed images live under data/processed/<dataset>/<class>/..., so the
+    dataset name is recoverable from the path. Used to compute per-domain
+    (ISIC vs PAD) eval breakdowns — the key metric for the PAD ablation.
+    """
+    p = str(image_path).replace("\\", "/")
+    if "/isic2024/" in p or "isic2024" in p:
+        return "isic2024"
+    if "/pad_ufes_20/" in p or "pad_ufes_20" in p:
+        return "pad_ufes_20"
+    if "/ham10000/" in p or "ham10000" in p:
+        return "ham10000"
+    if "/fitzpatrick17k/" in p or "fitzpatrick" in p:
+        return "fitzpatrick17k"
+    return "unknown"
 
 
 class SkinLesionDataModule:
     """
-    Encapsulates all DataLoader construction for train/val/test splits.
+    DataModule for 5-fold cross-validation with StratifiedGroupKFold splits.
+
+    Directory structure expected:
+        splits_dir/
+          fold_0/train_split.csv
+          fold_0/val_split.csv
+          fold_1/train_split.csv
+          ...
+          test_split.csv       <- independent held-out test (patient-disjoint from all folds)
     """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, fold: int | None = None):
         self.cfg = cfg
         self.data_cfg = cfg.data
         self.train_cfg = cfg.training
         self.splits_dir = Path(self.data_cfg.splits_dir)
+        # Explicit kwarg wins; otherwise read from Hydra config (cfg.data.fold).
+        # Default to 0 if neither is set (back-compat for old configs).
+        self.fold = fold if fold is not None else int(self.data_cfg.get("fold", 0))
 
         self._train_dataset = None
         self._val_dataset = None
         self._test_dataset = None
+        self._train_sampler = None
 
     def setup(self) -> None:
         train_transform = build_transforms(self.cfg, split="train")
         val_transform = build_transforms(self.cfg, split="val")
 
+        fold_dir = self.splits_dir / f"fold_{self.fold}"
+
         self._train_dataset = SkinLesionDataset(
-            split_csv=self.splits_dir / "train_split.csv",
+            split_csv=fold_dir / "train_split.csv",
             transform=train_transform,
         )
         self._val_dataset = SkinLesionDataset(
-            split_csv=self.splits_dir / "val_split.csv",
+            split_csv=fold_dir / "val_split.csv",
             transform=val_transform,
         )
         self._test_dataset = SkinLesionDataset(
@@ -39,18 +77,36 @@ class SkinLesionDataModule:
             transform=val_transform,
         )
 
-    def train_dataloader(self) -> DataLoader:
-        sampler = None
-        shuffle = True
-        if self.data_cfg.get("use_weighted_sampler", False):
-            sampler = build_weighted_sampler(self._train_dataset, self.data_cfg.num_classes)
-            shuffle = False
+        # PAD ablation: optionally restrict TRAIN+VAL to a subset of source
+        # datasets (e.g. ["isic2024"] to train ISIC-only). The TEST set is left
+        # untouched on purpose, so both the ISIC-only and ISIC+PAD arms are
+        # judged on the identical held-out test (its PAD portion is never trained
+        # on by either arm) — that is what makes the PAD comparison fair.
+        train_sources = self.data_cfg.get("train_sources", None)
+        if train_sources:
+            keep = list(train_sources)
+            self._filter_to_sources(self._train_dataset, keep, "train")
+            self._filter_to_sources(self._val_dataset, keep, "val")
 
+        # Dynamic undersampling sampler (1:5 ratio, resampled each epoch)
+        if self.data_cfg.get("use_weighted_sampler", True):
+            self._train_sampler = DynamicUndersampledSampler(
+                labels=self._train_dataset.labels,
+                ratio=self.data_cfg.get("undersample_ratio", 5),
+                seed=self.cfg.seed,
+            )
+
+    def set_epoch(self, epoch: int) -> None:
+        """Call at the start of each epoch to reshuffle undersampled benign pool."""
+        if self._train_sampler is not None:
+            self._train_sampler.set_epoch(epoch)
+
+    def train_dataloader(self) -> DataLoader:
         return DataLoader(
             self._train_dataset,
             batch_size=self.train_cfg.batch_size,
-            sampler=sampler,
-            shuffle=shuffle,
+            sampler=self._train_sampler,
+            shuffle=(self._train_sampler is None),
             num_workers=self.cfg.num_workers,
             pin_memory=True,
         )
@@ -72,3 +128,35 @@ class SkinLesionDataModule:
             num_workers=self.cfg.num_workers,
             pin_memory=True,
         )
+
+    def _filter_to_sources(self, dataset: SkinLesionDataset, keep: list[str], split: str) -> None:
+        """Drop rows whose origin dataset is not in ``keep`` (in place, row-reset).
+
+        Used by the PAD ablation to train ISIC-only without re-running prepare.
+        Mutating ``dataset.df`` here is intentional and must happen BEFORE the
+        sampler is built, so the sampler sees the filtered label distribution.
+        """
+        col = dataset.image_col
+        srcs = dataset.df[col].astype(str).map(source_from_path)
+        mask = srcs.isin(keep)
+        n0 = len(dataset.df)
+        dataset.df = dataset.df[mask].reset_index(drop=True)
+        n1 = len(dataset.df)
+        if n1 == 0:
+            raise ValueError(
+                f"train_sources={keep} filtered the {split} split to 0 rows "
+                f"(had {n0}). Check the source tags / paths in the split CSV."
+            )
+        logger.info(
+            f"train_sources={keep}: {split} split filtered {n0} -> {n1} rows "
+            f"({n0 - n1} dropped)."
+        )
+
+    def test_sources(self) -> list[str]:
+        """
+        Per-sample origin tag for the test set, row-aligned to test_dataloader()
+        (shuffle=False). Lets Evaluator.save_predictions record a `source` column
+        so ISIC-vs-PAD per-domain metrics can be computed offline.
+        """
+        col = self._test_dataset.image_col
+        return [source_from_path(p) for p in self._test_dataset.df[col].astype(str)]

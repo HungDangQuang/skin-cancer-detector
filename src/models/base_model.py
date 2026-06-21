@@ -9,7 +9,7 @@ class BaseModel(nn.Module, ABC):
 
     @abstractmethod
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass. Returns logits of shape (batch, num_classes)."""
+        """Forward pass. Returns raw logit of shape (batch,) for binary classification."""
         ...
 
     def num_parameters(self, trainable_only: bool = True) -> int:
@@ -20,7 +20,7 @@ class BaseModel(nn.Module, ABC):
     def freeze_backbone(self) -> None:
         """Freeze all layers except the classification head."""
         for name, param in self.named_parameters():
-            if "head" not in name and "classifier" not in name and "fc" not in name:
+            if "head" not in name:
                 param.requires_grad = False
 
     def unfreeze(self) -> None:

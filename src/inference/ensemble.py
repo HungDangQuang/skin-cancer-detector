@@ -10,24 +10,26 @@ from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+CLASSES = ["benign", "malignant"]
+
 
 class Ensemble:
     """
-    Combine predictions from multiple model checkpoints via probability averaging.
+    Combine predictions from multiple binary model checkpoints via probability averaging.
     """
 
     def __init__(
         self,
         models: list[nn.Module],
         checkpoint_paths: list[str | Path],
-        class_names: list[str],
         transform,
         device: str = "cpu",
+        threshold: float = 0.5,
     ):
         assert len(models) == len(checkpoint_paths)
         self.device = torch.device(device if torch.cuda.is_available() else "cpu")
-        self.class_names = class_names
         self.transform = transform
+        self.threshold = threshold
         self.models = []
 
         for model, ckpt_path in zip(models, checkpoint_paths):
@@ -41,19 +43,17 @@ class Ensemble:
     def predict(self, image: Image.Image) -> dict:
         """Mean probability ensemble prediction for a single image."""
         tensor = self.transform(image).unsqueeze(0).to(self.device)
-        all_probs = []
+        probs = []
 
         for model in self.models:
-            logits = model(tensor)
-            probs = torch.softmax(logits, dim=1).squeeze().cpu().numpy()
-            all_probs.append(probs)
+            logit = model(tensor)
+            probs.append(torch.sigmoid(logit).item())
 
-        mean_probs = np.mean(all_probs, axis=0)
-        class_idx = int(np.argmax(mean_probs))
+        mean_prob = float(np.mean(probs))
+        predicted_class = CLASSES[int(mean_prob >= self.threshold)]
 
         return {
-            "class": self.class_names[class_idx],
-            "class_idx": class_idx,
-            "confidence": float(mean_probs[class_idx]),
-            "probabilities": {name: float(mean_probs[i]) for i, name in enumerate(self.class_names)},
+            "class": predicted_class,
+            "probability": mean_prob,
+            "threshold": self.threshold,
         }

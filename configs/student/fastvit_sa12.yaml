@@ -1,0 +1,11 @@
+name: fastvit_sa12
+role: student
+paradigm: hybrid_cnn_transformer
+backbone: fastvit_sa12.apple_in1k
+pretrained: true
+num_classes: 1    # binary sigmoid output
+
+head:
+  dropout: 0.1
+
+freeze_backbone: false

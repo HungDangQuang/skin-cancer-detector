@@ -1,0 +1,47 @@
+# POC (Proof-of-Concept) training config — smoke test the whole pipeline.
+# Goal: verify train → val → checkpoint → metrics cycle works end-to-end
+# in minutes, NOT to produce a competitive model.
+#
+# Usage:
+#   python scripts/train_teacher.py --config-name config_poc
+#   python scripts/train_student.py --config-name config_poc student=efficientnet_b0
+use_kd: true        # POC student exercises the KD path
+epochs: 2
+batch_size: 16
+grad_clip: 1.0
+
+optimizer:
+  name: adamw
+  lr_backbone: 1.0e-4
+  lr_head: 1.0e-3
+  weight_decay: 1.0e-4
+  betas: [0.9, 0.999]
+
+scheduler:
+  name: cosine
+  T_max: 2
+  eta_min: 1.0e-6
+  warmup_epochs: 0    # no warmup for POC
+
+# Hard-label loss component (used standalone for teacher, and inside KD for student)
+loss:
+  name: focal_loss
+  gamma: 2.0
+  alpha: 0.25
+
+# KD hyperparameters — only used by KDTrainer (ignored by teacher)
+distillation:
+  temperature: 4.0
+  alpha: 0.3
+
+callbacks:
+  early_stopping:
+    enabled: false    # disabled — 2 epochs is already a smoke test
+    patience: 1
+    monitor: val_loss
+    mode: min
+  checkpoint:
+    enabled: true
+    monitor: val_pauc_at_tpr80
+    mode: max
+    save_last: true

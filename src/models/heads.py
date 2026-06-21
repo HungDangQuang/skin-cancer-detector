@@ -1,27 +1,38 @@
+import torch
 import torch.nn as nn
 
 
-def build_head(in_features: int, num_classes: int, dropout: float = 0.3, hidden_dim: int | None = None) -> nn.Module:
+def build_head(in_features: int, dropout: float = 0.3) -> nn.Module:
     """
-    Build a classification head.
+    Build a binary classification head.
+
+    Outputs a single raw logit (no activation).
+    Use BCEWithLogitsLoss during training, torch.sigmoid() at inference.
 
     Args:
-        in_features: Input feature dimension (from backbone).
-        num_classes: Number of output classes.
-        dropout: Dropout probability.
-        hidden_dim: If provided, adds a hidden FC layer before the classifier.
+        in_features: Input feature dimension from backbone.
+        dropout: Dropout probability before the linear layer.
     """
-    layers = [nn.Dropout(p=dropout)]
+    return nn.Sequential(
+        nn.Dropout(p=dropout),
+        nn.Linear(in_features, 1),
+    )
 
-    if hidden_dim is not None:
-        layers += [
-            nn.Linear(in_features, hidden_dim),
-            nn.BatchNorm1d(hidden_dim),
-            nn.ReLU(inplace=True),
-            nn.Dropout(p=dropout),
-            nn.Linear(hidden_dim, num_classes),
-        ]
-    else:
-        layers.append(nn.Linear(in_features, num_classes))
 
-    return nn.Sequential(*layers)
+@torch.no_grad()
+def infer_backbone_out_dim(backbone: nn.Module, image_size: int = 224) -> int:
+    """
+    Run a 1-sample forward pass to discover the actual feature dim emitted
+    by ``backbone(x)``. ``backbone.num_features`` is unreliable on some timm
+    architectures (e.g. MobileNetV3-Large reports 960 but ``forward`` returns
+    1280 after the ``conv_head`` expansion), so derive it from the forward
+    output directly.
+    """
+    was_training = backbone.training
+    backbone.eval()
+    try:
+        dummy = torch.zeros(1, 3, image_size, image_size)
+        out = backbone(dummy)
+        return int(out.shape[1])
+    finally:
+        backbone.train(was_training)

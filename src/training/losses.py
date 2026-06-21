@@ -3,48 +3,59 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class FocalLoss(nn.Module):
+class BinaryFocalLoss(nn.Module):
     """
-    Focal loss for class-imbalanced multi-class classification.
-    Reference: https://arxiv.org/abs/1708.02002
+    Binary focal loss for class-imbalanced binary classification.
+
+    L = -alpha * (1-p)^gamma * log(p)       for y=1
+      - (1-alpha) * p^gamma * log(1-p)       for y=0
+
+    Operates on raw logits (no sigmoid needed on model output).
+    Reference: Lin et al., "Focal Loss for Dense Object Detection" (2017)
+
+    Args:
+        gamma: Focusing parameter. Higher = more focus on hard examples.
+        alpha: Prior probability of the positive (malignant) class.
+               Typically set to 1 - prevalence of positive class.
     """
 
-    def __init__(self, gamma: float = 2.0, weight: torch.Tensor | None = None, reduction: str = "mean"):
+    def __init__(self, gamma: float = 2.0, alpha: float = 0.25):
         super().__init__()
         self.gamma = gamma
-        self.weight = weight
-        self.reduction = reduction
+        self.alpha = alpha
 
-    def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        ce_loss = F.cross_entropy(inputs, targets, weight=self.weight, reduction="none")
-        pt = torch.exp(-ce_loss)
-        focal_loss = (1 - pt) ** self.gamma * ce_loss
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            logits: Raw model output, shape (B,).
+            targets: Binary float labels, shape (B,). Must be float.
+        """
+        targets = targets.float()
+        bce = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")
+        probs = torch.sigmoid(logits)
+        pt = torch.where(targets == 1, probs, 1 - probs)
+        alpha_t = torch.where(targets == 1,
+                              torch.full_like(pt, self.alpha),
+                              torch.full_like(pt, 1 - self.alpha))
+        focal_loss = alpha_t * (1 - pt) ** self.gamma * bce
+        return focal_loss.mean()
 
-        if self.reduction == "mean":
-            return focal_loss.mean()
-        elif self.reduction == "sum":
-            return focal_loss.sum()
-        return focal_loss
 
-
-def build_loss(cfg, class_weights: torch.Tensor | None = None) -> nn.Module:
+def build_loss(cfg) -> nn.Module:
     """
-    Build loss function from config.
+    Build the hard-label loss function from config.
 
-    Supported: cross_entropy, focal, label_smoothing
+    Supported: focal_loss, bce
     """
     loss_cfg = cfg.training.loss
     name = loss_cfg.name
-    use_weights = loss_cfg.get("use_class_weights", True)
-    weight = class_weights if use_weights and class_weights is not None else None
 
-    if name == "cross_entropy":
-        smoothing = loss_cfg.get("label_smoothing", 0.0)
-        return nn.CrossEntropyLoss(weight=weight, label_smoothing=smoothing)
-
-    elif name == "focal":
-        gamma = loss_cfg.get("gamma", 2.0)
-        return FocalLoss(gamma=gamma, weight=weight)
-
+    if name == "focal_loss":
+        return BinaryFocalLoss(
+            gamma=loss_cfg.get("gamma", 2.0),
+            alpha=loss_cfg.get("alpha", 0.25),
+        )
+    elif name == "bce":
+        return nn.BCEWithLogitsLoss()
     else:
-        raise ValueError(f"Unknown loss '{name}'. Supported: cross_entropy, focal")
+        raise ValueError(f"Unknown loss '{name}'. Supported: focal_loss, bce")

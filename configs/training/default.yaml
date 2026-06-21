@@ -1,23 +1,25 @@
+# Teacher training config
 epochs: 50
 batch_size: 32
 grad_clip: 1.0
 
 optimizer:
   name: adamw
-  lr: 1.0e-4
+  lr_backbone: 1.0e-4    # lower LR for pretrained backbone
+  lr_head: 1.0e-3        # higher LR for new classification head
   weight_decay: 1.0e-4
   betas: [0.9, 0.999]
 
 scheduler:
   name: cosine
-  T_max: 50      # matches epochs
+  T_max: 50
   eta_min: 1.0e-6
-  warmup_epochs: 5
+  warmup_epochs: 3
 
 loss:
-  name: cross_entropy
-  label_smoothing: 0.1
-  use_class_weights: true
+  name: focal_loss
+  gamma: 2.0
+  alpha: 0.25    # prior probability of malignant class
 
 callbacks:
   early_stopping:
@@ -27,6 +29,6 @@ callbacks:
     mode: min
   checkpoint:
     enabled: true
-    monitor: val_auc
+    monitor: val_pauc_at_tpr80
     mode: max
     save_last: true

@@ -1,0 +1,11 @@
+name: efficientnetv2_m
+role: teacher
+paradigm: compound_scaling
+backbone: tf_efficientnetv2_m.in21k_ft_in1k
+pretrained: true
+num_classes: 1    # binary sigmoid output
+
+head:
+  dropout: 0.3
+
+freeze_backbone: false

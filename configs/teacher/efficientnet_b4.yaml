@@ -1,0 +1,10 @@
+name: efficientnet_b4
+role: teacher
+backbone: efficientnet_b4
+pretrained: true
+num_classes: 1    # binary sigmoid output
+
+head:
+  dropout: 0.3
+
+freeze_backbone: false

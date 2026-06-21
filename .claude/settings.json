@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(awk:*)",
+      "Bash(sed:*)",
+      "Bash(tree:*)",
+      "Bash(file:*)",
+      "Bash(stat:*)",
+      "Bash(which:*)",
+      "Bash(echo:*)",
+      "Bash(pwd)",
+      "Bash(env)",
+      "Bash(hostname)",
+      "Bash(whoami)",
+      "Bash(date)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote:*)",
+      "Bash(git config --get:*)",
+      "Bash(git stash list)",
+      "Bash(git fetch:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(python -c:*)",
+      "Bash(python --version)",
+      "Bash(python3 -c:*)",
+      "Bash(python3 --version)",
+      "Bash(python3 -m py_compile:*)",
+      "Bash(pip list:*)",
+      "Bash(pip show:*)",
+      "Bash(pytest --collect-only:*)",
+      "Bash(pytest --version)",
+      "Bash(make help)",
+      "Bash(make lint)",
+      "Bash(make format)",
+      "Bash(make test)",
+      "Bash(make clean)",
+      "Bash(squeue:*)",
+      "Bash(sacct:*)",
+      "Bash(scontrol show:*)",
+      "Bash(mlflow ui:*)",
+      "Bash(nvidia-smi:*)",
+      "Bash(bash -n:*)",
+      "Bash(chmod +x:*)",
+      "Bash(mkdir -p:*)",
+      "Bash(kaggle competitions list:*)",
+      "Bash(kaggle competitions files:*)",
+      "Bash(kaggle datasets list:*)",
+      "Bash(kaggle datasets files:*)",
+      "Bash(kaggle --version)",
+      "Bash(df -h:*)"
+    ],
+    "ask": [
+      "Bash(pip install:*)",
+      "Bash(make install:*)",
+      "Bash(make install-dev)",
+      "Bash(make prepare:*)",
+      "Bash(make train-:*)",
+      "Bash(make poc-:*)",
+      "Bash(python scripts/:*)",
+      "Bash(sbatch:*)",
+      "Bash(scancel:*)",
+      "Bash(bash slurm/:*)",
+      "Bash(kaggle competitions download:*)",
+      "Bash(kaggle datasets download:*)",
+      "Bash(unzip:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)",
+      "Bash(git reset:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -f:*)",
+      "Bash(git commit --amend:*)",
+      "Read(./.env)",
+      "Read(./**/credentials.json)"
+    ]
+  },
+  "env": {
+    "PYTHONDONTWRITEBYTECODE": "1"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -z \"$f\" ] && exit 0; rel=${f#*/skin-cancer-detector/}; case \"$rel\" in src/data/*|scripts/prepare_data.py) skill=review-preprocessing ;; src/training/*|src/models/*|scripts/train_teacher.py|scripts/train_student.py) skill=review-training ;; slurm/*|docs/SLURM*) skill=review-slurm ;; *) exit 0 ;; esac; case \"$rel\" in src/*|configs/*|slurm/*) vp=\" Then run validate-pipeline (static checks) before concluding.\" ;; *) vp=\"\" ;; esac; msg=\"[modification-workflow] You edited ${rel}. Before finishing this task: (1) run the ${skill} skill to review the change; (2) update any affected slurm script AND its docs; (3) keep CLAUDE.md / docs / memory current.${vp}\"; jq -cn --arg m \"$msg\" '{hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:$m},suppressOutput:true}'",
+            "statusMessage": "Routing modification-workflow review reminder"
+          }
+        ]
+      }
+    ]
+  }
+}

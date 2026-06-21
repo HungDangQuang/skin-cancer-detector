@@ -1,0 +1,11 @@
+name: efficientformerv2_s2
+role: student
+paradigm: hybrid_cnn_transformer
+backbone: efficientformerv2_s2.snap_dist_in1k
+pretrained: true
+num_classes: 1    # binary sigmoid output
+
+head:
+  dropout: 0.1
+
+freeze_backbone: false
