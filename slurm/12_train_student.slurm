@@ -36,14 +36,14 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
-#SBATCH --gres=mps:l40:4
+#SBATCH --gres=gpu:l40:1      # exclusive whole GPU — Slurm holds the job in PD until one is free, so it never shares/contends VRAM with another job (replaces mps:l40:N)
 #SBATCH --mem=16G
 #SBATCH --time=72:00:00      # 5 folds run sequentially in one job — use the cap
 
 source "${SLURM_SUBMIT_DIR:-$(pwd)}/slurm/_lib.sh"
 load_python_env
 acquire_gpu 22528      # frozen teacher (up to maxvit_base) + student + grads, batch 64
-setup_mps
+# No setup_mps: this job owns the GPU exclusively (--gres=gpu), so MPS is unneeded.
 
 STUDENT="${STUDENT:-efficientnet_b0}"
 TEACHER="${TEACHER:-efficientnet_b4}"

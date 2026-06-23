@@ -18,7 +18,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
-#SBATCH --gres=mps:2          # mps:2 generic, mps:l40:2 / mps:a100:2 specific
+#SBATCH --gres=gpu:l40:1      # exclusive whole GPU (default). Slurm queues (PD) until a GPU is free, so the job never shares/contends VRAM with another. Use mps:l40:N only for deliberately co-located small jobs.
 #SBATCH --mem=4G
 #SBATCH --time=00:30:00       # HH:MM:SS — max 72:00:00
 
@@ -26,7 +26,7 @@
 source "${SLURM_SUBMIT_DIR:-$(pwd)}/slurm/_lib.sh"
 load_python_env
 acquire_gpu 4096              # required vRAM in MB; < 44000 (L40) / < 80000 (A100)
-setup_mps
+# No setup_mps with --gres=gpu (exclusive). Add setup_mps ONLY if you switch to --gres=mps:l40:N.
 
 echo "[job] Sanity check"
 nvidia-smi || true

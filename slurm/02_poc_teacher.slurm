@@ -13,14 +13,14 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=2
-#SBATCH --gres=mps:l40:2
+#SBATCH --gres=gpu:l40:1      # exclusive whole GPU — Slurm holds the job in PD until one is free, so it never shares/contends VRAM with another job (replaces mps:l40:N)
 #SBATCH --mem=8G
 #SBATCH --time=01:00:00
 
 source "${SLURM_SUBMIT_DIR:-$(pwd)}/slurm/_lib.sh"
 load_python_env
 acquire_gpu 12288    # 12 GB: covers SOTA teachers (convnextv2/maxvit) at batch 16 @ 224
-setup_mps
+# No setup_mps: this job owns the GPU exclusively (--gres=gpu), so MPS is unneeded.
 
 TEACHER="${TEACHER:-efficientnet_b4}"
 # Extra Hydra overrides (space-separated), passed verbatim — e.g. to verify the

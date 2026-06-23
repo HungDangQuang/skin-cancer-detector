@@ -4,7 +4,7 @@ Step-by-step instructions to train the KD pipeline on `slurm.uit.edu.vn`.
 Cluster rules from `HuongDanSuDungSlurm.pdf`:
 
 - **Working dir**: `/datastore/keg/hungdang` (NOT `/home/${USER}` — 30 GB hard limit). Override with `DATASTORE_USER_DIR=...` if your account/path differs.
-- **Limits**: 20 MPS, 5 concurrent jobs, 32 vCPU, 72 h max per job
+- **Limits**: 5 concurrent jobs, 32 vCPU, 72 h max per job. (GPU jobs now take an exclusive whole GPU via `--gres=gpu:l40:1` instead of an MPS slice — see §5 Resource budget; the 20-MPS budget only applies if you deliberately switch a script back to `--gres=mps:l40:N`.)
 - **vRAM**: declared via `REQUIRED_VRAM` arg to `acquire_gpu`; < 44000 MB on L40, < 80000 MB on A100
 - **GPU dispatch**: `gpu_check.sh` returns the best free GPU; codes 10 (requeue) / 11 (fatal after 5 retries)
 
@@ -253,20 +253,24 @@ Output (default `reports/mobile_benchmark/<MODEL>.json`): `params_millions`, `fp
 
 ## 5. Resource budget
 
-| Script | mps | mem | vRAM | time | Notes |
+| Script | gres | mem | vRAM | time | Notes |
 |---|---|---|---|---|---|
 | `01_prepare_poc` | none | 4 G | — | 15 m | CPU only |
-| `02_poc_teacher` | 2 | 8 G | 12 G | 1 h | 2 epochs; `TEACHER=` (covers SOTA teachers) |
-| `03_poc_student` | 2 | 8 G | 14 G | 1 h | T+S in memory; `STUDENT=`/`TEACHER=` |
+| `02_poc_teacher` | gpu:1 (excl) | 8 G | 12 G | 1 h | 2 epochs; `TEACHER=` (covers SOTA teachers) |
+| `03_poc_student` | gpu:1 (excl) | 8 G | 14 G | 1 h | T+S in memory; `STUDENT=`/`TEACHER=` |
 | `10_prepare_data` | none | 16 G | — | 4 h | HDF5 decode |
-| `11_train_teacher` | 4 | 16 G | 20 G | 24 h | teacher (B4 / SOTA), batch 32 |
-| `12_train_student` | 4 | 16 G | 22 G | 18 h | KD, frozen teacher + student, batch 64 |
-| `13_ablation_sampler` | 4 | 16 G | 22 G | 18 h | KD student, teacher reused; per arm × 5 folds |
-| `14_ablation_pad` | 4 | 16 G | 12 G | 18 h | baseline student (no teacher); per arm × 5 folds |
-| `20_evaluate` | 1 | 8 G | 6 G | 1 h | inference |
+| `11_train_teacher` | gpu:1 (excl) | 16 G | 20 G | 24 h | teacher (B4 / SOTA), batch 32 |
+| `12_train_student` | gpu:1 (excl) | 16 G | 22 G | 18 h | KD, frozen teacher + student, batch 64 |
+| `13_ablation_sampler` | gpu:1 (excl) | 16 G | 22 G | 18 h | KD student, teacher reused; per arm × 5 folds |
+| `14_ablation_pad` | gpu:1 (excl) | 16 G | 12 G | 18 h | baseline student (no teacher); per arm × 5 folds |
+| `20_evaluate` | gpu:1 (excl) | 8 G | 6 G | 1 h | inference |
 | `21_benchmark_mobile` | none | 4 G | — | 15 m | CPU only, single-thread latency |
 
-Peak MPS at 3 students in parallel: 12 of 20 limit.
+GPU jobs request an **exclusive whole GPU** (`--gres=gpu:l40:1`), not an MPS slice:
+they queue (PD) until a GPU is free, then run alone — never contending VRAM with
+another job (MPS schedules by compute-%, ignores memory, and silently
+co-located us onto a full GPU → OOM; jobs 32550/32552/32558). Concurrency is then
+bounded by the **5-concurrent-jobs** limit, not the MPS budget.
 
 ---
 
@@ -286,7 +290,7 @@ tail -f logs/poc_teacher_<jobid>.err   # stderr
 tail -f logs/poc_teacher_<jobid>_runtime.log   # fallback (always written)
 
 # Quick interactive GPU check
-srun --gres=mps:l40:1 --time=00:05:00 --pty nvidia-smi
+srun --gres=gpu:l40:1 --time=00:05:00 --pty nvidia-smi
 ```
 
 ---
