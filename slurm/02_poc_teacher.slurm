@@ -23,7 +23,11 @@ acquire_gpu 12288    # 12 GB: covers SOTA teachers (convnextv2/maxvit) at batch 
 setup_mps
 
 TEACHER="${TEACHER:-efficientnet_b4}"
-echo "[job] POC teacher: ${TEACHER}"
+# Extra Hydra overrides (space-separated), passed verbatim — e.g. to verify the
+# maxvit fix: EXTRA="cudnn_deterministic=false training.batch_size=8".
+# Deliberately UNquoted at the call site so multiple overrides word-split.
+EXTRA="${EXTRA:-}"
+echo "[job] POC teacher: ${TEACHER} | extra='${EXTRA}'"
 
 echo "[job] GPU info"
 if command -v nvidia-smi >/dev/null 2>&1; then
@@ -34,6 +38,6 @@ else
 fi
 
 echo "[job] Training POC teacher"
-python scripts/train_teacher.py --config-name config_poc "teacher=${TEACHER}"
+python scripts/train_teacher.py --config-name config_poc "teacher=${TEACHER}" ${EXTRA}
 
 echo "[job] DONE"

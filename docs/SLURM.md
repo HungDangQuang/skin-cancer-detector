@@ -181,9 +181,14 @@ reproduce the original behavior, so existing runs are unchanged):
 - `DROP_PATH=<float>` (default `0.0`) → stochastic depth on the student (script 12)
   or teacher (script 11). Recommended student ~0.1, teacher/ViT ~0.2. Verify the
   backbone accepts the kwarg on the cluster first.
+- `EXTRA="<hydra overrides>"` (default empty) → space-separated Hydra overrides
+  forwarded verbatim (word-split at the call site — pass as one quoted arg). For
+  `maxvit_base`'s cuDNN backward error: `EXTRA="cudnn_deterministic=false training.batch_size=16"`.
+  Also on the POC scripts `02`/`03`.
 ```bash
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large AUG=heavy DROP_PATH=0.1
 bash slurm/submit.sh slurm/11_train_teacher.slurm  TEACHER=convnextv2_base   AUG=heavy DROP_PATH=0.2
+bash slurm/submit.sh slurm/11_train_teacher.slurm  TEACHER=maxvit_base EXTRA="cudnn_deterministic=false training.batch_size=16"
 ```
 Each fold also writes `val_metrics.json` (best-epoch val metrics) → compute the
 **val − test** gap (esp. AUPRC/pAUC) as the overfitting signal.

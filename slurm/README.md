@@ -266,6 +266,15 @@ bash slurm/submit.sh slurm/11_train_teacher.slurm \
     TEACHER=convnextv2_base AUG=heavy DROP_PATH=0.2
 ```
 
+**`EXTRA=` passthrough** (`11/12/02/03`) — space-separated Hydra overrides
+forwarded verbatim (word-split at the call site; pass as **one quoted** arg). Use
+it for `maxvit_base`'s cuDNN backward error (see CLAUDE.md gotcha):
+
+```bash
+bash slurm/submit.sh slurm/11_train_teacher.slurm \
+    TEACHER=maxvit_base EXTRA="cudnn_deterministic=false training.batch_size=16"
+```
+
 Both default to `AUG=light` + `DROP_PATH=0.0` (original behavior), so existing
 runs are unchanged unless you pass these. `DROP_PATH` maps to the student's
 (script 12) or teacher's (script 11) `drop_path_rate`; verify the backbone

@@ -29,7 +29,11 @@ setup_mps
 
 STUDENT="${STUDENT:-efficientnet_b0}"
 TEACHER="${TEACHER:-efficientnet_b4}"
-echo "[job] POC KD: ${TEACHER} -> ${STUDENT}"
+# Extra Hydra overrides (space-separated), passed verbatim — e.g. with a maxvit
+# teacher: EXTRA="cudnn_deterministic=false".
+# Deliberately UNquoted at the call site so multiple overrides word-split.
+EXTRA="${EXTRA:-}"
+echo "[job] POC KD: ${TEACHER} -> ${STUDENT} | extra='${EXTRA}'"
 if command -v nvidia-smi >/dev/null 2>&1; then
     nvidia-smi
 else
@@ -37,6 +41,6 @@ else
     python -c "import torch; print('cuda available:', torch.cuda.is_available(), '| devices:', torch.cuda.device_count(), '| name:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'n/a')"
 fi
 
-python scripts/train_student.py --config-name config_poc student="${STUDENT}" "teacher=${TEACHER}"
+python scripts/train_student.py --config-name config_poc student="${STUDENT}" "teacher=${TEACHER}" ${EXTRA}
 
 echo "[job] DONE"

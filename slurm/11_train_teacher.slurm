@@ -43,11 +43,15 @@ FOLDS="${FOLDS:-0 1 2 3 4}"
 #   AUG=heavy DROP_PATH=0.2   → stronger aug + stochastic depth on the teacher.
 AUG="${AUG:-light}"
 DROP_PATH="${DROP_PATH:-0.0}"
-echo "[job] Training teacher (full) | teacher ${TEACHER} | folds ${FOLDS} | aug=${AUG} drop_path=${DROP_PATH}"
+# Extra Hydra overrides (space-separated), passed verbatim — e.g. for maxvit_base:
+#   EXTRA="cudnn_deterministic=false training.batch_size=16"
+# Deliberately UNquoted at the call site so multiple overrides word-split.
+EXTRA="${EXTRA:-}"
+echo "[job] Training teacher (full) | teacher ${TEACHER} | folds ${FOLDS} | aug=${AUG} drop_path=${DROP_PATH} | extra='${EXTRA}'"
 nvidia-smi || true
 for FOLD in ${FOLDS}; do
     echo "[job] === teacher ${TEACHER} | fold ${FOLD} (start $(date '+%F %T')) ==="
-    python scripts/train_teacher.py "teacher=${TEACHER}" "data.fold=${FOLD}" "augmentation=${AUG}" "teacher.drop_path_rate=${DROP_PATH}"
+    python scripts/train_teacher.py "teacher=${TEACHER}" "data.fold=${FOLD}" "augmentation=${AUG}" "teacher.drop_path_rate=${DROP_PATH}" ${EXTRA}
 done
 
 echo "[job] DONE"
