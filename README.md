@@ -65,6 +65,9 @@ python scripts/predict.py  --model-name mobilenetv3_large --checkpoint path/to/b
 python scripts/export_model.py --model-name mobilenetv3_large \
     --checkpoint path/to/best_model.pth --format onnx --output exports/skin_mnv3
 
+# Compare ALL runs: did KD help + best teacher→student pair (reads experiments/runs/*/fold_*/test_metrics.json)
+python scripts/compare_kd_results.py     # → reports/comparison/kd_comparison.{md,json}
+
 # Tests + code quality
 make test
 make lint     # flake8 + isort + black (check)
