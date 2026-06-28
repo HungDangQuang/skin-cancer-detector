@@ -42,6 +42,9 @@ user's work. If resources are exhausted the job goes `PD` (pending) and **waits*
 - [ ] **MPS pipe dir is per-job-unique**: any `CUDA_MPS_PIPE_DIRECTORY=` includes
   `${SLURM_JOB_ID:-…}`/`$$` — never a bare shared `/tmp/nvidia-mps` (would
   collide with the system MPS daemon / other jobs).
+- [ ] **GPU scripts request `--gres=mps:l40:N`, never `--gres=gpu`** — QOS `uit`
+  caps `gres/gpu=0` per user, so a whole-GPU request sits `PD` forever
+  (`QOSMaxGRESPerUser`). `validate-pipeline §3h` greps for this.
 
 (These mirror `validate-pipeline §3f/§3g` and `submit-slurm`'s authoring table —
 if any are present, stop and flag before any other comment.)
@@ -74,10 +77,13 @@ Every script sources `slurm/_lib.sh`, which sets `set -euo pipefail`.
 - [ ] Relative paths assume `$SLURM_SUBMIT_DIR` (`:-` guarded) or an explicit cd
   to the repo root, not the node's cwd.
 
-## D. Array & dependency logic
-- [ ] Array jobs (`#SBATCH --array=0-4%2`) forward `SLURM_ARRAY_TASK_ID` to the
-  payload (e.g. `data.fold=${SLURM_ARRAY_TASK_ID:-0}`); the `%2` concurrency cap
-  stays ≤ the 5-job shared-account limit.
+## D. Fold loop & dependency logic
+- [ ] **5-fold CV is ONE job that loops folds internally** (`for FOLD in
+  ${FOLDS:-0 1 2 3 4}`), NOT a Slurm array — so one model = one job = one of the 5
+  concurrency slots (see `11/12_train_*.slurm`). A heavy model is split across two
+  jobs with `FOLDS="0 1 2"` + `FOLDS="3 4"`, not with `--array`. (Legacy
+  `#SBATCH --array=0-4%2` is no longer used here; if you ever reintroduce an array,
+  forward `SLURM_ARRAY_TASK_ID` to `data.fold` and keep `%N` ≤ the 5-job cap.)
 - [ ] Student job doesn't assume the teacher checkpoint exists without checking
   (`test -s …/best_model.pth`) — order dependency, not a silent random-weight run.
 - [ ] Aggregation/eval jobs read the fold-scoped run-dir convention

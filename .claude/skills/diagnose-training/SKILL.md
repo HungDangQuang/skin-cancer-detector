@@ -1,6 +1,6 @@
 ---
 name: diagnose-training
-description: Diagnose a training run that finished, failed, or is misbehaving. Use when the user asks "why isn't training improving", "training looks weird", "diagnose this run", "is this checkpoint any good", or shares a log/checkpoint path and wants analysis.
+description: Triage a training run that crashed, NaN'd, stalled, or never started learning, and recommend a fix. Use when the user says "diagnose this run", "why did it fail/crash", "training looks broken/weird", "loss is NaN", "why isn't it learning", or shares a log from a job that went wrong. NOT for scoring a *successful* run (use assess-training) and NOT for a verdict on an eval JSON / checkpoint quality (use analyze-evaluation).
 ---
 
 # diagnose-training

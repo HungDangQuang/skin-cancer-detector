@@ -121,6 +121,19 @@ if [ -n "${BAD}" ]; then
 else
     echo "  (clean — MPS pipe dirs are per-job)"
 fi
+
+echo "--- h) GPU scripts must request --gres=mps, never --gres=gpu ---"
+# QOS 'uit' caps gres/gpu=0 per user → any whole-GPU request sits PD forever
+# (QOSMaxGRESPerUser). Every GPU job must use --gres=mps:l40:N. Keep #SBATCH
+# directives; skip bash-comment lines (post-':NN:' '#' followed by non-'S').
+BADGRES=$(grep -nE '#SBATCH[[:space:]]+--gres=gpu' slurm/*.slurm 2>/dev/null \
+          | grep -vE ':[0-9]+:[[:space:]]*#[^S]')
+if [ -n "${BADGRES}" ]; then
+    echo "  FAIL: --gres=gpu requested (use --gres=mps:l40:N instead):"
+    echo "${BADGRES}"
+else
+    echo "  (clean — GPU scripts use --gres=mps)"
+fi
 ```
 
 A clean run is silent except for the `(clean)` markers. Anything else is a finding to fix.
@@ -128,7 +141,7 @@ A clean run is silent except for the `(clean)` markers. Anything else is a findi
 ## 4. Code anti-patterns to look for (manual + grep, in diffs)
 
 ```bash
-echo "--- h) np.trapz removed in NumPy 2.0 — use np.trapezoid ---"
+echo "--- i) np.trapz removed in NumPy 2.0 — use np.trapezoid ---"
 # Skip comment lines so the explanatory comment in metrics.py doesn't false-positive.
 FOUND=$(grep -nE '\bnp\.trapz\b|\bnumpy\.trapz\b' src/ scripts/ -r 2>/dev/null \
         | grep -vE ':[0-9]+:[[:space:]]*#')
@@ -138,7 +151,7 @@ else
     echo "  (clean — no np.trapz in code)"
 fi
 
-echo "--- i) timm .num_features used directly instead of infer_backbone_out_dim ---"
+echo "--- j) timm .num_features used directly instead of infer_backbone_out_dim ---"
 # MobileNetV3 reports num_features=960 but forward() emits 1280. Always prefer
 # infer_backbone_out_dim(backbone) in src/models/heads.py.
 FOUND=$(grep -nE 'self\.backbone\.num_features|backbone\.num_features' src/models/ -r 2>/dev/null \
@@ -149,7 +162,7 @@ else
     echo "  (clean — using infer_backbone_out_dim)"
 fi
 
-echo "--- j) Trainer history keys declared but never appended in fit() ---"
+echo "--- k) Trainer history keys declared but never appended in fit() ---"
 # Trainer historically declared val_pauc but never appended → matplotlib crash
 # in plot_training_curves. Each key in `self.history = {...}` must show up
 # with `.append(` in the same file. Use `while read` for portable word-splitting
@@ -206,6 +219,8 @@ config_poc   ok | teacher=efficientnet_b4 student=efficientnet_b0
   (clean — no scancel/kill/reset/preempt)
 --- g) MPS pipe dir per-job ---
   (clean — MPS pipe dirs are per-job)
+--- h) GPU scripts use --gres=mps not --gres=gpu ---
+  (clean — GPU scripts use --gres=mps)
 ```
 
-If all seven sections pass, submit with confidence. If any fail, fix locally and re-run — don't rely on the cluster to surface the bug. Sections **(f)** and **(g)** are especially important: they enforce the shared-cluster rule that no script may kill or preempt other users' work.
+If all eight sections pass, submit with confidence. If any fail, fix locally and re-run — don't rely on the cluster to surface the bug. Sections **(f)** and **(g)** are especially important: they enforce the shared-cluster rule that no script may kill or preempt other users' work.

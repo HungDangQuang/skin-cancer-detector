@@ -41,6 +41,10 @@ The UIT cluster is shared across many users. **Any new `slurm/*.slurm` script yo
 | Manipulating the system-wide MPS daemon (anything that touches `/tmp/nvidia-mps` without a job-specific suffix) | All jobs on the node share that daemon. |
 | Custom `trap` handlers that `kill -- -$$` or `kill -9` parent processes | Risk of broader signal propagation than intended. |
 
+### Required for any GPU-using script
+
+- **Request `--gres=mps:l40:N` (e.g. `mps:l40:4`), NEVER `--gres=gpu`.** QOS `uit` caps `gres/gpu=0` per user, so any whole-GPU request sits in `PD` forever with `Reason=QOSMaxGRESPerUser` even while you hold 0 GPUs. `mps:l40:4` keeps the 5-concurrent-job model (20-unit MPS budget ÷ 4). Always pair it with `setup_mps` from `_lib.sh`. (See `docs/GOTCHAS.md` "QOS caps gres/gpu=0".)
+
 ### What to do instead when resources are scarce
 
 - Just submit normally via `bash slurm/submit.sh slurm/<script>.slurm`. Slurm puts the job in **`PD` (pending)** state and runs it as soon as resources are free.
@@ -95,6 +99,6 @@ tail -f logs/<jobname>_<jobid>_runtime.log    # fallback tee log (always written
 ## Important context
 
 - **Workflow:** preflight → submit → monitor. Skip preflight only if it's been run successfully recently.
-- **Working dir:** must be `/datastore/${USER}/skin-cancer-detector`. Never put data or runs under `/home/${USER}` (30 GB cap).
+- **Working dir:** the repo on the cluster, e.g. `/datastore/keg/hungdang/skin-cancer-detector` (the `DATASTORE_USER_DIR` default). **Not** `/datastore/${USER}/...` — `${USER}` is the shared `keg` account, so that resolves to a shared path rather than your per-person dir. Never put data or runs under `/home/${USER}` (30 GB cap).
 - **Resource limits:** 20 MPS, 5 concurrent jobs, 32 vCPU cores, 72 h max per job. vRAM ≤44 GB on L40, ≤80 GB on A100.
 - **Two log paths per job:** SBATCH-redirected `logs/<job>_<id>.out` AND the script's own `logs/<job>_<id>_runtime.log` written via `tee` in `slurm/_lib.sh`. Always check both if output looks missing.

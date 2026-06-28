@@ -1,6 +1,6 @@
 ---
 name: add-model
-description: Add a new model architecture to the project. Use when the user asks to "add a new model", "support <arch>", "add ResNet/ViT/etc as student", or wants to extend MODEL_REGISTRY.
+description: Add a new model architecture to the project. Use when the user asks to "add a new model", "support <arch>", "add ResNet/ViT/etc as student", or wants to extend MODEL_REGISTRY. NOT for reviewing model code you already changed (use review-training).
 ---
 
 # add-model
