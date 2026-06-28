@@ -28,6 +28,7 @@ Cluster rules from `HuongDanSuDungSlurm.pdf`:
 | `14_ablation_pad.slurm` | Ablation B — `ARM=isic_only\|isic_pad` (baseline, identical test) | sbatch |
 | `20_evaluate.slurm` | Evaluate any checkpoint | sbatch |
 | `21_benchmark_mobile.slurm` | Mobile deployability: params + FP32 size + CPU latency (CPU only) | sbatch |
+| `23_export_model.slurm` | Export a checkpoint to ONNX / TorchScript (CPU only) | sbatch |
 | `_template.slurm` | Copy-and-customize starting point | reference |
 
 **Key invariant**: every `*.slurm` script begins with `source "${SLURM_SUBMIT_DIR}/slurm/_lib.sh"`. The library handles `set -euo pipefail`, `mkdir -p logs`, **fallback `tee` log** at `logs/<job>_<jobid>_runtime.log` (so output survives even if SBATCH redirect fails), diagnostic header, and helper functions `load_python_env`, `acquire_gpu`, `setup_mps`.
@@ -249,6 +250,17 @@ bash slurm/submit.sh slurm/21_benchmark_mobile.slurm \
 
 Output (default `reports/mobile_benchmark/<MODEL>.json`): `params_millions`, `fp32_size_mb`, `cpu_latency_ms_median`, `cpu_latency_ms_p90`, `image_size`. INT8/TFLite quantization is de-scoped — FP32 backbones run as-is.
 
+### Export for deployment (ONNX / TorchScript)
+
+```bash
+bash slurm/submit.sh slurm/23_export_model.slurm \
+    MODEL=mobilenetv3_large \
+    CKPT=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth
+# Optional: FORMAT=torchscript (default onnx), OUT=exports/<name>, CONFIG=<path>
+```
+
+CPU-only (no `--gres`). Produces `exports/<name>.onnx` (or `.pt`); `CONFIG` defaults to the run's saved `config.yaml` so the ONNX dummy input uses the trained `image_size`. The model emits one raw logit → apply `sigmoid()` then the **Youden threshold from that fold's `test_metrics.json`** (not 0.5). Export the **student**, not the teacher. Research/thesis model, not a validated medical device.
+
 ---
 
 ## 5. Resource budget
@@ -265,6 +277,7 @@ Output (default `reports/mobile_benchmark/<MODEL>.json`): `params_millions`, `fp
 | `14_ablation_pad` | 4 | 16 G | 12 G | 18 h | baseline student (no teacher); per arm × 5 folds |
 | `20_evaluate` | 1 | 8 G | 6 G | 1 h | inference |
 | `21_benchmark_mobile` | none | 4 G | — | 15 m | CPU only, single-thread latency |
+| `23_export_model` | none | 8 G | — | 20 m | CPU only, ONNX/TorchScript export |
 
 Peak MPS at 3 students in parallel: 12 of 20 limit.
 

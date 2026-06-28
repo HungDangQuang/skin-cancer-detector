@@ -21,6 +21,7 @@ Step-by-step to run the project on the UIT cluster. For deeper background see [`
 | `14_ablation_pad.slurm` | Data-strategy ablation B — `ARM=isic_only\|isic_pad` (baseline, identical test) | sbatch |
 | `20_evaluate.slurm` | Evaluate any checkpoint | sbatch |
 | `21_benchmark_mobile.slurm` | Mobile deployability: params + FP32 size + CPU latency (CPU only) | sbatch |
+| `23_export_model.slurm` | Export a checkpoint to ONNX / TorchScript for deployment (CPU only) | sbatch |
 
 **Working dir on cluster:** `/datastore/keg/hungdang/skin-cancer-detector`. Override with `DATASTORE_USER_DIR=...` if your account is elsewhere.
 
@@ -306,6 +307,21 @@ bash slurm/submit.sh slurm/21_benchmark_mobile.slurm \
 
 Output JSON contains `params_millions`, `fp32_size_mb`, `cpu_latency_ms_median`, `cpu_latency_ms_p90`, `image_size`. (INT8/TFLite quantization is intentionally de-scoped — backbones run FP32 as-is.)
 
+### Export a model for deployment
+
+Export a trained checkpoint to **ONNX** (default) or **TorchScript**. CPU-only — no GPU/MPS requested, so it schedules immediately:
+
+```bash
+bash slurm/submit.sh slurm/23_export_model.slurm \
+    MODEL=mobilenetv3_large \
+    CKPT=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth
+# Optional: FORMAT=torchscript  OUT=exports/skin_mnv3  CONFIG=<path>
+# Default OUT=exports/<MODEL>; CONFIG defaults to the run's saved config.yaml
+# (next to the checkpoint) so the ONNX dummy uses the trained image_size.
+```
+
+Produces `exports/<name>.onnx` (or `.pt`). Download it and run with `onnxruntime` anywhere — **no torch needed at inference for ONNX**. The model emits a single raw logit: apply `sigmoid()` then compare against the **Youden threshold from that fold's `test_metrics.json`** (not 0.5). Export the **student** (deployment target), not the teacher. This is a research/thesis model — not a validated medical device.
+
 ---
 
 ## 6. Tracking a job
@@ -396,6 +412,7 @@ Until UIT admin fixes that typo, every job's log starts with:
 | `12_train_student` | 4 | 16 G | 22 G | 18 h | KD, frozen teacher + student, batch 64 |
 | `20_evaluate` | 1 | 8 G | 6 G | 1 h | Inference |
 | `21_benchmark_mobile` | 1 | 4 G | — | 15 m | CPU only, single-thread latency |
+| `23_export_model` | none | 8 G | — | 20 m | CPU only, ONNX/TorchScript export |
 
 Cluster ceilings: 20 MPS, 5 concurrent jobs, 32 vCPU, 72 h max per job. vRAM ≤44 G on L40, ≤80 G on A100.
 
