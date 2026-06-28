@@ -1,6 +1,6 @@
 ---
 name: kd-experiment
-description: Set up and run a controlled KD-vs-baseline comparison for one student architecture. Use when the user asks to "compare KD effect", "run controlled experiment", "train with and without KD", or wants to compute KD effectiveness delta for a specific student.
+description: Set up and run a controlled KD-vs-baseline comparison for one student architecture. Use when the user asks to "compare KD effect", "run controlled experiment", "train with and without KD", or wants to compute KD effectiveness delta for a specific student. NOT for comparing results that already exist across all runs (use compare-kd) and NOT for a single eval JSON (use analyze-evaluation).
 ---
 
 # kd-experiment
