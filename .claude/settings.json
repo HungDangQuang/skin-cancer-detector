@@ -66,7 +66,8 @@
       "Bash(df -h:*)",
       "Edit(/.claude/skills/analyze-evaluation/**)",
       "mcp__claude_ai_Google_Drive__read_file_content",
-      "mcp__claude_ai_Google_Drive__create_file"
+      "mcp__claude_ai_Google_Drive__create_file",
+      "Edit(/.claude/skills/kd-experiment/**)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
@@ -103,6 +104,18 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); [ -z \"$cmd\" ] && exit 0; printf '%s' \"$cmd\" | grep -Eq 'pytest[[:space:]]+(--collect-only|--version)' && exit 0; if printf '%s' \"$cmd\" | grep -Eq '(^|[^[:alnum:]_])(pip[0-9]*|python[0-9]*[[:space:]]+-m[[:space:]]+pip)[[:space:]]+install|make[[:space:]]+(install-dev|install)([[:space:]]|$)|(^|[^[:alnum:]_])pytest([[:space:]]|$)|python[0-9]*[[:space:]]+[^|]*scripts/(train_teacher|train_student|evaluate|prepare_data|predict|export_model)\\.py'; then echo \"[local-python-guard] Blocked: this project does not run Python/pip on the Mac (local env != runtime). Run training/eval/data on the UIT cluster via the submit-slurm skill (bash slurm/submit.sh ...); use validate-pipeline for local static checks. See CLAUDE.md 'Local environment != runtime environment'.\" >&2; exit 2; fi; exit 0",
+            "statusMessage": "Guarding against local Python/pip execution"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit",
