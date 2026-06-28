@@ -379,29 +379,25 @@ Until UIT admin fixes that typo, every job's log starts with:
 | `Teacher checkpoint not found: ...` from student job | Re-run `02_poc_teacher.slurm` (or `11_train_teacher.slurm`) and wait for `[job] DONE` before submitting the student. |
 | `UserWarning: ... NVIDIA driver ... too old` + training falls back to CPU | Reinstall torch with the matching CUDA build (see §1 — `cu121` works for driver 12.8). |
 | `squeue -u keg` doesn't show my job | `keg` is a shared lab account. Use `squeue -u keg --name=<jobname>` or `sacct -u keg --starttime=$(date -d "1 hour ago" '+%H:%M:%S')`. |
-| `CUDA_OUT_OF_MEMORY` early in training | GPU 0 was the fallback default and is full. Re-submit — `acquire_gpu` will pick a freer GPU on the next attempt; or wait for cluster to drain. |
+| `CUDA_OUT_OF_MEMORY` early in training | The Slurm `gres/mps`-pinned GPU was full (MPS schedules by compute-%, ignores VRAM). `acquire_gpu` now re-checks the pinned GPU's free VRAM and **hops to a freer GPU within the same job**, so this should self-heal; if it still OOMs, every GPU is genuinely full — wait for the cluster to drain (do **not** switch to `--gres=gpu`: QOS `uit` caps `gres/gpu=0`, the job would sit `PD` with `QOSMaxGRESPerUser` forever). |
 | `No space left on device` during preprocessing | `df -h /datastore/keg/hungdang/`. Remove the raw zip (`isic-2024-challenge.zip`) and the redundant `train-image/` JPG folder (HDF5 is what we read). |
 
 ---
 
 ## 9. Resource budget per script
 
-| Script | gres | mem | vRAM | time | Notes |
+| Script | mps | mem | vRAM | time | Notes |
 |---|---|---|---|---|---|
 | `01_prepare_poc` | none | 4 G | — | 15 m | CPU only |
-| `02_poc_teacher` | gpu:1 (excl) | 8 G | 12 G | 1 h | 2 epochs; `TEACHER=` (covers SOTA teachers) |
-| `03_poc_student` | gpu:1 (excl) | 8 G | 14 G | 1 h | Teacher + student in memory; `STUDENT=`/`TEACHER=` |
+| `02_poc_teacher` | 2 | 8 G | 12 G | 1 h | 2 epochs; `TEACHER=` (covers SOTA teachers) |
+| `03_poc_student` | 2 | 8 G | 14 G | 1 h | Teacher + student in memory; `STUDENT=`/`TEACHER=` |
 | `10_prepare_data` | none | 16 G | — | 4 h | HDF5 decode (idempotent across re-runs) |
-| `11_train_teacher` | gpu:1 (excl) | 16 G | 20 G | 24 h | teacher (B4 / SOTA), batch 32 |
-| `12_train_student` | gpu:1 (excl) | 16 G | 22 G | 18 h | KD, frozen teacher + student, batch 64 |
-| `20_evaluate` | gpu:1 (excl) | 8 G | 6 G | 1 h | Inference |
-| `21_benchmark_mobile` | none | 4 G | — | 15 m | CPU only, single-thread latency |
+| `11_train_teacher` | 4 | 16 G | 20 G | 24 h | teacher (B4 / SOTA), batch 32 |
+| `12_train_student` | 4 | 16 G | 22 G | 18 h | KD, frozen teacher + student, batch 64 |
+| `20_evaluate` | 1 | 8 G | 6 G | 1 h | Inference |
+| `21_benchmark_mobile` | 1 | 4 G | — | 15 m | CPU only, single-thread latency |
 
-GPU jobs request an **exclusive whole GPU** (`--gres=gpu:l40:1`), not an MPS slice
-— they queue (PD) until a GPU is free and run alone, never contending VRAM with
-another job (MPS ignores memory and silently co-located us onto a full GPU → OOM).
-Cluster ceilings: 5 concurrent jobs, 32 vCPU, 72 h max per job. vRAM ≤44 G on L40,
-≤80 G on A100. (The 20-MPS budget only applies if a script is switched back to `--gres=mps:l40:N`.)
+Cluster ceilings: 20 MPS, 5 concurrent jobs, 32 vCPU, 72 h max per job. vRAM ≤44 G on L40, ≤80 G on A100.
 
 ---
 

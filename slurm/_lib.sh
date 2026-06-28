@@ -115,10 +115,27 @@ acquire_gpu() {
         echo "[lib] gpu_check.sh exited ${exit_code} — falling through to nvidia-smi"
     fi
 
-    # If Slurm pre-set CUDA_VISIBLE_DEVICES via --gres, honor it as-is.
+    # Slurm pins CUDA_VISIBLE_DEVICES via --gres=mps, but the gres/mps plugin
+    # schedules by compute-% and IGNORES GPU memory, so the pinned GPU may already
+    # be full of another user's job (this OOM'd jobs 32552/32558 at the first CUDA
+    # alloc). Don't trust the pin blindly: verify free VRAM on it, and if it's too
+    # full, fall through to the nvidia-smi selection below to hop to a freer GPU.
+    # (The QOS `uit` caps gres/gpu=0, so requesting a whole exclusive GPU is not an
+    #  option on this cluster — MPS + runtime re-selection is the only safe path.)
     if [ -n "${CUDA_VISIBLE_DEVICES:-}" ]; then
-        echo "[lib] CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} (set by Slurm — using as-is)"
-        return 0
+        local pinned="${CUDA_VISIBLE_DEVICES%%,*}" pinned_free=""
+        if [ -n "$(command -v nvidia-smi 2>/dev/null || true)" ]; then
+            pinned_free=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits \
+                            -i "${pinned}" 2>/dev/null | head -1 | tr -dc '0-9' || true)
+        fi
+        if [ -n "${pinned_free}" ] && [ "${pinned_free}" -ge "${required_vram}" ] 2>/dev/null; then
+            echo "[lib] CUDA_VISIBLE_DEVICES=${pinned} (Slurm-pinned; ${pinned_free} MB free >= ${required_vram} MB — keeping)"
+            return 0
+        fi
+        echo "[lib] WARN: Slurm-pinned GPU ${pinned} has ${pinned_free:-unknown} MB free < ${required_vram} MB needed"
+        echo "[lib] Re-selecting a GPU with enough free VRAM (MPS ignores memory — this is the 32552/32558 OOM guard)..."
+        unset CUDA_VISIBLE_DEVICES
+        # fall through to the nvidia-smi selection below
     fi
 
     # nvidia-smi-driven GPU selection.
