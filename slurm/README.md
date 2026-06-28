@@ -21,6 +21,7 @@ Step-by-step to run the project on the UIT cluster. For deeper background see [`
 | `14_ablation_pad.slurm` | Data-strategy ablation B — `ARM=isic_only\|isic_pad` (baseline, identical test) | sbatch |
 | `20_evaluate.slurm` | Evaluate any checkpoint | sbatch |
 | `21_benchmark_mobile.slurm` | Mobile deployability: params + FP32 size + CPU latency (CPU only) | sbatch |
+| `23_export_model.slurm` | Export a checkpoint to ONNX / TorchScript for deployment (CPU only) | sbatch |
 
 **Working dir on cluster:** `/datastore/keg/hungdang/skin-cancer-detector`. Override with `DATASTORE_USER_DIR=...` if your account is elsewhere.
 
@@ -132,6 +133,8 @@ ls data/splits/poc/fold_0/
 
 ```bash
 bash slurm/submit.sh slurm/02_poc_teacher.slurm
+# Different teacher arch (smoke-test a SOTA teacher before a full run):
+bash slurm/submit.sh slurm/02_poc_teacher.slurm TEACHER=convnextv2_base
 # note the "Submitted batch job <jobid>" line, then:
 tail -f logs/poc_teacher_<jobid>_runtime.log
 ```
@@ -154,6 +157,8 @@ bash slurm/submit.sh slurm/03_poc_student.slurm
 # Different student arch:
 bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv3_large
 bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilevit_s
+# SOTA pair (TEACHER must match the one POC-trained in 3.2 first):
+bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv4_conv_medium TEACHER=convnextv2_base
 ```
 
 Verify:
@@ -246,7 +251,35 @@ bash slurm/submit.sh slurm/14_ablation_pad.slurm ARM=isic_pad
 ```
 
 Both write `test_metrics.json` (now incl. `auprc`, `sens_at_90spec`,
-`sens_at_95spec`) and `predictions.csv` (`y_true,y_prob,y_pred,source`) per fold.
+`sens_at_95spec`), `val_metrics.json` (best-epoch val metrics — for the
+val−test overfitting gap), and `predictions.csv` (`y_true,y_prob,y_pred,source`)
+per fold.
+
+**Anti-overfitting knobs** (`AUG`, `DROP_PATH` env vars — single-token, forwarded
+by `submit.sh`):
+
+```bash
+# Stronger augmentation + stochastic depth on a student run:
+bash slurm/submit.sh slurm/12_train_student.slurm \
+    STUDENT=mobilenetv3_large AUG=heavy DROP_PATH=0.1
+# Teacher with stochastic depth:
+bash slurm/submit.sh slurm/11_train_teacher.slurm \
+    TEACHER=convnextv2_base AUG=heavy DROP_PATH=0.2
+```
+
+**`EXTRA=` passthrough** (`11/12/02/03`) — space-separated Hydra overrides
+forwarded verbatim (word-split at the call site; pass as **one quoted** arg). Use
+it for `maxvit_base`'s cuDNN backward error (see CLAUDE.md gotcha):
+
+```bash
+bash slurm/submit.sh slurm/11_train_teacher.slurm \
+    TEACHER=maxvit_base EXTRA="cudnn_deterministic=false training.batch_size=16"
+```
+
+Both default to `AUG=light` + `DROP_PATH=0.0` (original behavior), so existing
+runs are unchanged unless you pass these. `DROP_PATH` maps to the student's
+(script 12) or teacher's (script 11) `drop_path_rate`; verify the backbone
+accepts it on the cluster before a full run.
 
 ---
 
@@ -273,6 +306,21 @@ bash slurm/submit.sh slurm/21_benchmark_mobile.slurm \
 ```
 
 Output JSON contains `params_millions`, `fp32_size_mb`, `cpu_latency_ms_median`, `cpu_latency_ms_p90`, `image_size`. (INT8/TFLite quantization is intentionally de-scoped — backbones run FP32 as-is.)
+
+### Export a model for deployment
+
+Export a trained checkpoint to **ONNX** (default) or **TorchScript**. CPU-only — no GPU/MPS requested, so it schedules immediately:
+
+```bash
+bash slurm/submit.sh slurm/23_export_model.slurm \
+    MODEL=mobilenetv3_large \
+    CKPT=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth
+# Optional: FORMAT=torchscript  OUT=exports/skin_mnv3  CONFIG=<path>
+# Default OUT=exports/<MODEL>; CONFIG defaults to the run's saved config.yaml
+# (next to the checkpoint) so the ONNX dummy uses the trained image_size.
+```
+
+Produces `exports/<name>.onnx` (or `.pt`). Download it and run with `onnxruntime` anywhere — **no torch needed at inference for ONNX**. The model emits a single raw logit: apply `sigmoid()` then compare against the **Youden threshold from that fold's `test_metrics.json`** (not 0.5). Export the **student** (deployment target), not the teacher. This is a research/thesis model — not a validated medical device.
 
 ---
 
@@ -347,7 +395,7 @@ Until UIT admin fixes that typo, every job's log starts with:
 | `Teacher checkpoint not found: ...` from student job | Re-run `02_poc_teacher.slurm` (or `11_train_teacher.slurm`) and wait for `[job] DONE` before submitting the student. |
 | `UserWarning: ... NVIDIA driver ... too old` + training falls back to CPU | Reinstall torch with the matching CUDA build (see §1 — `cu121` works for driver 12.8). |
 | `squeue -u keg` doesn't show my job | `keg` is a shared lab account. Use `squeue -u keg --name=<jobname>` or `sacct -u keg --starttime=$(date -d "1 hour ago" '+%H:%M:%S')`. |
-| `CUDA_OUT_OF_MEMORY` early in training | GPU 0 was the fallback default and is full. Re-submit — `acquire_gpu` will pick a freer GPU on the next attempt; or wait for cluster to drain. |
+| `CUDA_OUT_OF_MEMORY` early in training | The Slurm `gres/mps`-pinned GPU was full (MPS schedules by compute-%, ignores VRAM). `acquire_gpu` now re-checks the pinned GPU's free VRAM and **hops to a freer GPU within the same job**, so this should self-heal; if it still OOMs, every GPU is genuinely full — wait for the cluster to drain (do **not** switch to `--gres=gpu`: QOS `uit` caps `gres/gpu=0`, the job would sit `PD` with `QOSMaxGRESPerUser` forever). |
 | `No space left on device` during preprocessing | `df -h /datastore/keg/hungdang/`. Remove the raw zip (`isic-2024-challenge.zip`) and the redundant `train-image/` JPG folder (HDF5 is what we read). |
 
 ---
@@ -357,13 +405,14 @@ Until UIT admin fixes that typo, every job's log starts with:
 | Script | mps | mem | vRAM | time | Notes |
 |---|---|---|---|---|---|
 | `01_prepare_poc` | none | 4 G | — | 15 m | CPU only |
-| `02_poc_teacher` | 2 | 8 G | 8 G | 1 h | 2 epochs B4 |
-| `03_poc_student` | 2 | 8 G | 10 G | 1 h | Teacher + student in memory |
+| `02_poc_teacher` | 2 | 8 G | 12 G | 1 h | 2 epochs; `TEACHER=` (covers SOTA teachers) |
+| `03_poc_student` | 2 | 8 G | 14 G | 1 h | Teacher + student in memory; `STUDENT=`/`TEACHER=` |
 | `10_prepare_data` | none | 16 G | — | 4 h | HDF5 decode (idempotent across re-runs) |
 | `11_train_teacher` | 4 | 16 G | 20 G | 24 h | teacher (B4 / SOTA), batch 32 |
 | `12_train_student` | 4 | 16 G | 22 G | 18 h | KD, frozen teacher + student, batch 64 |
 | `20_evaluate` | 1 | 8 G | 6 G | 1 h | Inference |
 | `21_benchmark_mobile` | 1 | 4 G | — | 15 m | CPU only, single-thread latency |
+| `23_export_model` | none | 8 G | — | 20 m | CPU only, ONNX/TorchScript export |
 
 Cluster ceilings: 20 MPS, 5 concurrent jobs, 32 vCPU, 72 h max per job. vRAM ≤44 G on L40, ≤80 G on A100.
 

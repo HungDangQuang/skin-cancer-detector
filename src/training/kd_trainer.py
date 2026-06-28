@@ -2,6 +2,7 @@
 Knowledge Distillation Trainer.
 Teacher is always frozen. Student is trained with BinaryDistillationLoss.
 """
+import json
 from pathlib import Path
 
 import numpy as np
@@ -82,6 +83,11 @@ class KDTrainer:
             "train_hard_loss": [], "train_soft_loss": [],
             "val_pauc": [],
         }
+        # Best-epoch val metrics (aligned to the checkpoint monitor) — persisted
+        # as val_metrics.json so the val-vs-test gap (overfitting signal) is
+        # computable per fold without re-running inference.
+        self.best_val_metrics = None
+        self._best_monitor_val = None
 
     def fit(self) -> dict:
         from src.evaluation.metrics import class_prevalence_baselines
@@ -126,15 +132,33 @@ class KDTrainer:
                 f"f1={val_metrics.get('f1_score', 0):.4f}"
             )
 
+            monitor_val = val_metrics.get("pauc_at_tpr80", val_metrics["loss"])
             if self.checkpoint:
-                monitor_val = val_metrics.get("pauc_at_tpr80", val_metrics["loss"])
                 self.checkpoint.step(monitor_val, self.student, self.optimizer, epoch, val_metrics)
+
+            # Track best-epoch val metrics (higher pauc is better), aligned to
+            # the checkpoint's best_model.pth so val_metrics.json describes the
+            # checkpoint that test_metrics.json later evaluates.
+            if self._best_monitor_val is None or monitor_val > self._best_monitor_val:
+                self._best_monitor_val = monitor_val
+                self.best_val_metrics = {**val_metrics, "best_epoch": epoch}
 
             if self.early_stopping and self.early_stopping.step(val_metrics["loss"]):
                 logger.info("Early stopping triggered.")
                 break
 
+        self._save_val_metrics()
         return self.history
+
+    def _save_val_metrics(self) -> None:
+        """Write best-epoch val metrics to run_dir/val_metrics.json (scalars only)."""
+        if self.best_val_metrics is None:
+            return
+        serializable = {k: v for k, v in self.best_val_metrics.items() if isinstance(v, (int, float, str))}
+        path = self.run_dir / "val_metrics.json"
+        with open(path, "w") as f:
+            json.dump(serializable, f, indent=2)
+        logger.info(f"Best-epoch val metrics saved to {path}")
 
     def _train_epoch(self, loader, epoch: int, total_epochs: int) -> dict:
         self.student.train()

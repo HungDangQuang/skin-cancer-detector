@@ -15,7 +15,7 @@ from PIL import Image
 
 from src.data.transforms import build_transforms
 from src.inference.predictor import Predictor
-from src.models.registry import build_model_from_name
+from src.models.registry import MODEL_REGISTRY, build_model_from_name
 from src.utils.config import load_config
 from src.utils.logger import get_logger
 
@@ -26,7 +26,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--image", required=True)
     parser.add_argument("--model-name", required=True,
-                        choices=["efficientnet_b4", "efficientnet_b0", "mobilenetv3_large", "mobilevit_s"])
+                        choices=sorted(MODEL_REGISTRY.keys()))
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--threshold", type=float, default=0.5,
                         help="Decision threshold (use Youden threshold from evaluation)")

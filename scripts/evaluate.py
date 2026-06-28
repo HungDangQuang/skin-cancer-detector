@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.data.datamodule import SkinLesionDataModule
 from src.evaluation.confusion_matrix import plot_confusion_matrix
 from src.evaluation.evaluator import Evaluator
-from src.models.registry import build_model_from_name
+from src.models.registry import MODEL_REGISTRY, build_model_from_name
 from src.utils.checkpoint import load_checkpoint
 from src.utils.config import load_config
 from src.utils.logger import get_logger
@@ -26,7 +26,7 @@ logger = get_logger(__name__)
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-name", required=True,
-                        choices=["efficientnet_b4", "efficientnet_b0", "mobilenetv3_large", "mobilevit_s"],
+                        choices=sorted(MODEL_REGISTRY.keys()),
                         help="Model architecture to evaluate")
     parser.add_argument("--checkpoint", required=True, help="Path to model checkpoint (.pth)")
     parser.add_argument("--fold", type=int, default=0, help="Which fold's test split to use")

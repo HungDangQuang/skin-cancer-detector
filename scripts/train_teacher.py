@@ -28,7 +28,7 @@ logger = get_logger(__name__)
 
 @hydra.main(config_path="../configs", config_name="config", version_base=None)
 def main(cfg: DictConfig) -> None:
-    set_seed(cfg.seed)
+    set_seed(cfg.seed, deterministic=cfg.get("cudnn_deterministic", True))
 
     # Hydra emits cfg in struct mode; merging in a new top-level "model" key
     # below would otherwise raise ConfigKeyError.

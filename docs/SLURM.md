@@ -28,6 +28,7 @@ Cluster rules from `HuongDanSuDungSlurm.pdf`:
 | `14_ablation_pad.slurm` | Ablation B — `ARM=isic_only\|isic_pad` (baseline, identical test) | sbatch |
 | `20_evaluate.slurm` | Evaluate any checkpoint | sbatch |
 | `21_benchmark_mobile.slurm` | Mobile deployability: params + FP32 size + CPU latency (CPU only) | sbatch |
+| `23_export_model.slurm` | Export a checkpoint to ONNX / TorchScript (CPU only) | sbatch |
 | `_template.slurm` | Copy-and-customize starting point | reference |
 
 **Key invariant**: every `*.slurm` script begins with `source "${SLURM_SUBMIT_DIR}/slurm/_lib.sh"`. The library handles `set -euo pipefail`, `mkdir -p logs`, **fallback `tee` log** at `logs/<job>_<jobid>_runtime.log` (so output survives even if SBATCH redirect fails), diagnostic header, and helper functions `load_python_env`, `acquire_gpu`, `setup_mps`.
@@ -78,11 +79,15 @@ bash slurm/submit.sh slurm/01_prepare_poc.slurm
 # → tail -f logs/prepare_poc_<ID>.out
 
 bash slurm/submit.sh slurm/02_poc_teacher.slurm
+# Different teacher arch (e.g. smoke-test a SOTA teacher before a full run):
+bash slurm/submit.sh slurm/02_poc_teacher.slurm TEACHER=convnextv2_base
 
 bash slurm/submit.sh slurm/03_poc_student.slurm
 # Different student arch:
 bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv3_large
 bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilevit_s
+# Smoke-test a SOTA pair (TEACHER must match the one POC-trained above):
+bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv4_conv_medium TEACHER=convnextv2_base
 ```
 
 **Always submit via `submit.sh`, not raw `sbatch`** — it ensures `logs/` exists before sbatch parses the `--output` directive (Slurm 23 silently drops output if the parent dir is missing).
@@ -169,6 +174,26 @@ bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2  
 > **students** `{efficientnet_b0, mobilenetv3_large, mobilevit_s (baseline); mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2 (SOTA)}`.
 > The SOTA set needs `timm>=1.0` — re-run `slurm/setup_env.sh` after pulling.
 
+### 3.4b Anti-overfitting knobs (`AUG`, `DROP_PATH`)
+`11_train_teacher` and `12_train_student` accept two opt-in env vars (defaults
+reproduce the original behavior, so existing runs are unchanged):
+- `AUG=light|heavy` (default `light`) → `augmentation=<AUG>`; `heavy` is the
+  stronger anti-overfit pipeline (see docs/PREPROCESSING.md §4.1).
+- `DROP_PATH=<float>` (default `0.0`) → stochastic depth on the student (script 12)
+  or teacher (script 11). Recommended student ~0.1, teacher/ViT ~0.2. Verify the
+  backbone accepts the kwarg on the cluster first.
+- `EXTRA="<hydra overrides>"` (default empty) → space-separated Hydra overrides
+  forwarded verbatim (word-split at the call site — pass as one quoted arg). For
+  `maxvit_base`'s cuDNN backward error: `EXTRA="cudnn_deterministic=false training.batch_size=16"`.
+  Also on the POC scripts `02`/`03`.
+```bash
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large AUG=heavy DROP_PATH=0.1
+bash slurm/submit.sh slurm/11_train_teacher.slurm  TEACHER=convnextv2_base   AUG=heavy DROP_PATH=0.2
+bash slurm/submit.sh slurm/11_train_teacher.slurm  TEACHER=maxvit_base EXTRA="cudnn_deterministic=false training.batch_size=16"
+```
+Each fold also writes `val_metrics.json` (best-epoch val metrics) → compute the
+**val − test** gap (esp. AUPRC/pAUC) as the overfitting signal.
+
 ### 3.5 Controlled comparison (no KD)
 ```bash
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientnet_b0    TRAINING=baseline
@@ -225,6 +250,17 @@ bash slurm/submit.sh slurm/21_benchmark_mobile.slurm \
 
 Output (default `reports/mobile_benchmark/<MODEL>.json`): `params_millions`, `fp32_size_mb`, `cpu_latency_ms_median`, `cpu_latency_ms_p90`, `image_size`. INT8/TFLite quantization is de-scoped — FP32 backbones run as-is.
 
+### Export for deployment (ONNX / TorchScript)
+
+```bash
+bash slurm/submit.sh slurm/23_export_model.slurm \
+    MODEL=mobilenetv3_large \
+    CKPT=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth
+# Optional: FORMAT=torchscript (default onnx), OUT=exports/<name>, CONFIG=<path>
+```
+
+CPU-only (no `--gres`). Produces `exports/<name>.onnx` (or `.pt`); `CONFIG` defaults to the run's saved `config.yaml` so the ONNX dummy input uses the trained `image_size`. The model emits one raw logit → apply `sigmoid()` then the **Youden threshold from that fold's `test_metrics.json`** (not 0.5). Export the **student**, not the teacher. Research/thesis model, not a validated medical device.
+
 ---
 
 ## 5. Resource budget
@@ -232,8 +268,8 @@ Output (default `reports/mobile_benchmark/<MODEL>.json`): `params_millions`, `fp
 | Script | mps | mem | vRAM | time | Notes |
 |---|---|---|---|---|---|
 | `01_prepare_poc` | none | 4 G | — | 15 m | CPU only |
-| `02_poc_teacher` | 2 | 8 G | 8 G | 1 h | 2 epochs B4 |
-| `03_poc_student` | 2 | 8 G | 10 G | 1 h | T+S in memory |
+| `02_poc_teacher` | 2 | 8 G | 12 G | 1 h | 2 epochs; `TEACHER=` (covers SOTA teachers) |
+| `03_poc_student` | 2 | 8 G | 14 G | 1 h | T+S in memory; `STUDENT=`/`TEACHER=` |
 | `10_prepare_data` | none | 16 G | — | 4 h | HDF5 decode |
 | `11_train_teacher` | 4 | 16 G | 20 G | 24 h | teacher (B4 / SOTA), batch 32 |
 | `12_train_student` | 4 | 16 G | 22 G | 18 h | KD, frozen teacher + student, batch 64 |
@@ -241,6 +277,7 @@ Output (default `reports/mobile_benchmark/<MODEL>.json`): `params_millions`, `fp
 | `14_ablation_pad` | 4 | 16 G | 12 G | 18 h | baseline student (no teacher); per arm × 5 folds |
 | `20_evaluate` | 1 | 8 G | 6 G | 1 h | inference |
 | `21_benchmark_mobile` | none | 4 G | — | 15 m | CPU only, single-thread latency |
+| `23_export_model` | none | 8 G | — | 20 m | CPU only, ONNX/TorchScript export |
 
 Peak MPS at 3 students in parallel: 12 of 20 limit.
 

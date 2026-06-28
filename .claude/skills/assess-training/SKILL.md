@@ -178,7 +178,7 @@ Next step: <concrete cluster command or follow-up action>
 
 ## Caveats
 
-- **`val_pauc` is currently mis-scaled.** [src/evaluation/metrics.py:37](../../src/evaluation/metrics.py#L37) integrates raw TPR instead of `(TPR − min_tpr)` and divides by 0.2, so the value lives in roughly `[0.9, 5.0]` instead of the documented `[0, 0.2]`. Until that's fixed, use `val_pauc` only for *relative trend within a single run*; for cross-run comparison and absolute verdict, lean on `acc`, `sens`, `spec`, `f1`. Flag this caveat in the report.
+- **`val_pauc` is the real ISIC 2024 metric (fixed 2026-06-04).** `pauc_at_tpr()` in [src/evaluation/metrics.py](../../src/evaluation/metrics.py) now implements the competition's McClish-corrected formulation; range is ≈ `[0.02, 0.20]` (random ≈ 0.02, perfect = 0.20). It is quotable as an absolute number and cross-run-comparable. **Only** logs/JSONs produced *before* 2026-06-04 are on the old stretched `[0.9, 5.0]` scale — re-evaluate those checkpoints. At ~0.4 % prevalence, prefer **AUPRC** over AUC-ROC as the headline.
 - **POC runs are noisy.** The synthetic POC dataset has ~36 val samples; `val_pauc` and `val_loss` swing a lot from epoch to epoch. Convergence is the only signal worth trusting on POC.
 - **POC `acc` near 1.0 is not real-world good.** Synthetic POC images have a learnable color bias — saturating on POC just confirms gradients flow.
 - **One bad epoch ≠ broken training.** Early stopping has `patience` for a reason. Look at the trend across the last 5–10 epochs, not single-epoch dips.

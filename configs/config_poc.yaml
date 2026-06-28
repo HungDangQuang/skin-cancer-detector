@@ -27,3 +27,6 @@ output_dir: experiments/poc
 
 device: cuda       # auto-falls-back to cpu if CUDA unavailable
 num_workers: 2
+
+# See configs/config.yaml — set false for maxvit_base (cuDNN backward error).
+cudnn_deterministic: true

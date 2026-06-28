@@ -1,8 +1,7 @@
-import timm
 import torch
 
 from .base_model import BaseModel
-from .heads import build_head, infer_backbone_out_dim
+from .heads import build_head, create_timm_backbone, infer_backbone_out_dim
 
 
 class MobileNetV3Model(BaseModel):
@@ -13,8 +12,9 @@ class MobileNetV3Model(BaseModel):
         backbone_name = cfg.model.get("backbone", "mobilenetv3_large_100")
         pretrained = cfg.model.get("pretrained", True)
         dropout = cfg.model.head.get("dropout", 0.2)
+        drop_path_rate = cfg.model.get("drop_path_rate", 0.0)
 
-        self.backbone = timm.create_model(backbone_name, pretrained=pretrained, num_classes=0)
+        self.backbone = create_timm_backbone(backbone_name, pretrained=pretrained, drop_path_rate=drop_path_rate)
         # timm's num_features for mobilenetv3_large_100 reports 960 but
         # forward() emits 1280 after the conv_head expansion. Use a dummy
         # forward to get the true output dim.

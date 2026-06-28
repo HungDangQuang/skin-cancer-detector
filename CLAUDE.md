@@ -109,7 +109,7 @@ Override at the CLI: `python scripts/train_student.py student=mobilenetv3_large 
 1. `scripts/prepare_data.py` creates fold CSVs via `StratifiedGroupKFold` (grouped by `patient_id` to prevent leakage) under `splits_dir/fold_{0..4}/train_split.csv` and `val_split.csv`, plus an **independent** `test_split.csv` — carved patient-disjoint + stratified *before* the CV (`test_holdout_splits`, default 6 ≈ 17%), so no fold trains on test patients. (Pre-2026-06-06 this was fold 0's val set → folds 1–4 leaked; see "Recurring gotchas".)
 2. `SkinLesionDataModule` reads those CSVs and wraps them in `SkinLesionDataset` (expects columns `image_path`, `label`).
 3. `DynamicUndersampledSampler` maintains a ~1:5 malignant:benign ratio, reshuffled each epoch via `datamodule.set_epoch(epoch)`.
-4. `build_transforms` returns Albumentations pipelines; PIL images are converted to numpy internally before being passed to Albumentations.
+4. `build_transforms` returns Albumentations pipelines built **from `configs/augmentation/{light,heavy}.yaml`** (not hard-coded); PIL images are converted to numpy internally before being passed to Albumentations. `light` (default) = the original pipeline; `heavy` = a stronger anti-overfit variant. MixUp/CutMix/CutOut are forbidden in-code (`_FORBIDDEN_OPS` → `raise`). Optional `drop_path_rate` (stochastic depth) per model config, default 0.0/off. See `docs/PREPROCESSING.md §4.1–4.2`.
 
 ### Model registry
 
@@ -137,13 +137,14 @@ experiments/runs/
     checkpoints/best_model.pth
     config.yaml
     test_metrics.json          ← auto-eval on held-out test set, written at end of training
+    val_metrics.json           ← best-epoch val metrics (for val-vs-test overfitting gap)
     training_curves.png
   kd_efficientnet_b4_to_efficientnet_b0/fold_{0..4}/...
   kd_efficientnet_b4_to_mobilenetv3_large/fold_{0..4}/...
   kd_efficientnet_b4_to_mobilevit_s/fold_{0..4}/...
 ```
 
-`scripts/train_teacher.py` and `scripts/train_student.py` reload the best checkpoint from `checkpoints/best_model.pth` after training and run `Evaluator.evaluate(test_dataloader())`, saving the result alongside as `test_metrics.json`. The val-set metrics logged each epoch are *biased* (early-stopping optimizes against val); the `test_metrics.json` is the unbiased generalization number — quote that, not val_pauc, for verdicts.
+`scripts/train_teacher.py` and `scripts/train_student.py` reload the best checkpoint from `checkpoints/best_model.pth` after training and run `Evaluator.evaluate(test_dataloader())`, saving the result alongside as `test_metrics.json`. The val-set metrics logged each epoch are *biased* (early-stopping optimizes against val); the `test_metrics.json` is the unbiased generalization number — quote that, not val_pauc, for verdicts. The trainers also write `val_metrics.json` (best-epoch val metrics, aligned to `best_model.pth`); a large **val − test** gap (esp. in AUPRC/pAUC) is the overfitting signal — `val_metrics.json` minus `test_metrics.json`.
 
 ### 5-fold CV — one job per model (folds loop sequentially)
 
@@ -253,3 +254,26 @@ The data strategy (PAD mixing + undersampler) is ablated by `slurm/13_ablation_s
 - **The PAD ablation must run baseline (no KD).** A teacher trained on ISIC+PAD leaks PAD via soft labels into the ISIC-only arm, confounding "does PAD data help". `14_ablation_pad.slurm` defaults `TRAINING=baseline` for this reason — only switch to KD if you also train a matched ISIC-only teacher.
 
 Per-domain (ISIC vs PAD) verdicts read the `source` column in `predictions.csv` (written by `Evaluator.save_predictions`, derived via `source_from_path`). Quote **AUPRC** over AUC-ROC at this prevalence.
+
+### Augmentation is config-driven; don't edit ops in `transforms.py` alone (added 2026-06-21)
+
+`build_transforms` builds the pipeline **from `configs/augmentation/{light,heavy}.yaml`** via an internal `name → Albumentations` registry — it no longer hard-codes the op list (it used to, and silently ignored those YAMLs). Consequences:
+
+- To change augmentation, edit the **YAML**, not `transforms.py`. Adding a new op also needs a builder entry in `_TRANSFORM_BUILDERS`; an unknown `name` raises.
+- `augmentation=light` (default) reproduces the original hard-coded pipeline → the 30-run baseline is reproducible. `augmentation=heavy` is the stronger anti-overfit variant.
+- **MixUp / CutMix / CoarseDropout(CutOut) are forbidden in code** (`_FORBIDDEN_OPS` → `ValueError`), enforcing the docs/PREPROCESSING.md decision. Don't add them to the YAML expecting them to run.
+- `drop_path_rate` (stochastic depth) is a per-model-config knob (default 0.0/off) passed via `create_timm_backbone` only when `>0`. Some timm archs may not accept the kwarg — if a run sets `drop_path_rate>0` and errors with `TypeError`, that arch doesn't support it; verify per-arch on the cluster.
+- `val_metrics.json` is a new per-fold output (best-epoch val metrics). `aggregate_folds.py` still reads only `test_metrics.json`; the val file is for the val−test overfitting gap, computed separately.
+
+### `maxvit_base` cuDNN backward error + the `cudnn_deterministic` lever (added 2026-06-23)
+
+POC smoke-test of the 3 SOTA teachers (jobs 32296/32297/32298): `convnextv2_base` and `efficientnetv2_m` PASS; **`maxvit_base` FAILS at `loss.backward()` with `RuntimeError: cuDNN error: CUDNN_STATUS_INTERNAL_ERROR`** (forward completes — not a tag/shape bug; timm tags + head dims of all 3 are confirmed correct). Two likely causes, in order: (1) **VRAM exhaustion** — maxvit_base (~119M + windowed/grid attention) has the largest backward activation footprint, and cuDNN masks workspace-alloc OOM as INTERNAL_ERROR; it failed even at POC batch 16, so batch 64 is worse. (2) deterministic-cuDNN incompatibility. Fixes available (combine both when retrying maxvit):
+- **`cudnn_deterministic`** (root `config.yaml`/`config_poc.yaml`, default `true` = the bit-exact 30-run baseline behavior). `set_seed(seed, deterministic=...)` now honors it: `false` → `cudnn.deterministic=False` + `cudnn.benchmark=True` (lets cuDNN pick a working algo). Both training scripts pass `cfg.get("cudnn_deterministic", True)`. Override per-run: `cudnn_deterministic=false`. Only the convnextv2/efficientnetv2_m/maxvit teachers need consider this; the baseline 30 runs keep the default `true`.
+- For the VRAM cause: lower `training.batch_size` and raise `acquire_gpu` for maxvit only (it's resolution-locked to 224, so batch is the only memory lever). If it still OOMs at small batch, maxvit_base is impractical on this MPS setup — drop it and keep convnextv2_base/efficientnetv2_m as the SOTA teachers.
+- Both levers reach the training scripts via the `EXTRA=` passthrough on `11/12/02/03` (space-separated Hydra overrides, forwarded verbatim and word-split at the call site — quote it as one shell arg). Retry: `bash slurm/submit.sh slurm/02_poc_teacher.slurm TEACHER=maxvit_base EXTRA="cudnn_deterministic=false training.batch_size=8"` (POC), then `slurm/11_train_teacher.slurm TEACHER=maxvit_base EXTRA="cudnn_deterministic=false training.batch_size=16"` (real).
+
+### QOS caps `gres/gpu=0` — jobs MUST request `--gres=mps`, never `--gres=gpu` (added 2026-06-28)
+
+A "fix" (commit 8229197) tried to stop the MPS-OOMs by switching every GPU script from `--gres=mps:l40:N` to `--gres=gpu:l40:1` (exclusive whole GPU). **It made every job unschedulable** — they sat `PD` forever with `Reason=QOSMaxGRESPerUser` even while the user held 0 GPUs. Root cause confirmed on-cluster: QOS `uit` sets `MaxTRESPerUser = cpu=32,gres/gpu=0,gres/mps=20`. **`gres/gpu=0` per user → any whole-GPU request is rejected outright.** Every running job on the cluster uses `gres/mps:*`; nobody is allowed a whole GPU. The node `AsusL40` has `gpu:l40:8,mps:l40:800` → **100 MPS units per GPU**, and the 20-unit per-user cap = 20% of one GPU, so you **cannot** reserve a whole GPU via MPS either. Commit 8229197 was reverted (2026-06-28); all GPU scripts are back on `--gres=mps:l40:N` + `setup_mps`, and `mps:l40:4` keeps the 5-concurrent-jobs model (20 budget ÷ 4).
+
+The real OOM cause (jobs 32552/32558, efficientnetv2_m, 2026-06-23) was **not** the gres type — it was `_lib.sh::acquire_gpu` blindly honoring Slurm's pinned `CUDA_VISIBLE_DEVICES=0` without re-checking VRAM. The `gres/mps` plugin schedules by compute-% and ignores GPU memory, so Slurm pinned the job to a GPU another user's ~38 GiB job had filled (7 MiB free) while GPUs 2 & 6 sat empty. **Fixed:** `acquire_gpu` now queries free VRAM on the Slurm-pinned GPU; if it's `< required_vram`, it unsets `CUDA_VISIBLE_DEVICES` and falls through to the existing `nvidia-smi --query-gpu=memory.free` selection to **hop to a GPU with enough free memory** (picks the emptiest, so it never starves a neighbor). This re-enables the smart selection that was previously dead code under MPS. **Verified on-cluster (POC job 34349, 2026-06-28):** Slurm pinned GPU 0 (9128 MB free < 12288 needed) → the guard hopped to GPU 4 and training ran to `[job] DONE` with no OOM — confirming the CVD override routes correctly under this MPS setup. If a GPU with enough free VRAM genuinely doesn't exist, the job picks the emptiest and may still OOM → that's a "wait for the cluster to drain" situation, not a code bug.

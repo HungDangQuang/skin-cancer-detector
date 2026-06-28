@@ -7,4 +7,9 @@ num_classes: 1    # binary sigmoid output
 head:
   dropout: 0.3
 
+# Stochastic depth (anti-overfit regularizer). Default 0.0 = off (preserves the
+# original 30-run behavior). Enable per-run, e.g. `teacher.drop_path_rate=0.2`.
+# Verify the backbone accepts the kwarg on the cluster before a full run.
+drop_path_rate: 0.0
+
 freeze_backbone: false

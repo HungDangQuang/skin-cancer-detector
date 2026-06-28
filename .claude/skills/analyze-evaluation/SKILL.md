@@ -77,36 +77,25 @@ rsync -av --include='*/' --include='test_metrics.json' --include='aggregated.*' 
 
 For Mode B, ask the user to **label** each file if the names don't clearly say what they are (`teacher.json`, `kd_b0.json`, `baseline_b0.json` are self-evident; `metrics_final.json` is not). The labels drive the comparison rows in the report.
 
-### 2. Recompute pAUC if predictions are saved
+### 2. pAUC is correct + predictions are saved (recompute is optional)
 
-The `pauc_at_tpr80` field in every JSON is computed by [src/evaluation/metrics.py:37](../../../src/evaluation/metrics.py#L37) and lives on a stretched ~[0.9, 5.0] scale (see [project_pauc_metric_bug.md](../../../memory/project_pauc_metric_bug.md)).
+The `pauc_at_tpr80` field in every JSON is computed by [src/evaluation/metrics.py](../../../src/evaluation/metrics.py)`::pauc_at_tpr` and (since 2026-06-04) is the **real ISIC 2024 metric** — McClish-corrected, range ≈ `[0.02, 0.20]`. Quote it verbatim. Only JSONs produced *before* 2026-06-04 are on the old stretched `[0.9, 5.0]` scale (see [project_pauc_metric_bug.md](../../../memory/project_pauc_metric_bug.md)); re-evaluate those checkpoints.
 
-**Recompute path (preferred).** If a `.npz` with `y_true` + `y_prob` sits next to the JSON (e.g. `reports/results/kd_b0.npz`), recompute the ISIC-correct pAUC:
+`Evaluator.save_predictions` now writes a sibling **`predictions.csv`** (`y_true, y_prob, y_pred[, source]`) next to every `test_metrics.json`. Use it for anything the scalar JSON can't give you — PR-curve / **AUPRC** / per-domain (ISIC vs PAD) breakdowns / bootstrap CIs — recomputed offline without re-running inference:
 
 ```python
-# Run with: python - <path-to-npz>
-import sys, numpy as np
-from pathlib import Path
-from sklearn.metrics import roc_auc_score
+import pandas as pd, numpy as np
+from sklearn.metrics import average_precision_score, roc_auc_score
 
-def recompute_pauc(npz_path: Path, min_tpr: float = 0.80) -> float:
-    """ISIC 2024 pAUC@TPR>=min_tpr in [0, 1-min_tpr]. Trick: invert
-    labels+scores so 'max_fpr<=0.2' on sklearn becomes 'TPR>=0.8' on us.
-    sklearn returns McClish-corrected pAUC in [0.5, 1.0]; convert back to raw."""
-    d = np.load(npz_path)
-    y_true, y_prob = d["y_true"], d["y_prob"]
-    max_fpr = 1 - min_tpr
-    a_c = roc_auc_score(1 - y_true, -y_prob, max_fpr=max_fpr)
-    return float(max_fpr * (2 * a_c - 1))   # raw [0, 0.2]
-
-print(f"{recompute_pauc(Path(sys.argv[1])):.4f}")
+df = pd.read_csv("experiments/runs/<run>/fold_0/predictions.csv")
+y, p = df["y_true"].values, df["y_prob"].values
+print("AUPRC", average_precision_score(y, p), "(base", y.mean(), ")")
+# per-domain (PAD = smartphone-domain generalization, the decisive ablation cell):
+for src, g in df.groupby("source"):
+    print(src, "AUPRC", average_precision_score(g.y_true, g.y_prob))
 ```
 
-**Fallback path.** If no `.npz` is present (the default — [src/evaluation/evaluator.py:68](../../../src/evaluation/evaluator.py#L68) strips arrays before writing JSON and never stashes `_y_prob` at all):
-- Quote `pauc_at_tpr80` verbatim in the metric table but tag it `(stretched scale — see caveats)`.
-- Drive the verdict from `auc_roc` (correct) plus threshold-based `sensitivity`, `specificity`, `f1_score`, `accuracy`.
-- In "Next steps", tell the user how to enable recomputation on future runs:
-  > Patch `src/evaluation/evaluator.py` so `save_metrics` also writes a sibling `.npz` with `y_true` and `y_prob` arrays. That requires the evaluator to keep `_y_prob` in the metrics dict (it currently only keeps `_y_pred`). One-line change in `Evaluator.evaluate` + a `np.savez` in `save_metrics`.
+At ~0.4 % prevalence, **AUPRC is the honest headline** (AUC-ROC is optimistic); `prevalence` in the JSON is its random baseline.
 
 ### 3. Mode A — single-result verdict
 
@@ -121,7 +110,8 @@ Scoring rubric on the test set (slightly stricter than training-time val):
 | **Specificity** | ≥ 0.85 | 0.70–0.85 | < 0.70 |
 | **F1** (imbalance-aware) | ≥ 0.75 | 0.55–0.75 | < 0.55 |
 | **Accuracy vs majority-class floor** | > floor + 5pp | within ±5pp | below floor |
-| **Corrected pAUC@TPR80** (if §2 recompute succeeded) | ≥ 0.13 | 0.08–0.13 | < 0.08 |
+| **pAUC@TPR80** (ISIC metric, ≈[0.02,0.20]) | ≥ 0.13 | 0.08–0.13 | < 0.08 |
+| **AUPRC** (vs prevalence base) | clears base by a wide margin | modestly above base | ≈ base |
 
 Aggregate verdict:
 - **Good** — promote; if not yet thesis-reported, run the 5-fold sweep next to get mean ± std before quoting externally.
@@ -149,7 +139,7 @@ Inputs: 2+ JSONs the user wants compared. Cover three sub-cases:
 | **Teacher vs student** | `teacher.json` + `kd_<student>.json` |
 
 **Gating check first.**
-- If a baseline file is requested but doesn't exist, stop and tell the user: the baseline arm is currently blocked by `KDTrainer` unconditionally reading `cfg.training.distillation` — see [project_baseline_kd_coupling.md](../../../memory/project_baseline_kd_coupling.md). Submitting `12_train_student.slurm STUDENT=... TRAINING=baseline` will crash until that's fixed. Don't invent baseline numbers.
+- If a baseline file is requested but doesn't exist, don't invent numbers — tell the user to produce it: `bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=... TRAINING=baseline` (the baseline arm works via the `use_kd` flag, fixed 2026-06-04; run-dir `baseline_<student>/`). See [project_baseline_kd_coupling.md](../../../memory/project_baseline_kd_coupling.md).
 - If the inputs are clearly different splits / data / augmentation (read each run's saved `config.yaml` if present), flag it and refuse to call a winner — the comparison is confounded.
 
 **Build a unified table.** Always include every numeric field in the source JSON — never drop a column because the rubric doesn't use it.
@@ -170,8 +160,8 @@ Files compared:
 | accuracy | … | … | … | … |
 | precision | … | … | … | … |
 | recall | … | … | … | … |
-| pauc_at_tpr80_corrected | … | … | … | … |   ← if §2 recompute succeeded
-| pauc_at_tpr80 (raw, stretched) | … | … | … | … | ← always show for traceability
+| pauc_at_tpr80 | … | … | … | … |   ← real ISIC metric, ≈[0.02,0.20] (tag "(pre-2026-06-04 stretched scale)" only for old JSONs)
+| auprc (base=prevalence) | … | … | … | … | ← headline at ~0.4% prevalence
 | threshold | … | … | … | — |
 | tp / fp / tn / fn | … | … | … | — |
 ```
@@ -230,7 +220,8 @@ Class-prevalence floor:
 - Specificity: …
 - F1: …
 - Accuracy vs floor: …
-- Corrected pAUC: <or "(stretched-scale fallback — not scored)">
+- pAUC@TPR80 (≈[0.02,0.20]): …
+- AUPRC (vs prevalence base): …
 
 ## Ranking + delta   (Mode B)
 - Ranking by sensitivity → auc_roc: <ordered list>
@@ -251,9 +242,9 @@ Next steps:
 
 ## Caveats
 
-- **`pauc_at_tpr80` in the JSON is on a stretched [~0.9, 5.0] scale**, not the documented [0, 0.2]. See [project_pauc_metric_bug.md](../../../memory/project_pauc_metric_bug.md). Use it only for relative trend within a single source; never quote it as "the ISIC 2024 metric".
-- **Predictions are not saved by default.** `Evaluator.save_metrics` strips arrays and never stores `_y_prob`. Without a sibling `.npz`, pAUC analysis is bounded by the broken metric. The fix is a one-line change to the evaluator — recommend it in "Next steps".
-- **Baseline (no-KD) runs are currently broken.** Mode B's KD-vs-baseline cell has no real baseline numbers until `KDTrainer`'s coupling to `cfg.training.distillation` is fixed. See [project_baseline_kd_coupling.md](../../../memory/project_baseline_kd_coupling.md). Refuse to invent a baseline.
+- **`pauc_at_tpr80` is the real ISIC 2024 metric (fixed 2026-06-04)**, range ≈ [0.02, 0.20] — quotable as an absolute number. Only JSONs produced *before* 2026-06-04 are on the old stretched [0.9, 5.0] scale. See [project_pauc_metric_bug.md](../../../memory/project_pauc_metric_bug.md).
+- **Predictions ARE saved (since 2026-06-21).** `Evaluator.save_predictions` writes `predictions.csv` (`y_true,y_prob,y_pred[,source]`) next to each `test_metrics.json` — recompute AUPRC / PR-curve / per-domain / bootstrap CIs from it. The scalar `test_metrics.json` already carries `auprc`, `prevalence`, `sens_at_90spec`, `sens_at_95spec`.
+- **Baseline (no-KD) runs work (fixed 2026-06-04).** Mode B's KD-vs-baseline cell has real baseline numbers via the `use_kd` flag (`training=baseline` → plain `Trainer`, run-dir `baseline_<student>/`). See [project_baseline_kd_coupling.md](../../../memory/project_baseline_kd_coupling.md).
 - **`20_evaluate.slurm` always evaluates fold 0.** It calls `scripts/evaluate.py` without forwarding `--fold`, so the default `--fold 0` applies regardless of what was trained. For a true 5-fold report, either rely on the training-time auto-eval JSONs at `experiments/runs/<run>/fold_*/test_metrics.json`, or extend `20_evaluate.slurm` to accept a `FOLD=` env var. Flag this when the user thinks they're getting a different fold.
 - **Single-checkpoint variance is large.** Same architecture × different seed can move sens by 0.05+. Always recommend the 5-fold sweep before quoting numbers in the thesis.
 - **`accuracy` is misleading at ISIC class imbalance.** Majority-class baseline ≈ 0.995. Never rank or verdict on raw accuracy — always anchor against the floor.

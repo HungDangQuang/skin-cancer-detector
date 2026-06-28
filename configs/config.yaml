@@ -16,3 +16,9 @@ run_suffix: ""
 
 device: cuda  # cuda or cpu
 num_workers: 4
+
+# cuDNN determinism. true (default) = bit-exact reproducibility (the 30-run
+# baseline behavior). Set false for heavy attention backbones (e.g. maxvit_base)
+# whose deterministic backward raises CUDNN_STATUS_INTERNAL_ERROR — lets cuDNN
+# pick a working algorithm. Override per-run: `cudnn_deterministic=false`.
+cudnn_deterministic: true

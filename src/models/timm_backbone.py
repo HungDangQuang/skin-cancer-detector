@@ -1,8 +1,7 @@
-import timm
 import torch
 
 from .base_model import BaseModel
-from .heads import build_head, infer_backbone_out_dim
+from .heads import build_head, create_timm_backbone, infer_backbone_out_dim
 
 
 class TimmBackboneModel(BaseModel):
@@ -26,8 +25,9 @@ class TimmBackboneModel(BaseModel):
         backbone_name = cfg.model.backbone
         pretrained = cfg.model.get("pretrained", True)
         dropout = cfg.model.head.get("dropout", 0.2)
+        drop_path_rate = cfg.model.get("drop_path_rate", 0.0)
 
-        self.backbone = timm.create_model(backbone_name, pretrained=pretrained, num_classes=0)
+        self.backbone = create_timm_backbone(backbone_name, pretrained=pretrained, drop_path_rate=drop_path_rate)
         in_features = infer_backbone_out_dim(self.backbone)
         self.head = build_head(in_features, dropout=dropout)
 
