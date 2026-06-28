@@ -58,6 +58,12 @@ make train-all-students          # all three sequentially
 # Evaluation / inference
 make evaluate
 python scripts/evaluate.py --model-name efficientnet_b4 --checkpoint path/to/best_model.pth
+python scripts/predict.py  --model-name mobilenetv3_large --checkpoint path/to/best_model.pth \
+    --image path/to/lesion.jpg --threshold 0.61   # use the Youden threshold from test_metrics.json
+
+# Export for deployment (ONNX default; also torchscript). Export the STUDENT, not the teacher.
+python scripts/export_model.py --model-name mobilenetv3_large \
+    --checkpoint path/to/best_model.pth --format onnx --output exports/skin_mnv3
 
 # Tests + code quality
 make test
@@ -82,8 +88,11 @@ make poc-all     # prepare-poc → poc-teacher → poc-student (2 epochs each)
 ```bash
 bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnet_b4
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large
+bash slurm/submit.sh slurm/23_export_model.slurm \
+    MODEL=mobilenetv3_large \
+    CKPT=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth
 ```
-See `docs/SLURM.md` and `slurm/README.md`.
+The model emits one raw logit → `sigmoid()` then the Youden threshold from that fold's `test_metrics.json` (not 0.5). Research/thesis model, not a validated medical device. See `docs/SLURM.md` and `slurm/README.md`.
 
 ## Project Structure
 
