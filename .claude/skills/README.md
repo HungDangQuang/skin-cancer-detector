@@ -6,6 +6,12 @@ just the map. Invoke with `/<name>` or let Claude auto-route from the descriptio
 
 Skills are grouped by the moment in the workflow you'd use them.
 
+## 0. End-to-end (the master workflow)
+
+| Skill | Use it when… | Focus |
+|---|---|---|
+| [dev-cycle](dev-cycle/SKILL.md) | "run the full cycle / do the whole process / ship this" | Orchestrates the 5 phases below: review → commit+push (no approval, feature branch) → emit slurm cmd + log job to `tasks/daily/` → results vs SOTA → update `docs/DE_CUONG.md`. It **calls** the area skills; it doesn't replace them. |
+
 ## 1. Edit → review (the mandatory modification workflow)
 
 Run the matching review skill **right after** editing source, then `validate-pipeline`.
