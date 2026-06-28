@@ -2,6 +2,16 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ CRITICAL — authoring/editing Slurm scripts (a job must never be blocked or evict others)
+
+This has cost real days of stuck jobs — treat it as the highest-priority rule set, not a gotcha. These are now **hook-enforced** (`.claude/settings.json`: `slurm-submit-guard` blocks submitting a bad script with exit 2; the slurm-edit guard flags a bad script the moment it's written) AND linted by `validate-pipeline §3f/§3g/§3h`. Full detail: [docs/GOTCHAS.md](docs/GOTCHAS.md); authoring table in [.claude/skills/submit-slurm/SKILL.md](.claude/skills/submit-slurm/SKILL.md); review checklist in [.claude/skills/review-slurm/SKILL.md](.claude/skills/review-slurm/SKILL.md).
+
+1. **GPU jobs MUST request `--gres=mps:l40:N` (e.g. `mps:l40:4`) — NEVER `--gres=gpu`.** QOS `uit` caps `gres/gpu=0` per user, so any whole-GPU request sits `PD` forever (`Reason=QOSMaxGRESPerUser`) even while you hold 0 GPUs. Pair it with `setup_mps`.
+2. **Never terminate/preempt/reset other users' work** — no `scancel`/`kill`/`pkill`/`killall`, `nvidia-smi --reset-gpu`, `fuser -k`, `#SBATCH --preempt`, `#SBATCH --nice=-N`, `scontrol requeue` / `USE_CLUSTER_GPU_CHECK=1`. Out of resources = let the job wait in `PD`. That is the only acceptable behavior on this shared cluster.
+3. **Always submit via `bash slurm/submit.sh ...`** — never raw `sbatch` (it drops logs on Slurm 23 if `logs/` is absent).
+4. **Repo/data/runs live under `/datastore/keg/hungdang/...`** (or `DATASTORE_USER_DIR=`) — never raw `/datastore/${USER}/...` (`${USER}` is the shared `keg` account).
+5. **Start from `slurm/_template.slurm`; `source slurm/_lib.sh`; `${VAR:-default}` for every Slurm var.** After editing, run `validate-pipeline` then the `review-slurm` skill before submitting.
+
 ## Local environment ≠ runtime environment
 
 The local Mac is for editing only. **Do not install Python dependencies locally** (no `pip install`, no `make install-dev` on the Mac, no expectation that `pytest` / `torch` / `sklearn` will import here). The code runs on the UIT Slurm cluster (`slurm.uit.edu.vn`, venv at `${DATASTORE_USER_DIR:-/datastore/keg/hungdang}/venv` — created by `slurm/setup_env.sh`), and that is the only environment that has the full dependency set.

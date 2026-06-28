@@ -112,6 +112,11 @@
             "type": "command",
             "command": "cmd=$(jq -r '.tool_input.command // empty'); [ -z \"$cmd\" ] && exit 0; printf '%s' \"$cmd\" | grep -Eq 'pytest[[:space:]]+(--collect-only|--version)' && exit 0; if printf '%s' \"$cmd\" | grep -Eq '(^|[^[:alnum:]_])(pip[0-9]*|python[0-9]*[[:space:]]+-m[[:space:]]+pip)[[:space:]]+install|make[[:space:]]+(install-dev|install)([[:space:]]|$)|(^|[^[:alnum:]_])pytest([[:space:]]|$)|python[0-9]*[[:space:]]+[^|]*scripts/(train_teacher|train_student|evaluate|prepare_data|predict|export_model)\\.py'; then echo \"[local-python-guard] Blocked: this project does not run Python/pip on the Mac (local env != runtime). Run training/eval/data on the UIT cluster via the submit-slurm skill (bash slurm/submit.sh ...); use validate-pipeline for local static checks. See CLAUDE.md 'Local environment != runtime environment'.\" >&2; exit 2; fi; exit 0",
             "statusMessage": "Guarding against local Python/pip execution"
+          },
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); [ -z \"$cmd\" ] && exit 0; printf '%s' \"$cmd\" | grep -Eq 'submit\\.sh|sbatch' || exit 0; files=$(printf '%s' \"$cmd\" | grep -oE 'slurm/[A-Za-z0-9_./-]+\\.slurm'); [ -z \"$files\" ] && exit 0; bad=\"\"; for sf in $files; do [ -f \"$sf\" ] || continue; h=$(grep -nE '#SBATCH[[:space:]]+--gres=gpu|\\bscancel\\b|\\bpkill\\b|\\bkillall\\b|^[[:space:]]*kill[[:space:]]|nvidia-smi[[:space:]]+(--reset-gpu|-r\\b|--gpu-reset)|fuser[[:space:]]+-k|#SBATCH[[:space:]]+--preempt|#SBATCH[[:space:]]+--nice=-' \"$sf\" /dev/null 2>/dev/null | grep -vE ':[0-9]+:[[:space:]]*#[^S]'); [ -n \"$h\" ] && bad=\"${bad} [${sf}] ${h}\"; done; [ -z \"$bad\" ] && exit 0; echo \"[slurm-submit-guard] Refusing to submit — job-blocking/forbidden pattern:${bad}. GPU jobs MUST use --gres=mps:l40:N (never --gres=gpu). No scancel/kill/preempt/reset on the shared cluster. Fix the .slurm file first.\" >&2; exit 2",
+            "statusMessage": "Slurm submit guard: checking script before submission"
           }
         ]
       }
@@ -124,6 +129,16 @@
             "type": "command",
             "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -z \"$f\" ] && exit 0; rel=${f#*/skin-cancer-detector/}; case \"$rel\" in src/data/*|scripts/prepare_data.py) skill=review-preprocessing ;; src/training/*|src/models/*|scripts/train_teacher.py|scripts/train_student.py) skill=review-training ;; slurm/*|docs/SLURM*) skill=review-slurm ;; *) exit 0 ;; esac; case \"$rel\" in src/*|configs/*|slurm/*) vp=\" Then run validate-pipeline (static checks) before concluding.\" ;; *) vp=\"\" ;; esac; msg=\"[modification-workflow] You edited ${rel}. Before finishing this task: (1) run the ${skill} skill to review the change; (2) update any affected slurm script AND its docs; (3) keep CLAUDE.md / docs / memory current.${vp}\"; jq -cn --arg m \"$msg\" '{hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:$m},suppressOutput:true}'",
             "statusMessage": "Routing modification-workflow review reminder"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -z \"$f\" ] && exit 0; rel=${f#*/skin-cancer-detector/}; case \"$rel\" in slurm/*.slurm) : ;; *) exit 0 ;; esac; [ -f \"$f\" ] || exit 0; hits=$(grep -nE '#SBATCH[[:space:]]+--gres=gpu|\\bscancel\\b|\\bpkill\\b|\\bkillall\\b|^[[:space:]]*kill[[:space:]]|nvidia-smi[[:space:]]+(--reset-gpu|-r\\b|--gpu-reset)|fuser[[:space:]]+-k|#SBATCH[[:space:]]+--preempt|#SBATCH[[:space:]]+--nice=-' \"$f\" /dev/null 2>/dev/null | grep -vE ':[0-9]+:[[:space:]]*#[^S]'); [ -z \"$hits\" ] && exit 0; msg=\"[slurm-guard:CRITICAL] ${rel} has a job-BLOCKING / shared-cluster-FORBIDDEN pattern — fix before submit. ${hits} | Rules: GPU jobs MUST use --gres=mps:l40:N (never --gres=gpu; QOS caps gres/gpu=0 -> PD forever); no scancel/kill/preempt/reset on the shared cluster. See docs/GOTCHAS.md + review-slurm skill.\"; jq -cn --arg m \"$msg\" '{systemMessage:$m,hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:$m}}'",
+            "statusMessage": "Slurm guard: scanning edited script for blocking patterns"
           }
         ]
       }
