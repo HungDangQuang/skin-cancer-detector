@@ -27,8 +27,12 @@ Each student is trained twice — **with KD** and **without KD (baseline)** — 
 identical data/hyperparameters/seed, over **5-fold CV** (StratifiedGroupKFold by
 `patient_id`). `compute_kd_delta()` reports the KD effect.
 
-**Primary metric:** pAUC@TPR≥80 (ISIC 2024 official, range ≈ [0.02, 0.20]).
-At ~0.4 % prevalence, quote **AUPRC** (not AUC-ROC) as the headline.
+**Metrics — two distinct roles (not a contradiction):** **pAUC@TPR≥80** (ISIC 2024
+official, range ≈ [0.02, 0.20]) is the **benchmark-comparison** metric — it lets the
+result sit next to the ISIC 2024 leaderboard/literature. **AUPRC** is the **clinical
+headline**: at the measured **~0.39 % prevalence** (ISIC 2024 + PAD-UFES-20 test set)
+AUPRC, not AUC-ROC, reflects real performance (AUC-ROC is inflated at extreme
+imbalance).
 
 ## Setup
 

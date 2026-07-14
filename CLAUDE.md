@@ -92,6 +92,8 @@ The wrapper does `mkdir -p logs` before `sbatch` (Slurm 23 silently drops output
 
 ## Architecture
 
+> **Quick-load map:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) is the one-file architecture + pipeline map (dir tree, model registry, config groups, run-dirs, execution backends) for getting a new session up to speed fast. Keep it in sync when the pipeline changes.
+
 This is a **binary skin cancer classification** project (benign=0, malignant=1) using **Knowledge Distillation (KD)**. All models output a single raw logit; `torch.sigmoid()` is applied at inference time.
 
 ### Two-stage training pipeline
@@ -129,13 +131,13 @@ To add a new architecture: register it against `TimmBackboneModel` (or a new cla
 
 ### Evaluation
 
-Primary metric: **pAUC@TPR≥80%** (ISIC 2024 official metric), normalized to [0, 0.2]. Decision threshold is selected via Youden's J statistic. `compute_metrics()` in `src/evaluation/metrics.py` returns `pauc_at_tpr80`, `auc_roc`, `auprc` (+ `prevalence` = its random baseline), `sensitivity`, `specificity`, `f1_score`, fixed-specificity operating points `sens_at_90spec`/`sens_at_95spec`, and raw TP/FP/TN/FN counts. `Evaluator.save_predictions()` also writes `predictions.csv` (`y_true,y_prob,y_pred,source`) next to `test_metrics.json` so PR-curve / AUPRC / per-domain (ISIC-vs-PAD) / bootstrap CIs are recomputable offline without re-running inference. Use **AUPRC**, not AUC-ROC, as the headline at ~0.4% prevalence (AUC-ROC is optimistic).
+Primary metric: **pAUC@TPR≥80%** (ISIC 2024 official metric), normalized to [0, 0.2]. Decision threshold is selected via Youden's J statistic. `compute_metrics()` in `src/evaluation/metrics.py` returns `pauc_at_tpr80`, `auc_roc`, `auprc` (+ `prevalence` = its random baseline), `sensitivity`, `specificity`, `f1_score`, fixed-specificity operating points `sens_at_90spec`/`sens_at_95spec`, and raw TP/FP/TN/FN counts. `Evaluator.save_predictions()` also writes `predictions.csv` (`y_true,y_prob,y_pred,source`) next to `test_metrics.json` so PR-curve / AUPRC / per-domain (ISIC-vs-PAD) / bootstrap CIs are recomputable offline without re-running inference. Use **AUPRC**, not AUC-ROC, as the headline at the measured **~0.39% prevalence** (ISIC 2024 + PAD-UFES-20 test set, job 28250; AUC-ROC is optimistic). pAUC is the ISIC-benchmark-comparison metric; AUPRC is the clinical headline — two roles, not a contradiction.
 
 External test sets (HAM10000, Fitzpatrick17k) are **never used for training** — only for post-hoc cross-domain and fairness evaluation.
 
 ### Experiment design
 
-Each student is trained twice (with KD / without KD) using identical hyperparameters, data splits, and seed. `compute_kd_delta()` computes the effectiveness delta between the two runs. 5-fold CV is used; 30 total training runs (3 arch × 2 KD conditions × 5 folds).
+Each student is trained twice (with KD / without KD) using identical hyperparameters, data splits, and seed. `compute_kd_delta()` computes the effectiveness delta between the two runs. 5-fold CV is used. The **"30 runs"** figure = **3 *students* × 2 KD conditions × 5 folds for ONE fixed teacher** ("3 arch" = students, not teachers). The registry declares **3 SOTA teachers** and all three are being trained, so the real total exceeds 30 — reports must state the actual teacher scope (one main teacher + 1-fold ablation of the others, or all three in full) rather than quoting "30".
 
 ### Run-dir convention (fold-aware)
 

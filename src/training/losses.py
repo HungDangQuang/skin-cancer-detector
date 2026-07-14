@@ -15,8 +15,14 @@ class BinaryFocalLoss(nn.Module):
 
     Args:
         gamma: Focusing parameter. Higher = more focus on hard examples.
-        alpha: Prior probability of the positive (malignant) class.
-               Typically set to 1 - prevalence of positive class.
+        alpha: Weight in [0, 1] on the POSITIVE (malignant) class; the negative
+               class gets (1 - alpha). The default 0.25 is the RetinaNet value
+               (Lin et al. 2017): it *down-weights* the positive class and relies
+               on gamma to concentrate loss on hard (mostly positive) examples.
+               Here it stacks on the 1:5 DynamicUndersampledSampler, so the net
+               positive weighting is (undersampler up-weight) x alpha -- the
+               alpha=0.25-vs-0.75 ablation validates keeping 0.25. This is NOT the
+               class prior (~0.004) and NOT 1 - prevalence.
     """
 
     def __init__(self, gamma: float = 2.0, alpha: float = 0.25):
