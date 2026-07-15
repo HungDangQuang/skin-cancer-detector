@@ -1,7 +1,7 @@
 defaults:
   - data: isic2024
-  - teacher: efficientnet_b4
-  - student: efficientnet_b0
+  - teacher: efficientnetv2_m
+  - student: mobilenetv4_conv_medium
   - training: distillation
   - augmentation: light
   - _self_

@@ -9,8 +9,8 @@
 #
 # Also dump per-model reference logits for parity (optional):
 #   bash slurm/submit.sh slurm/26_make_benchmark_set.slurm N=100 \
-#       MODEL=efficientnet_b0 \
-#       CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+#       MODEL=mobilenetv4_conv_medium \
+#       CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 #
 # Output (default): data/benchmark_set/  (rsync to the Mac/phone; do not commit)
 # ============================================================================

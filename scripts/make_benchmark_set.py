@@ -30,8 +30,8 @@ Usage (in the training venv, on the cluster):
     python scripts/make_benchmark_set.py --n 100
     # also dump reference logits for parity:
     python scripts/make_benchmark_set.py --n 100 \\
-        --model-name efficientnet_b0 \\
-        --checkpoint experiments/runs/kd_..._to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+        --model-name mobilenetv4_conv_medium \\
+        --checkpoint experiments/runs/kd_..._to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 """
 import argparse
 import json

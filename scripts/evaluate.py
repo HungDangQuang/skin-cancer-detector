@@ -2,8 +2,8 @@
 Evaluation entry point.
 
 Usage:
-    python scripts/evaluate.py --model-name efficientnet_b4 --checkpoint path/to/best_model.pth
-    python scripts/evaluate.py --model-name efficientnet_b0  --checkpoint path/to/best_model.pth
+    python scripts/evaluate.py --model-name efficientnetv2_m --checkpoint path/to/best_model.pth
+    python scripts/evaluate.py --model-name mobilenetv4_conv_medium  --checkpoint path/to/best_model.pth
 """
 import argparse
 import sys

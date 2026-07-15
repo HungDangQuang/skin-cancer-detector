@@ -2,7 +2,7 @@
 # ============================================================================
 # Step 2 (FULL) — train ONE teacher across all 5 CV folds in a SINGLE job.
 # The 5 folds run sequentially inside this one job (no Slurm array), so one
-# model = one job. Pick the teacher via TEACHER (default: efficientnet_b4).
+# model = one job. Pick the teacher via TEACHER (default: efficientnetv2_m).
 # Prereq:  10_prepare_data finished.
 # Submit:  bash slurm/submit.sh slurm/11_train_teacher.slurm                       # baseline B4
 #          bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnetv2_m   # SOTA
@@ -16,7 +16,7 @@
 #          └── test_metrics.json
 # Aggregate after all 5 folds finish:
 #          bash slurm/submit.sh slurm/22_aggregate_folds.slurm \
-#              RUN_DIR=experiments/runs/teacher/efficientnet_b4
+#              RUN_DIR=experiments/runs/teacher/efficientnetv2_m
 # ============================================================================
 #SBATCH --job-name=train_teacher
 #SBATCH --output=logs/train_teacher_%j.out
@@ -36,7 +36,7 @@ acquire_gpu 20480      # ~20 GB headroom: covers baseline B4 and the larger SOTA
                        # `... TEACHER=maxvit_base` + edit/override training.batch_size.
 setup_mps
 
-TEACHER="${TEACHER:-efficientnet_b4}"
+TEACHER="${TEACHER:-efficientnetv2_m}"
 FOLDS="${FOLDS:-0 1 2 3 4}"
 # Anti-overfit knobs (single-token → safe through submit.sh --export). Defaults
 # reproduce the original behavior (augmentation=light, drop_path_rate=0.0).

@@ -50,4 +50,4 @@ mkdir -p "${PROJECT_DIR}/logs" "${PROJECT_DIR}/exports/executorch"
 echo
 echo "Export venv ready."
 echo "  venv:     ${VENV_DIR}  (separate from training venv ${DATASTORE_DIR}/venv)"
-echo "  next:     bash slurm/submit.sh slurm/25_export_executorch.slurm MODEL=efficientnet_b0 CKPT=..."
+echo "  next:     bash slurm/submit.sh slurm/25_export_executorch.slurm MODEL=mobilenetv4_conv_medium CKPT=..."

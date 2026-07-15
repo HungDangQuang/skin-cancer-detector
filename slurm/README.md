@@ -144,13 +144,13 @@ tail -f logs/poc_teacher_<jobid>_runtime.log
 
 Done when the log ends with:
 ```
-[INFO] Teacher training complete. Checkpoint: experiments/poc/teacher/efficientnet_b4/checkpoints/best_model.pth
+[INFO] Teacher training complete. Checkpoint: experiments/poc/teacher/efficientnetv2_m/checkpoints/best_model.pth
 [job] DONE
 ```
 
 Verify before moving on:
 ```bash
-ls -lh experiments/poc/teacher/efficientnet_b4/checkpoints/best_model.pth
+ls -lh experiments/poc/teacher/efficientnetv2_m/checkpoints/best_model.pth
 ```
 
 ### 3.3 POC KD student (~5–10 min, GPU)
@@ -158,15 +158,15 @@ ls -lh experiments/poc/teacher/efficientnet_b4/checkpoints/best_model.pth
 ```bash
 bash slurm/submit.sh slurm/03_poc_student.slurm
 # Different student arch:
-bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv3_large
-bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilevit_s
+bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv4_conv_medium
+bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=efficientformerv2_s2
 # SOTA pair (TEACHER must match the one POC-trained in 3.2 first):
 bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv4_conv_medium TEACHER=convnextv2_base
 ```
 
 Verify:
 ```bash
-ls -lh experiments/poc/kd_efficientnet_b4_to_efficientnet_b0/checkpoints/best_model.pth
+ls -lh experiments/poc/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/checkpoints/best_model.pth
 ```
 
 ---
@@ -206,7 +206,7 @@ bash slurm/submit.sh slurm/10_prepare_data.slurm
 The script skips re-**writing** images whose JPG already exists on disk. Note: it still re-**reads** every image on a warm re-run, because the quality filter (corrupt / too-small / blank / exact-duplicate) and dedup re-run on the on-disk copies too — so a re-run after the filter changed will clean a previously-unfiltered dataset, but warm runs are **not** trivially fast. Dropped images are logged per dataset to `data/processed/<dataset>/excluded_images.csv`, and PAD `patient_id`s are namespaced (`pad_…`) so they can't collide with ISIC across folds. Full cleaning + augmentation spec: [`docs/PREPROCESSING.md`](../docs/PREPROCESSING.md).
 
 ### 4.3 Teacher (~24 h, GPU)
-`TEACHER=` selects the backbone (default `efficientnet_b4`). SOTA set needs `timm>=1.0`.
+`TEACHER=` selects the backbone (default `efficientnetv2_m`). SOTA set needs `timm>=1.0`.
 ```bash
 bash slurm/submit.sh slurm/11_train_teacher.slurm                            # baseline B4
 bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnetv2_m   # SOTA: also convnextv2_base, maxvit_base
@@ -217,17 +217,17 @@ bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnetv2_m   # S
 (default B4). Run-dir: `kd_<TEACHER>_to_<STUDENT>/`.
 ```bash
 # KD — baseline backbones (default teacher B4)
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientnet_b0
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilevit_s
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2
 # KD — SOTA students (mobile-latency-optimized) from a SOTA teacher
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=fastvit_sa12            TEACHER=efficientnetv2_m
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2    TEACHER=efficientnetv2_m
 # Baseline (no KD)
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientnet_b0    TRAINING=baseline
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large  TRAINING=baseline
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilevit_s        TRAINING=baseline
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium    TRAINING=baseline
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium  TRAINING=baseline
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2        TRAINING=baseline
 ```
 
 ### 4.5 Data-strategy ablations (prove PAD mixing + sampler help)
@@ -243,13 +243,13 @@ each run-dir with `22_aggregate_folds.slurm`, then compare with
 bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=off    # no resampling (natural ~1018:1)
 bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=3      # 1:3
 bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=10     # 1:10
-# -> experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large__{samp_off,ratio3,ratio10}/
+# -> experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium__{samp_off,ratio3,ratio10}/
 
 # B) PAD mixing — baseline (no KD, so the teacher can't leak PAD via soft labels),
 #    train ISIC-only vs ISIC+PAD, judged on the IDENTICAL combined held-out test.
 bash slurm/submit.sh slurm/14_ablation_pad.slurm ARM=isic_only
 bash slurm/submit.sh slurm/14_ablation_pad.slurm ARM=isic_pad
-# -> experiments/runs/baseline_mobilenetv3_large__train_{isic_only,isic_pad}/
+# -> experiments/runs/baseline_mobilenetv4_conv_medium__train_{isic_only,isic_pad}/
 #    Per-domain (ISIC vs PAD) split comes from predictions.csv's `source` column.
 ```
 
@@ -264,7 +264,7 @@ by `submit.sh`):
 ```bash
 # Stronger augmentation + stochastic depth on a student run:
 bash slurm/submit.sh slurm/12_train_student.slurm \
-    STUDENT=mobilenetv3_large AUG=heavy DROP_PATH=0.1
+    STUDENT=mobilenetv4_conv_medium AUG=heavy DROP_PATH=0.1
 # Teacher with stochastic depth:
 bash slurm/submit.sh slurm/11_train_teacher.slurm \
     TEACHER=convnextv2_base AUG=heavy DROP_PATH=0.2
@@ -290,8 +290,8 @@ accepts it on the cluster before a full run.
 
 ```bash
 bash slurm/submit.sh slurm/20_evaluate.slurm \
-    MODEL=efficientnet_b0 \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/checkpoints/best_model.pth \
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/checkpoints/best_model.pth \
     OUT=reports/results/kd_b0.json
 ```
 
@@ -305,8 +305,8 @@ Architecture-level deployability numbers (params, FP32 size, single-core CPU lat
 
 ```bash
 bash slurm/submit.sh slurm/21_benchmark_mobile.slurm \
-    MODEL=efficientnet_b0 \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 # OUT defaults to reports/mobile_benchmark/<MODEL>.json
 ```
 
@@ -320,8 +320,8 @@ One small, reproducible set of test samples reused for **all** of: PC latency, m
 bash slurm/submit.sh slurm/26_make_benchmark_set.slurm N=100
 # Also dump per-model reference logits for parity (optional):
 bash slurm/submit.sh slurm/26_make_benchmark_set.slurm N=100 \
-    MODEL=efficientnet_b0 \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 ```
 
 Output `data/benchmark_set/` (rsync to Mac/phone, **don't commit**): `images/` (originals → parity layer 2), `inputs/<id>.bin` (fully-preprocessed float32 CHW → parity layer 1 + identical input both sides), `inputs.npy` (stacked, PC), `manifest.csv`, `meta.json` (image_size/mean/std/layout), and `ref_<model>.csv` (reference logits) when `MODEL`/`CKPT` given. Selection is seeded + label-stratified (oversamples the rare malignant class so inputs span the model's logit range).
@@ -333,8 +333,8 @@ Superset of the mobile benchmark for the thesis "deployment story": also FLOPs/M
 ```bash
 # With GPU (CPU + GPU numbers):
 bash slurm/submit.sh slurm/24_benchmark.slurm \
-    MODEL=efficientnet_b0 \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 
 # CPU-only (skip GPU, queues immediately):
 bash slurm/submit.sh slurm/24_benchmark.slurm MODEL=... CKPT=... DEVICE=cpu
@@ -352,8 +352,8 @@ Export a trained checkpoint to **ONNX** (default) or **TorchScript**. CPU-only �
 
 ```bash
 bash slurm/submit.sh slurm/23_export_model.slurm \
-    MODEL=mobilenetv3_large \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 # Optional: FORMAT=torchscript  OUT=exports/skin_mnv3  CONFIG=<path>
 # Default OUT=exports/<MODEL>; CONFIG defaults to the run's saved config.yaml
 # (next to the checkpoint) so the ONNX dummy uses the trained image_size.
@@ -373,13 +373,13 @@ Then export per student (CPU-only job):
 
 ```bash
 bash slurm/submit.sh slurm/25_export_executorch.slurm \
-    MODEL=efficientnet_b0 \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 # BACKEND=none for a portable-ops fallback if XNNPACK can't partition an arch
 # OUT defaults to exports/executorch/<MODEL>.pte
 ```
 
-Uses `torch.export` (not TorchScript), so it handles the transformer students (mobilevit_s / fastvit / efficientformerv2) that `torch.jit.script` chokes on. Default backend lowers to the **XNNPACK delegate** (fast Android CPU). **Mandatory parity check on device:** feed the same preprocessed input through PC PyTorch and the `.pte`; require `max|Δlogit|` small (e.g. <1e-3) before trusting any on-device number.
+Uses `torch.export` (not TorchScript), so it handles the transformer students (efficientformerv2_s2 / fastvit / efficientformerv2) that `torch.jit.script` chokes on. Default backend lowers to the **XNNPACK delegate** (fast Android CPU). **Mandatory parity check on device:** feed the same preprocessed input through PC PyTorch and the `.pte`; require `max|Δlogit|` small (e.g. <1e-3) before trusting any on-device number.
 
 ---
 

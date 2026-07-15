@@ -2,9 +2,9 @@
 # ============================================================================
 # Step 2 (POC) — train teacher for 2 epochs on synthetic data.
 # Prereq:  Step 1 completed (data/splits/poc/ exists).
-# Submit:  bash slurm/submit.sh slurm/02_poc_teacher.slurm                       # default efficientnet_b4
+# Submit:  bash slurm/submit.sh slurm/02_poc_teacher.slurm                       # default efficientnetv2_m
 #          bash slurm/submit.sh slurm/02_poc_teacher.slurm TEACHER=convnextv2_base   # smoke-test a SOTA teacher
-#   TEACHER in {efficientnet_b4, efficientnetv2_m, convnextv2_base, maxvit_base}
+#   TEACHER in {efficientnetv2_m, efficientnetv2_m, convnextv2_base, maxvit_base}
 # Output:  experiments/poc/teacher/${TEACHER}/checkpoints/best_model.pth
 # ============================================================================
 #SBATCH --job-name=poc_teacher
@@ -22,7 +22,7 @@ load_python_env
 acquire_gpu 12288    # 12 GB: covers SOTA teachers (convnextv2/maxvit) at batch 16 @ 224
 setup_mps
 
-TEACHER="${TEACHER:-efficientnet_b4}"
+TEACHER="${TEACHER:-efficientnetv2_m}"
 # Extra Hydra overrides (space-separated), passed verbatim — e.g. to verify the
 # maxvit fix: EXTRA="cudnn_deterministic=false training.batch_size=8".
 # Deliberately UNquoted at the call site so multiple overrides word-split.

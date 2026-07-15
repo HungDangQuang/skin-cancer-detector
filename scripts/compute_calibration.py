@@ -30,7 +30,7 @@ raw numbers match test_metrics.json exactly.
 Runs on the SERVER (needs numpy + scikit-learn + matplotlib), not the Mac.
 
 Usage:
-    python scripts/compute_calibration.py --run-dir experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large
+    python scripts/compute_calibration.py --run-dir experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium
     python scripts/compute_calibration.py --run-dir <run> --target-prevalence 0.0039
     python scripts/compute_calibration.py --run-dir <run> --method isotonic
 """

@@ -6,8 +6,8 @@
 # and schedules immediately (doesn't queue behind GPU jobs).
 # Submit:
 #   bash slurm/submit.sh slurm/23_export_model.slurm \
-#       MODEL=mobilenetv3_large \
-#       CKPT=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth
+#       MODEL=mobilenetv4_conv_medium \
+#       CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 # Optional env:
 #   FORMAT=onnx|torchscript   (default onnx)
 #   OUT=exports/<name>        (default exports/${MODEL}; extension added by the script)
@@ -32,7 +32,7 @@ load_python_env
 # from the environment can't make torch try (and fail) to grab a GPU.
 export CUDA_VISIBLE_DEVICES=""
 
-: "${MODEL:?MODEL env var required (e.g. mobilenetv3_large) — must match MODEL_REGISTRY}"
+: "${MODEL:?MODEL env var required (e.g. mobilenetv4_conv_medium) — must match MODEL_REGISTRY}"
 : "${CKPT:?CKPT env var required (path to best_model.pth)}"
 FORMAT="${FORMAT:-onnx}"
 OUT="${OUT:-exports/${MODEL}}"

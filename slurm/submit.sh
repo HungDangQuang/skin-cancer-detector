@@ -7,8 +7,8 @@
 #
 # Examples:
 #     bash slurm/submit.sh slurm/01_prepare_poc.slurm
-#     bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv3_large
-#     bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilevit_s TRAINING=baseline
+#     bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv4_conv_medium
+#     bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2 TRAINING=baseline
 # ============================================================================
 set -euo pipefail
 

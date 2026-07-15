@@ -1,4 +1,4 @@
-# Ablation study config — runs on EfficientNet-B0, fold 0 only
+# Ablation study config — runs on MobileNetV4-Conv-Medium, fold 0 only
 epochs: 50
 batch_size: 64
 grad_clip: 1.0
@@ -23,7 +23,7 @@ loss:
 
 ablation:
   enabled: true
-  architecture: efficientnet_b0
+  architecture: mobilenetv4_conv_medium
   fold: 0
   temperature_sweep: [1.0, 2.0, 4.0, 8.0]
   alpha_sweep: [0.1, 0.3, 0.5, 0.7]

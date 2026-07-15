@@ -55,17 +55,17 @@ bash run/prepare_data.sh              # → data/processed/… + data/splits/isi
 
 ```bash
 # Teacher first (one command trains all 5 folds sequentially):
-bash run/train_teacher.sh TEACHER=efficientnet_b4
-bash run/train_teacher.sh TEACHER=efficientnetv2_m         # SOTA teacher
+bash run/train_teacher.sh                                  # default efficientnetv2_m
+bash run/train_teacher.sh TEACHER=convnextv2_base
 
 # Then students (KD distills from the matching trained teacher):
-bash run/train_student.sh STUDENT=mobilenetv3_large
-bash run/train_student.sh STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m
-bash run/train_student.sh STUDENT=efficientnet_b0 TRAINING=baseline   # no-KD control
+bash run/train_student.sh STUDENT=mobilenetv4_conv_medium            # default teacher efficientnetv2_m
+bash run/train_student.sh STUDENT=fastvit_sa12 TEACHER=convnextv2_base
+bash run/train_student.sh STUDENT=efficientformerv2_s2 TRAINING=baseline   # no-KD control
 
 # Aggregate the 5 folds into mean ± std (cite THIS, not a single fold):
-bash run/aggregate.sh RUN_DIR=experiments/runs/teacher/efficientnet_b4
-bash run/aggregate.sh RUN_DIR=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large
+bash run/aggregate.sh RUN_DIR=experiments/runs/teacher/efficientnetv2_m
+bash run/aggregate.sh RUN_DIR=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium
 ```
 
 Common knobs (all `KEY=VALUE`): `FOLDS="0 1 2"`, `GPU=1` (pin a specific GPU),
@@ -75,8 +75,8 @@ Common knobs (all `KEY=VALUE`): `FOLDS="0 1 2"`, `GPU=1` (pin a specific GPU),
 ## Evaluate one checkpoint
 
 ```bash
-bash run/evaluate.sh MODEL=mobilenetv3_large \
-     CKPT=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth
+bash run/evaluate.sh MODEL=mobilenetv4_conv_medium \
+     CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 ```
 
 ## Long runs survive SSH drops
@@ -96,5 +96,5 @@ bash run/train_teacher.sh TEACHER=efficientnetv2_m
 ```bash
 python scripts/prepare_poc_data.py
 python scripts/train_teacher.py --config-name config_poc
-python scripts/train_student.py --config-name config_poc student=efficientnet_b0
+python scripts/train_student.py --config-name config_poc student=mobilenetv4_conv_medium
 ```

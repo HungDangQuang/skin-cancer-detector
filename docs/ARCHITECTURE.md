@@ -59,8 +59,7 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | `src/models/` | `registry.py` | `MODEL_REGISTRY` (string→class) + `build_model` / `build_model_from_name` |
 | | `base_model.py` | `BaseModel` (ABC): `forward(x)->Tensor(B,)`, `forward_features(x)->(feat(B,C), logit(B,))` cho feature-KD, `freeze_backbone()`, `unfreeze()` |
 | | `heads.py` | `build_head()` = `Dropout→Linear(in,1)`; dùng `infer_backbone_out_dim()`, **không** dùng `num_features` |
-| | `efficientnet.py` / `mobilenet.py` / `mobilevit.py` | wrapper họ baseline |
-| | `timm_backbone.py` | `TimmBackboneModel` — wrapper generic cho toàn bộ SOTA set (cần `timm>=1.0`) |
+| | `timm_backbone.py` | `TimmBackboneModel` — wrapper generic DUY NHẤT cho cả 6 model (3 teacher + 3 student; cần `timm>=1.0`) |
 | `src/training/` | `trainer.py` | `Trainer` (teacher/baseline) |
 | | `kd_trainer.py` | `KDTrainer` (student, teacher frozen) |
 | | `losses.py` | `BinaryFocalLoss` (gamma=2.0, alpha=0.25) |

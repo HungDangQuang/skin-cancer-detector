@@ -20,10 +20,10 @@ def make_cfg(model_name: str, backbone: str, dropout: float = 0.2):
 
 
 @pytest.mark.parametrize("model_name,backbone,dropout", [
-    ("efficientnet_b4", "efficientnet_b4", 0.3),
-    ("efficientnet_b0", "efficientnet_b0", 0.3),
-    ("mobilenetv3_large", "mobilenetv3_large_100", 0.2),
-    ("mobilevit_s", "mobilevit_s", 0.1),
+    ("efficientnetv2_m", "tf_efficientnetv2_m.in21k_ft_in1k", 0.3),          # teacher
+    ("mobilenetv4_conv_medium", "mobilenetv4_conv_medium.e500_r224_in1k", 0.2),  # student
+    ("fastvit_sa12", "fastvit_sa12.apple_in1k", 0.1),                        # student
+    ("efficientformerv2_s2", "efficientformerv2_s2.snap_dist_in1k", 0.1),    # student
 ])
 def test_model_forward_shape(model_name, backbone, dropout):
     """Model output must be (B,) — raw logit for BCEWithLogitsLoss."""
@@ -37,10 +37,14 @@ def test_model_forward_shape(model_name, backbone, dropout):
 
 
 def test_model_registry_keys():
-    assert "efficientnet_b4" in MODEL_REGISTRY   # teacher
-    assert "efficientnet_b0" in MODEL_REGISTRY   # student 1
-    assert "mobilenetv3_large" in MODEL_REGISTRY  # student 2
-    assert "mobilevit_s" in MODEL_REGISTRY        # student 3
+    # Teachers (high-capacity, frozen during KD)
+    assert "efficientnetv2_m" in MODEL_REGISTRY
+    assert "convnextv2_base" in MODEL_REGISTRY
+    assert "maxvit_base" in MODEL_REGISTRY
+    # Students (mobile-/on-device-latency-optimized)
+    assert "mobilenetv4_conv_medium" in MODEL_REGISTRY
+    assert "fastvit_sa12" in MODEL_REGISTRY
+    assert "efficientformerv2_s2" in MODEL_REGISTRY
 
 
 def test_unknown_model_raises():
@@ -50,14 +54,14 @@ def test_unknown_model_raises():
 
 
 def test_num_parameters():
-    cfg = make_cfg("efficientnet_b0", "efficientnet_b0")
+    cfg = make_cfg("mobilenetv4_conv_medium", "mobilenetv4_conv_medium.e500_r224_in1k")
     model = build_model(cfg)
     assert model.num_parameters() > 0
 
 
 def test_sigmoid_output_range():
     """After sigmoid, output must be in [0, 1]."""
-    cfg = make_cfg("efficientnet_b0", "efficientnet_b0")
+    cfg = make_cfg("mobilenetv4_conv_medium", "mobilenetv4_conv_medium.e500_r224_in1k")
     model = build_model(cfg)
     model.eval()
     x = torch.randn(4, 3, 224, 224)

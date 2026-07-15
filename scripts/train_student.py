@@ -2,9 +2,9 @@
 Step 2 — Train a student model via knowledge distillation from the teacher.
 
 Usage:
-    python scripts/train_student.py student=efficientnet_b0
-    python scripts/train_student.py student=mobilenetv3_large
-    python scripts/train_student.py student=mobilevit_s
+    python scripts/train_student.py student=mobilenetv4_conv_medium
+    python scripts/train_student.py student=fastvit_sa12
+    python scripts/train_student.py student=efficientformerv2_s2
 
 The teacher checkpoint must exist (run train_teacher.py first).
 Override the teacher checkpoint path with:

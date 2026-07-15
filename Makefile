@@ -1,4 +1,4 @@
-.PHONY: install install-dev prepare prepare-poc train-teacher train-student-b0 train-student-mobilenet train-student-mobilevit poc-teacher poc-student poc-all evaluate test lint format clean
+.PHONY: install install-dev prepare prepare-poc train-teacher train-student-mobilenetv4 train-student-fastvit train-student-efficientformer poc-teacher poc-student poc-all evaluate test lint format clean
 
 install:
 	pip install -e .
@@ -20,24 +20,24 @@ train-teacher:
 	python scripts/train_teacher.py
 
 # Step 2: Train each student via KD
-train-student-b0:
-	python scripts/train_student.py student=efficientnet_b0
+train-student-mobilenetv4:
+	python scripts/train_student.py student=mobilenetv4_conv_medium
 
-train-student-mobilenet:
-	python scripts/train_student.py student=mobilenetv3_large
+train-student-fastvit:
+	python scripts/train_student.py student=fastvit_sa12
 
-train-student-mobilevit:
-	python scripts/train_student.py student=mobilevit_s
+train-student-efficientformer:
+	python scripts/train_student.py student=efficientformerv2_s2
 
 # Train all students sequentially
-train-all-students: train-student-b0 train-student-mobilenet train-student-mobilevit
+train-all-students: train-student-mobilenetv4 train-student-fastvit train-student-efficientformer
 
 # POC (Proof-of-Concept) — smoke test the whole pipeline with 2 epochs.
 poc-teacher:
 	python scripts/train_teacher.py --config-name config_poc
 
 poc-student:
-	python scripts/train_student.py --config-name config_poc student=efficientnet_b0
+	python scripts/train_student.py --config-name config_poc student=mobilenetv4_conv_medium
 
 poc-all: prepare-poc poc-teacher poc-student
 

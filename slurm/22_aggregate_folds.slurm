@@ -7,9 +7,9 @@
 #
 # Submit:
 #   bash slurm/submit.sh slurm/22_aggregate_folds.slurm \
-#       RUN_DIR=experiments/runs/teacher/efficientnet_b4
+#       RUN_DIR=experiments/runs/teacher/efficientnetv2_m
 #   bash slurm/submit.sh slurm/22_aggregate_folds.slurm \
-#       RUN_DIR=experiments/runs/kd_efficientnet_b4_to_mobilevit_s
+#       RUN_DIR=experiments/runs/kd_efficientnetv2_m_to_efficientformerv2_s2
 #
 # Outputs (in RUN_DIR):
 #   aggregated.json   — mean/std/min/max/per-fold for each metric
@@ -28,7 +28,7 @@ source "${SLURM_SUBMIT_DIR:-$(pwd)}/slurm/_lib.sh"
 load_python_env
 # No GPU needed — aggregation is pure JSON arithmetic.
 
-: "${RUN_DIR:?RUN_DIR env var required, e.g. RUN_DIR=experiments/runs/teacher/efficientnet_b4}"
+: "${RUN_DIR:?RUN_DIR env var required, e.g. RUN_DIR=experiments/runs/teacher/efficientnetv2_m}"
 
 echo "[job] Aggregating folds under ${RUN_DIR}"
 python scripts/aggregate_folds.py --run-dir "${RUN_DIR}"

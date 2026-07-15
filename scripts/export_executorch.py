@@ -11,7 +11,7 @@ Why ExecuTorch and not TFLite: the goal is to run the PyTorch student model
 *as-is* on device without converting into another framework. ExecuTorch is the
 PyTorch-native on-device path (torch.export → .pte). It uses torch.export (not
 torch.jit.script), which handles the dynamic control flow that makes scripting
-fail on the transformer students (mobilevit_s / fastvit / efficientformerv2).
+fail on the transformer students (fastvit / efficientformerv2).
 
 Backends:
   - xnnpack (default): lower to the XNNPACK delegate → fast CPU on Android.
@@ -19,8 +19,8 @@ Backends:
     architecture has an op XNNPACK can't partition.
 
 Usage (inside the export venv):
-    python scripts/export_executorch.py --model-name efficientnet_b0 \\
-        --checkpoint experiments/runs/kd_..._to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+    python scripts/export_executorch.py --model-name mobilenetv4_conv_medium \\
+        --checkpoint experiments/runs/kd_..._to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 """
 import argparse
 import sys

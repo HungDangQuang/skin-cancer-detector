@@ -7,10 +7,9 @@
 # so that TEACHER must already be trained (run/train_teacher.sh with the same TEACHER).
 #
 # Args are KEY=VALUE (slurm-wrapper style) OR env vars:
-#   STUDENT    student backbone (default efficientnet_b0)
-#              baseline: efficientnet_b0 | mobilenetv3_large | mobilevit_s
-#              SOTA:     mobilenetv4_conv_medium | fastvit_sa12 | efficientformerv2_s2
-#   TEACHER    teacher to distill from (default efficientnet_b4)
+#   STUDENT    student backbone (default mobilenetv4_conv_medium)
+#              choices: mobilenetv4_conv_medium | fastvit_sa12 | efficientformerv2_s2
+#   TEACHER    teacher to distill from (default efficientnetv2_m)
 #   TRAINING   distillation | baseline    (default distillation; baseline = no KD)
 #   FOLDS      space-separated fold list  (default "0 1 2 3 4")
 #   AUG        light | heavy              (default light)
@@ -19,9 +18,9 @@
 #   EXTRA      extra Hydra overrides, verbatim (e.g. EXTRA="cudnn_deterministic=false")
 #
 # Examples:
-#   bash run/train_student.sh STUDENT=mobilenetv3_large
-#   bash run/train_student.sh STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m
-#   bash run/train_student.sh STUDENT=efficientnet_b0 TRAINING=baseline    # no-KD control
+#   bash run/train_student.sh STUDENT=fastvit_sa12
+#   bash run/train_student.sh STUDENT=mobilenetv4_conv_medium TEACHER=convnextv2_base
+#   bash run/train_student.sh STUDENT=efficientformerv2_s2 TRAINING=baseline    # no-KD control
 #
 # Output: experiments/runs/kd_<teacher>_to_<student>/fold_{0..4}/   (or baseline_* dirs)
 # Aggregate after all folds finish:
@@ -34,8 +33,8 @@ start_log "train_student"
 activate_venv
 select_gpu
 
-STUDENT="${STUDENT:-efficientnet_b0}"
-TEACHER="${TEACHER:-efficientnet_b4}"
+STUDENT="${STUDENT:-mobilenetv4_conv_medium}"
+TEACHER="${TEACHER:-efficientnetv2_m}"
 TRAINING="${TRAINING:-distillation}"
 FOLDS="${FOLDS:-0 1 2 3 4}"
 AUG="${AUG:-light}"

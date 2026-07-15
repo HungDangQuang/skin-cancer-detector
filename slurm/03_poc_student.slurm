@@ -4,13 +4,13 @@
 # Prereq:  Step 2 completed for the SAME TEACHER (its best_model.pth exists).
 # Submit:
 #   bash slurm/submit.sh slurm/03_poc_student.slurm
-#   bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv3_large
-#   bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilevit_s
+#   bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv4_conv_medium
+#   bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=efficientformerv2_s2
 #   # Smoke-test a SOTA pair (TEACHER must match the one POC-trained in step 2):
 #   bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv4_conv_medium TEACHER=convnextv2_base
-#   STUDENT in {efficientnet_b0, mobilenetv3_large, mobilevit_s,
+#   STUDENT in {mobilenetv4_conv_medium, mobilenetv4_conv_medium, efficientformerv2_s2,
 #               mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2}
-#   TEACHER in {efficientnet_b4, efficientnetv2_m, convnextv2_base, maxvit_base}
+#   TEACHER in {efficientnetv2_m, efficientnetv2_m, convnextv2_base, maxvit_base}
 # ============================================================================
 #SBATCH --job-name=poc_student
 #SBATCH --output=logs/poc_student_%j.out
@@ -27,8 +27,8 @@ load_python_env
 acquire_gpu 14336    # teacher (frozen, incl. SOTA convnextv2/maxvit) + student + grads, batch 16
 setup_mps
 
-STUDENT="${STUDENT:-efficientnet_b0}"
-TEACHER="${TEACHER:-efficientnet_b4}"
+STUDENT="${STUDENT:-mobilenetv4_conv_medium}"
+TEACHER="${TEACHER:-efficientnetv2_m}"
 # Extra Hydra overrides (space-separated), passed verbatim — e.g. with a maxvit
 # teacher: EXTRA="cudnn_deterministic=false".
 # Deliberately UNquoted at the call site so multiple overrides word-split.

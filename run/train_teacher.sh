@@ -4,8 +4,8 @@
 # Non-Slurm analogue of slurm/11_train_teacher.slurm.
 #
 # Args are KEY=VALUE (same style as the slurm submit wrapper) OR env vars:
-#   TEACHER    teacher backbone (default efficientnet_b4)
-#              SOTA: efficientnetv2_m | convnextv2_base | maxvit_base
+#   TEACHER    teacher backbone (default efficientnetv2_m)
+#              choices: efficientnetv2_m | convnextv2_base | maxvit_base
 #   FOLDS      space-separated fold list (default "0 1 2 3 4")
 #   AUG        light | heavy                (default light)
 #   DROP_PATH  stochastic depth rate        (default 0.0)
@@ -14,8 +14,8 @@
 #              EXTRA="cudnn_deterministic=false training.batch_size=16"
 #
 # Examples:
-#   bash run/train_teacher.sh                                   # baseline B4, all folds
-#   bash run/train_teacher.sh TEACHER=efficientnetv2_m
+#   bash run/train_teacher.sh                                   # efficientnetv2_m, all folds
+#   bash run/train_teacher.sh TEACHER=convnextv2_base
 #   bash run/train_teacher.sh TEACHER=maxvit_base GPU=1 FOLDS="0 1 2" \
 #        EXTRA="cudnn_deterministic=false training.batch_size=16"
 #
@@ -31,7 +31,7 @@ start_log "train_teacher"
 activate_venv
 select_gpu
 
-TEACHER="${TEACHER:-efficientnet_b4}"
+TEACHER="${TEACHER:-efficientnetv2_m}"
 FOLDS="${FOLDS:-0 1 2 3 4}"
 AUG="${AUG:-light}"
 DROP_PATH="${DROP_PATH:-0.0}"

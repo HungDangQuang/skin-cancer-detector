@@ -26,8 +26,8 @@ quote results together with the hardware they were measured on (printed in the
 JSON under "device_info").
 
 Usage:
-    python scripts/benchmark.py --model-name efficientnet_b0 \\
-        --checkpoint experiments/runs/kd_..._to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+    python scripts/benchmark.py --model-name mobilenetv4_conv_medium \\
+        --checkpoint experiments/runs/kd_..._to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
     python scripts/benchmark.py --model-name efficientnetv2_m --checkpoint ... \\
         --device cuda --batch-sizes 1 8 32 64
 """

@@ -29,7 +29,7 @@
 #           └── predictions.csv     (y_true,y_prob,y_pred,source  <- per-domain)
 # Aggregate each arm then compare ISIC-only vs ISIC+PAD (focus: PAD-source rows):
 #   bash slurm/submit.sh slurm/22_aggregate_folds.slurm \
-#       RUN_DIR=experiments/runs/baseline_mobilenetv3_large__train_isic_only
+#       RUN_DIR=experiments/runs/baseline_mobilenetv4_conv_medium__train_isic_only
 # ============================================================================
 #SBATCH --job-name=ablation_pad
 #SBATCH --output=logs/ablation_pad_%A_%a.out
@@ -47,7 +47,7 @@ load_python_env
 acquire_gpu 12288      # baseline student only (no teacher), batch 64
 setup_mps
 
-STUDENT="${STUDENT:-mobilenetv3_large}"
+STUDENT="${STUDENT:-mobilenetv4_conv_medium}"
 TRAINING="${TRAINING:-baseline}"
 ARM="${ARM:-isic_pad}"
 FOLD="${SLURM_ARRAY_TASK_ID:-0}"

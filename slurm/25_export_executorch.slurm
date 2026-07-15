@@ -9,8 +9,8 @@
 #
 # Submit:
 #   bash slurm/submit.sh slurm/25_export_executorch.slurm \
-#       MODEL=efficientnet_b0 \
-#       CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+#       MODEL=mobilenetv4_conv_medium \
+#       CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 #   # BACKEND=none for a portable-ops fallback if XNNPACK can't partition an arch
 #
 # Output (default): exports/executorch/<MODEL>.pte
@@ -39,7 +39,7 @@ fi
 source "${EXPORT_VENV}/bin/activate"
 echo "[job] Export venv: $(which python) ($(python --version 2>&1))"
 
-: "${MODEL:?MODEL env var required (e.g. efficientnet_b0)}"
+: "${MODEL:?MODEL env var required (e.g. mobilenetv4_conv_medium)}"
 : "${CKPT:?CKPT env var required (path to best_model.pth)}"
 BACKEND="${BACKEND:-xnnpack}"
 OUT="${OUT:-exports/executorch/${MODEL}.pte}"

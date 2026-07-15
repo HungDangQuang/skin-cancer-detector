@@ -4,7 +4,7 @@
 #
 # Usage:
 #   python scripts/train_teacher.py --config-name config_poc
-#   python scripts/train_student.py --config-name config_poc student=efficientnet_b0
+#   python scripts/train_student.py --config-name config_poc student=mobilenetv4_conv_medium
 use_kd: true        # POC student exercises the KD path
 epochs: 2
 batch_size: 16

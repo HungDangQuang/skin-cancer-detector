@@ -74,4 +74,4 @@ echo
 echo "Next steps:"
 echo "  1. Put raw data under data/raw/ (see run/README.md § Data)"
 echo "  2. bash run/prepare_data.sh"
-echo "  3. bash run/train_teacher.sh TEACHER=efficientnet_b4"
+echo "  3. bash run/train_teacher.sh TEACHER=efficientnetv2_m"

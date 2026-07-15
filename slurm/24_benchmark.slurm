@@ -9,8 +9,8 @@
 #
 # Submit (with GPU — gets CPU + GPU numbers):
 #   bash slurm/submit.sh slurm/24_benchmark.slurm \
-#       MODEL=efficientnet_b0 \
-#       CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+#       MODEL=mobilenetv4_conv_medium \
+#       CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 #
 # CPU-only (skip GPU; faster to queue):
 #   bash slurm/submit.sh slurm/24_benchmark.slurm MODEL=... CKPT=... DEVICE=cpu
@@ -30,7 +30,7 @@
 source "${SLURM_SUBMIT_DIR:-$(pwd)}/slurm/_lib.sh"
 load_python_env
 
-: "${MODEL:?MODEL env var required (e.g. efficientnet_b0)}"
+: "${MODEL:?MODEL env var required (e.g. mobilenetv4_conv_medium)}"
 : "${CKPT:?CKPT env var required (path to best_model.pth)}"
 DEVICE="${DEVICE:-auto}"
 OUT="${OUT:-reports/benchmark/${MODEL}.json}"

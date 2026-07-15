@@ -7,10 +7,10 @@
 # so TEACHER must already be trained (11_train_teacher with the same TEACHER).
 #
 # Prereq:  11_train_teacher finished (all 5 folds) for the chosen TEACHER.
-# Submit (baseline backbones, default teacher efficientnet_b4):
-#   bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientnet_b0
-#   bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large
-#   bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilevit_s
+# Submit (baseline backbones, default teacher efficientnetv2_m):
+#   bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium
+#   bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium
+#   bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2
 # Submit (SOTA student distilled from a SOTA teacher):
 #   bash slurm/submit.sh slurm/12_train_student.slurm \
 #       STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m
@@ -21,7 +21,7 @@
 #   bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=fastvit_sa12 TEACHER=maxvit_base FOLDS="3 4"
 #
 # Controlled comparison (no KD — works since 2026-06-04 via the use_kd flag):
-#   bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientnet_b0 TRAINING=baseline
+#   bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium TRAINING=baseline
 #
 # Output: experiments/runs/kd_<teacher>_to_<student>/fold_{0..4}/
 #         ├── checkpoints/best_model.pth
@@ -45,8 +45,8 @@ load_python_env
 acquire_gpu 22528      # frozen teacher (up to maxvit_base) + student + grads, batch 64
 setup_mps
 
-STUDENT="${STUDENT:-efficientnet_b0}"
-TEACHER="${TEACHER:-efficientnet_b4}"
+STUDENT="${STUDENT:-mobilenetv4_conv_medium}"
+TEACHER="${TEACHER:-efficientnetv2_m}"
 TRAINING="${TRAINING:-distillation}"
 FOLDS="${FOLDS:-0 1 2 3 4}"
 # Anti-overfit knobs (single-token → safe through submit.sh --export). Defaults

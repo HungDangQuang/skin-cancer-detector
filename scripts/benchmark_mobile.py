@@ -12,8 +12,8 @@ not on a phone, but it ranks the architectures consistently and supports the
 de-scoped; backbones run FP32).
 
 Usage:
-    python scripts/benchmark_mobile.py --model-name efficientnet_b0 \\
-        --checkpoint experiments/runs/kd_..._to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+    python scripts/benchmark_mobile.py --model-name mobilenetv4_conv_medium \\
+        --checkpoint experiments/runs/kd_..._to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 """
 import argparse
 import json
