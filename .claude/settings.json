@@ -70,7 +70,9 @@
       "Edit(/.claude/skills/analyze-evaluation/**)",
       "mcp__claude_ai_Google_Drive__read_file_content",
       "mcp__claude_ai_Google_Drive__create_file",
-      "Edit(/.claude/skills/kd-experiment/**)"
+      "Edit(/.claude/skills/kd-experiment/**)",
+      "Read(//Users/hungdang/Documents/android-projects/SkinDetector/**)",
+      "Bash(mkdir -p docs app/src/main/java/com/nemis/skindetector/ml)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
