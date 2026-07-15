@@ -31,8 +31,8 @@ khớp tuyệt đối eval (`build_transforms(cfg,"val")`).
 bash slurm/submit.sh slurm/26_make_benchmark_set.slurm N=100
 # Kèm logit tham chiếu cho parity — chạy cho TỪNG student định đo:
 bash slurm/submit.sh slurm/26_make_benchmark_set.slurm N=100 \
-    MODEL=efficientnet_b0 \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 ```
 
 Kết quả `data/benchmark_set/` (rsync về Mac/điện thoại, **không commit**):
@@ -56,8 +56,8 @@ thêm batch → `(1,3,224,224)`.
 
 ```bash
 bash slurm/submit.sh slurm/24_benchmark.slurm \
-    MODEL=efficientnet_b0 \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 ```
 
 Ra `reports/benchmark/<MODEL>.json`: params, FLOPs/MACs, FP32 size, latency
@@ -77,8 +77,8 @@ ExecuTorch pin torch riêng → **venv cô lập**, không đụng venv training
 bash slurm/setup_export_env.sh
 # Mỗi student:
 bash slurm/submit.sh slurm/25_export_executorch.slurm \
-    MODEL=efficientnet_b0 \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 # BACKEND=none nếu XNNPACK không partition được kiến trúc nào đó
 ```
 

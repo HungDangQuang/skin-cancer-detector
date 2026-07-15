@@ -10,18 +10,14 @@ All models inherit from `src/models/base_model.py` and output a **single raw log
 
 | Role | Name | Backbone (timm) | Params | Config |
 |---|---|---|---|---|
-| Teacher | `efficientnet_b4` | `efficientnet_b4` | ~19M | `configs/teacher/efficientnet_b4.yaml` |
-| Student | `efficientnet_b0` | `efficientnet_b0` | ~5M | `configs/student/efficientnet_b0.yaml` |
-| Student | `mobilenetv3_large` | `mobilenetv3_large_100` | ~5M | `configs/student/mobilenetv3_large.yaml` |
-| Student | `mobilevit_s` | `mobilevit_s` | ~5M | `configs/student/mobilevit_s.yaml` |
-| Teacher (SOTA) | `efficientnetv2_m` | `tf_efficientnetv2_m.in21k_ft_in1k` | ~54M | `configs/teacher/efficientnetv2_m.yaml` |
-| Teacher (SOTA) | `convnextv2_base` | `convnextv2_base.fcmae_ft_in22k_in1k` | ~89M | `configs/teacher/convnextv2_base.yaml` |
-| Teacher (SOTA) | `maxvit_base` | `maxvit_base_tf_224.in1k` | ~119M | `configs/teacher/maxvit_base.yaml` |
-| Student (SOTA) | `mobilenetv4_conv_medium` | `mobilenetv4_conv_medium.e500_r224_in1k` | ~9M | `configs/student/mobilenetv4_conv_medium.yaml` |
-| Student (SOTA) | `fastvit_sa12` | `fastvit_sa12.apple_in1k` | ~11M | `configs/student/fastvit_sa12.yaml` |
-| Student (SOTA) | `efficientformerv2_s2` | `efficientformerv2_s2.snap_dist_in1k` | ~13M | `configs/student/efficientformerv2_s2.yaml` |
+| Teacher | `efficientnetv2_m` | `tf_efficientnetv2_m.in21k_ft_in1k` | ~54M | `configs/teacher/efficientnetv2_m.yaml` |
+| Teacher | `convnextv2_base` | `convnextv2_base.fcmae_ft_in22k_in1k` | ~89M | `configs/teacher/convnextv2_base.yaml` |
+| Teacher | `maxvit_base` | `maxvit_base_tf_224.in1k` | ~119M | `configs/teacher/maxvit_base.yaml` |
+| Student | `mobilenetv4_conv_medium` | `mobilenetv4_conv_medium.e500_r224_in1k` | ~9M | `configs/student/mobilenetv4_conv_medium.yaml` |
+| Student | `fastvit_sa12` | `fastvit_sa12.apple_in1k` | ~11M | `configs/student/fastvit_sa12.yaml` |
+| Student | `efficientformerv2_s2` | `efficientformerv2_s2.snap_dist_in1k` | ~13M | `configs/student/efficientformerv2_s2.yaml` |
 
-Registry: `src/models/registry.py` — `build_model(cfg)` dispatches on `cfg.model.name`. The 6 SOTA models share one generic wrapper `TimmBackboneModel` and require **`timm>=1.0`**.
+Registry: `src/models/registry.py` — `build_model(cfg)` dispatches on `cfg.model.name`. All 6 models share one generic wrapper `TimmBackboneModel` and require **`timm>=1.0`** (the earlier baseline set was removed).
 
 ---
 
@@ -37,9 +33,9 @@ Registry: `src/models/registry.py` — `build_model(cfg)` dispatches on `cfg.mod
 | Group | Options |
 |---|---|
 | `data/` | `isic2024` (primary), `pad_ufes_20` (augment), `ham10000` / `fitzpatrick17k` (external eval only) |
-| `teacher/` | `efficientnet_b4`; SOTA: `efficientnetv2_m`, `convnextv2_base`, `maxvit_base` |
-| `student/` | `efficientnet_b0`, `mobilenetv3_large`, `mobilevit_s`; SOTA: `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2` |
-| `training/` | `default`, `baseline` (no KD), `distillation` (KD), `ablation`, `poc` |
+| `teacher/` | `efficientnetv2_m`, `convnextv2_base`, `maxvit_base` |
+| `student/` | `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2` |
+| `training/` | `default`, `baseline` (no KD), `distillation` (KD), `distillation_rkd` (KD + RKD), `ablation`, `poc` |
 | `augmentation/` | `light`, `heavy` |
 
 ### Key hyperparameters in `training/poc.yaml`
@@ -98,7 +94,7 @@ python scripts/train_teacher.py --config-name config_poc
 ```
 Output:
 ```
-experiments/poc/teacher/efficientnet_b4/
+experiments/poc/teacher/efficientnetv2_m/
 ├── checkpoints/best_model.pth
 ├── checkpoints/last.pth
 ├── config.yaml
@@ -109,17 +105,17 @@ experiments/poc/teacher/efficientnet_b4/
 ```bash
 make poc-student
 # equivalent to:
-python scripts/train_student.py --config-name config_poc student=efficientnet_b0
+python scripts/train_student.py --config-name config_poc student=mobilenetv4_conv_medium
 ```
 The student script looks for the teacher checkpoint at:
 ```
-experiments/poc/teacher/efficientnet_b4/checkpoints/best_model.pth
+experiments/poc/teacher/efficientnetv2_m/checkpoints/best_model.pth
 ```
 Override with: `teacher_checkpoint=<path>` on the CLI.
 
 Output:
 ```
-experiments/poc/kd_efficientnet_b4_to_efficientnet_b0/
+experiments/poc/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/
 ├── checkpoints/best_model.pth
 ├── config.yaml
 └── training_curves.png
@@ -127,13 +123,13 @@ experiments/poc/kd_efficientnet_b4_to_efficientnet_b0/
 
 ### 4.3 Train other student architectures (optional)
 ```bash
-python scripts/train_student.py --config-name config_poc student=mobilenetv3_large
-python scripts/train_student.py --config-name config_poc student=mobilevit_s
+python scripts/train_student.py --config-name config_poc student=mobilenetv4_conv_medium
+python scripts/train_student.py --config-name config_poc student=efficientformerv2_s2
 ```
 
 ### 4.4 Run the full POC chain
 ```bash
-make poc-all              # teacher + efficientnet_b0 student
+make poc-all              # teacher + mobilenetv4_conv_medium student
 ```
 
 ---
@@ -145,14 +141,14 @@ make poc-all              # teacher + efficientnet_b0 student
 ```bash
 # Evaluate teacher
 python scripts/evaluate.py \
-    --model-name efficientnet_b4 \
-    --checkpoint experiments/poc/teacher/efficientnet_b4/checkpoints/best_model.pth \
+    --model-name efficientnetv2_m \
+    --checkpoint experiments/poc/teacher/efficientnetv2_m/checkpoints/best_model.pth \
     --output reports/results/poc_teacher_metrics.json
 
 # Evaluate KD student
 python scripts/evaluate.py \
-    --model-name efficientnet_b0 \
-    --checkpoint experiments/poc/kd_efficientnet_b4_to_efficientnet_b0/checkpoints/best_model.pth \
+    --model-name mobilenetv4_conv_medium \
+    --checkpoint experiments/poc/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/checkpoints/best_model.pth \
     --output reports/results/poc_kd_student_metrics.json
 ```
 
@@ -175,7 +171,7 @@ After `make poc-all` completes, verify:
 - [ ] `training_curves.png` shows loss decreasing across 2 epochs
 - [ ] Student `best_model.pth` exists
 - [ ] Student training logs show both `hard_loss` and `soft_loss` printed each epoch
-- [ ] `python scripts/evaluate.py --model-name efficientnet_b0 --checkpoint <path>` runs and writes metrics JSON
+- [ ] `python scripts/evaluate.py --model-name mobilenetv4_conv_medium --checkpoint <path>` runs and writes metrics JSON
 - [ ] Metric JSON contains `pauc_at_tpr80` (likely low — that's fine for POC)
 
 If any step fails, the log at `experiments/prepare_data.log` and `stdout` from the Hydra run (in `outputs/`) are the first places to look.

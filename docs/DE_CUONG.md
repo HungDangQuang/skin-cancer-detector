@@ -53,10 +53,8 @@ huấn luyện một mô hình "thầy" (teacher) dung lượng lớn, mạnh, r
 - **Chưng cất tri thức (KD):** hàm mất mát tổng hợp
   `L = 0.3·focal(student, y) + 0.7·T²·BCE(σ(s/T), σ(t/T))`, với nhiệt độ `T = 4.0`;
   teacher được **đóng băng** trong suốt quá trình huấn luyện student.
-- **Bộ teacher:** baseline `efficientnet_b4`, cùng nhóm SOTA `efficientnetv2_m`,
-  `convnextv2_base`, `maxvit_base`.
-- **Bộ student (nhẹ, tối ưu cho di động):** baseline `efficientnet_b0`,
-  `mobilenetv3_large`, `mobilevit_s`; nhóm SOTA `mobilenetv4_conv_medium`,
+- **Bộ teacher (SOTA):** `efficientnetv2_m`, `convnextv2_base`, `maxvit_base`.
+- **Bộ student (nhẹ, tối ưu cho di động):** `mobilenetv4_conv_medium`,
   `fastvit_sa12`, `efficientformerv2_s2`.
 - **Xử lý mất cân bằng:** hàm `BinaryFocalLoss` + `DynamicUndersampledSampler` giữ tỉ
   lệ ác tính:lành tính ≈ 1:5 mỗi epoch + trộn thêm dữ liệu PAD-UFES-20 (nhiều ca ác
@@ -129,7 +127,7 @@ huấn luyện một mô hình "thầy" (teacher) dung lượng lớn, mạnh, r
 |-----------|-----------|--------------------|
 | **GĐ 1** (Tuần 1–2) | Khảo sát tài liệu, chốt bài toán & phạm vi; thu thập ISIC 2024 + PAD-UFES-20 | Đề cương, dữ liệu thô được staging trên cụm |
 | **GĐ 2** (Tuần 3–4) | Tiền xử lý offline (resize, lọc chất lượng, dedup) + chia fold patient-disjoint | `data/processed/`, các file split CSV; tập test holdout độc lập |
-| **GĐ 3** (Tuần 5–6) | Huấn luyện **teacher** (baseline `efficientnet_b4` + nhóm SOTA) | Checkpoint teacher + `test_metrics.json` per-fold |
+| **GĐ 3** (Tuần 5–6) | Huấn luyện **teacher** (nhóm SOTA: `efficientnetv2_m`/`convnextv2_base`/`maxvit_base`) | Checkpoint teacher + `test_metrics.json` per-fold |
 | **GĐ 4** (Tuần 7–9) | Huấn luyện **student** có/không KD × 5-fold; tính `compute_kd_delta` | Bảng so sánh KD vs baseline, `aggregated.md` |
 | **GĐ 5** (Tuần 10) | **Ablation** chiến lược dữ liệu (undersampler bật/tắt; có/không PAD) | Bằng chứng định lượng từng thành phần |
 | **GĐ 6** (Tuần 11) | **Mobile benchmark**: export ONNX/TorchScript, đo params/size/latency | `reports/mobile/*.json` |

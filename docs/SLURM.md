@@ -87,8 +87,8 @@ bash slurm/submit.sh slurm/02_poc_teacher.slurm TEACHER=convnextv2_base
 
 bash slurm/submit.sh slurm/03_poc_student.slurm
 # Different student arch:
-bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv3_large
-bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilevit_s
+bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv4_conv_medium
+bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=efficientformerv2_s2
 # Smoke-test a SOTA pair (TEACHER must match the one POC-trained above):
 bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv4_conv_medium TEACHER=convnextv2_base
 ```
@@ -147,10 +147,9 @@ bash slurm/submit.sh slurm/10_prepare_data.slurm
 Drops corrupt / too-small / blank / exact-duplicate images (logged to `data/processed/<dataset>/excluded_images.csv`) and writes patient-grouped 5-fold splits + `test_split.csv`. The quality filter re-runs on already-on-disk images, so warm re-runs still decode every image (not instant). Spec: [`PREPROCESSING.md`](PREPROCESSING.md).
 
 ### 3.3 Train teacher
-Pick the teacher with `TEACHER=` (default `efficientnet_b4`, the baseline backbone).
+Pick the teacher with `TEACHER=` (default `efficientnetv2_m`).
 ```bash
-bash slurm/submit.sh slurm/11_train_teacher.slurm                              # baseline B4
-bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnetv2_m     # SOTA teachers
+bash slurm/submit.sh slurm/11_train_teacher.slurm                              # default efficientnetv2_m
 bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=convnextv2_base
 bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=maxvit_base
 ```
@@ -161,21 +160,17 @@ Output: `experiments/runs/teacher/<TEACHER>/fold_{0..4}/`.
 (must already be trained in §3.3 with the same `TEACHER`). Run-dir is
 `experiments/runs/kd_<TEACHER>_to_<STUDENT>/fold_{0..4}/`.
 
-Baseline backbones (default teacher B4):
-```bash
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientnet_b0
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilevit_s
-```
-SOTA students (mobile-/on-device-latency-optimized) from a SOTA teacher:
+Students (mobile-/on-device-latency-optimized), distilling from a trained teacher:
 ```bash
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=fastvit_sa12            TEACHER=efficientnetv2_m
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2    TEACHER=efficientnetv2_m
 ```
-> Model sets — **teachers** `{efficientnet_b4 (baseline), efficientnetv2_m, convnextv2_base, maxvit_base}`,
-> **students** `{efficientnet_b0, mobilenetv3_large, mobilevit_s (baseline); mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2 (SOTA)}`.
-> The SOTA set needs `timm>=1.0` — re-run `slurm/setup_env.sh` after pulling.
+KD variants (opt-in, default behaviour unchanged): add `EXTRA="training.distillation.soft_loss_type=mse run_suffix=__mselogit"`
+for MSE-on-logit KD, or `TRAINING=distillation_rkd` for RKD feature-KD.
+> Model sets — **teachers** `{efficientnetv2_m, convnextv2_base, maxvit_base}`,
+> **students** `{mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2}`.
+> All 6 need `timm>=1.0` — re-run `slurm/setup_env.sh` after pulling.
 
 ### 3.4b Anti-overfitting knobs (`AUG`, `DROP_PATH`)
 `11_train_teacher` and `12_train_student` accept two opt-in env vars (defaults
@@ -190,7 +185,7 @@ reproduce the original behavior, so existing runs are unchanged):
   `maxvit_base`'s cuDNN backward error: `EXTRA="cudnn_deterministic=false training.batch_size=16"`.
   Also on the POC scripts `02`/`03`.
 ```bash
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large AUG=heavy DROP_PATH=0.1
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium AUG=heavy DROP_PATH=0.1
 bash slurm/submit.sh slurm/11_train_teacher.slurm  TEACHER=convnextv2_base   AUG=heavy DROP_PATH=0.2
 bash slurm/submit.sh slurm/11_train_teacher.slurm  TEACHER=maxvit_base EXTRA="cudnn_deterministic=false training.batch_size=16"
 ```
@@ -199,9 +194,9 @@ Each fold also writes `val_metrics.json` (best-epoch val metrics) → compute th
 
 ### 3.5 Controlled comparison (no KD)
 ```bash
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientnet_b0    TRAINING=baseline
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large  TRAINING=baseline
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilevit_s        TRAINING=baseline
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium    TRAINING=baseline
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium  TRAINING=baseline
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2        TRAINING=baseline
 ```
 
 ### 3.6 Data-strategy ablations (prove PAD mixing + the sampler help)
@@ -212,7 +207,7 @@ is a 5-fold array; aggregate with `22_aggregate_folds.slurm` and compare with th
 per-domain breakdowns.
 
 ```bash
-# A) Sampler (KD MobileNetV3, teacher reused; ratio-5 == the main run):
+# A) Sampler (KD MobileNetV4 student, teacher reused; ratio-5 == the main run):
 bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=off   # natural ~1018:1
 bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=3
 bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=10
@@ -234,8 +229,8 @@ runs are never overwritten.
 
 ```bash
 bash slurm/submit.sh slurm/20_evaluate.slurm \
-    MODEL=efficientnet_b0 \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/checkpoints/best_model.pth \
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/checkpoints/best_model.pth \
     OUT=reports/results/kd_b0.json
 ```
 
@@ -247,8 +242,8 @@ Params + FP32 size + single-core CPU latency are architecture-level (weight-inde
 
 ```bash
 bash slurm/submit.sh slurm/21_benchmark_mobile.slurm \
-    MODEL=mobilenetv3_large \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 ```
 
 Output (default `reports/mobile_benchmark/<MODEL>.json`): `params_millions`, `fp32_size_mb`, `cpu_latency_ms_median`, `cpu_latency_ms_p90`, `image_size`. INT8/TFLite quantization is de-scoped — FP32 backbones run as-is.
@@ -260,8 +255,8 @@ Output (default `reports/mobile_benchmark/<MODEL>.json`): `params_millions`, `fp
 ```bash
 # With GPU:
 bash slurm/submit.sh slurm/24_benchmark.slurm \
-    MODEL=mobilenetv3_large \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 # CPU-only: add DEVICE=cpu   |   custom sweep: BATCH_SIZES="1 16 64"
 ```
 
@@ -273,7 +268,7 @@ Output (default `reports/benchmark/<MODEL>.json`) adds `gflops`, `gmacs`, `train
 
 ```bash
 bash slurm/submit.sh slurm/26_make_benchmark_set.slurm N=100
-# + reference logits for parity: MODEL=efficientnet_b0 CKPT=.../best_model.pth
+# + reference logits for parity: MODEL=mobilenetv4_conv_medium CKPT=.../best_model.pth
 ```
 
 Output `data/benchmark_set/` (rsync, don't commit): `images/` (originals → parity layer 2), `inputs/<id>.bin` (preprocessed float32 CHW → parity layer 1), `inputs.npy`, `manifest.csv`, `meta.json`, `ref_<model>.csv`. Seeded + label-stratified (oversamples rare malignant).
@@ -282,8 +277,8 @@ Output `data/benchmark_set/` (rsync, don't commit): `images/` (originals → par
 
 ```bash
 bash slurm/submit.sh slurm/23_export_model.slurm \
-    MODEL=mobilenetv3_large \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 # Optional: FORMAT=torchscript (default onnx), OUT=exports/<name>, CONFIG=<path>
 ```
 
@@ -296,8 +291,8 @@ Runs the student **as-is** on Android via PyTorch-native ExecuTorch — no TFLit
 ```bash
 bash slurm/setup_export_env.sh        # one-time, login node (separate from setup_env.sh)
 bash slurm/submit.sh slurm/25_export_executorch.slurm \
-    MODEL=efficientnet_b0 \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 # BACKEND=none = portable-ops fallback; OUT defaults to exports/executorch/<MODEL>.pte
 ```
 
