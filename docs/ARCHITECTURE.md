@@ -2,7 +2,7 @@
 
 > **Mục đích:** file "nạp nhanh" cho một chat session mới. Đọc file này là nắm được toàn bộ kiến trúc code + luồng pipeline mà không phải đọc rải rác nhiều nơi.
 > **Nguồn chân lý chi tiết:** [CLAUDE.md](../CLAUDE.md) (§Architecture) + `docs/*.md`. File này là **bản đồ**, không thay thế các doc chuyên sâu.
-> **Cập nhật lần cuối:** 2026-07-13.
+> **Cập nhật lần cuối:** 2026-07-15 (thêm KD variants: soft_loss_type=mse, RKD feature-KD; calibration ECE/Brier + compute_calibration.py).
 
 ---
 
@@ -41,6 +41,7 @@ Benchmark hiệu năng (scripts/benchmark*.py) + export (ExecuTorch .pte) + cros
 ```
 L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T))
 ```
+**Biến thể KD** (opt-in, mặc định giữ nguyên công thức trên): `training.distillation.soft_loss_type=mse` (Kim 2021 — MSE trên raw logit, bỏ T²) và `training=distillation_rkd` (bật RKD feature-KD `src/training/feature_distillation.py`, Park 2019 — khớp distance+angle giữa các mẫu trong batch, không cần projector, cộng thêm vào L_total).
 
 **Thiết kế thực nghiệm:** mỗi student train 2 lần (có KD / không KD) cùng seed+split+hparam → `compute_kd_delta()`. 5-fold CV. Con số **"30 run" = 3 *student* × 2 điều kiện × 5 fold, ứng với MỘT teacher cố định** ("3 arch" ở đây là 3 *student*, KHÔNG phải teacher). Registry khai báo **3 SOTA teacher** và hiện đang train cả 3 → tổng số run thực tế lớn hơn 30. Báo cáo phải nêu rõ phạm vi teacher đang dùng (1 teacher chính + 2 teacher ablation-1-fold, hay cả 3 đầy đủ) thay vì trích mặc định "30".
 
@@ -56,17 +57,18 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | | `sampler.py` | `DynamicUndersampledSampler` — giữ tỉ lệ ~1:5 malignant:benign, reshuffle mỗi epoch |
 | | `transforms.py` | `build_transforms` — Albumentations **từ config** `augmentation/{light,heavy}.yaml`; MixUp/CutMix/CutOut bị cấm (`_FORBIDDEN_OPS`) |
 | `src/models/` | `registry.py` | `MODEL_REGISTRY` (string→class) + `build_model` / `build_model_from_name` |
-| | `base_model.py` | `BaseModel` (ABC): `forward(x)->Tensor(B,)`, `freeze_backbone()`, `unfreeze()` |
+| | `base_model.py` | `BaseModel` (ABC): `forward(x)->Tensor(B,)`, `forward_features(x)->(feat(B,C), logit(B,))` cho feature-KD, `freeze_backbone()`, `unfreeze()` |
 | | `heads.py` | `build_head()` = `Dropout→Linear(in,1)`; dùng `infer_backbone_out_dim()`, **không** dùng `num_features` |
 | | `efficientnet.py` / `mobilenet.py` / `mobilevit.py` | wrapper họ baseline |
 | | `timm_backbone.py` | `TimmBackboneModel` — wrapper generic cho toàn bộ SOTA set (cần `timm>=1.0`) |
 | `src/training/` | `trainer.py` | `Trainer` (teacher/baseline) |
 | | `kd_trainer.py` | `KDTrainer` (student, teacher frozen) |
 | | `losses.py` | `BinaryFocalLoss` (gamma=2.0, alpha=0.25) |
-| | `distillation.py` | `BinaryDistillationLoss` (T=4.0, alpha=0.3) |
+| | `distillation.py` | `BinaryDistillationLoss` (T=4.0, alpha=0.3; `soft_loss_type` = `bce` mặc định / `mse`) |
+| | `feature_distillation.py` | `RKDLoss` (Park 2019 — distance+angle, opt-in qua `distillation_rkd.yaml`) |
 | | `callbacks.py` / `optimizers.py` / `schedulers.py` | early stopping/checkpoint, optimizer, LR schedule |
-| `src/evaluation/` | `metrics.py` | `compute_metrics()` → `pauc_at_tpr80`, `auc_roc`, `auprc`(+`prevalence`), sensitivity/specificity, `sens_at_{90,95}spec`, TP/FP/TN/FN |
-| | `evaluator.py` | `Evaluator.evaluate()`, `save_predictions()` (ghi `predictions.csv`) |
+| `src/evaluation/` | `metrics.py` | `compute_metrics()` → `pauc_at_tpr80`, `auc_roc`, `auprc`(+`prevalence`), sensitivity/specificity, `sens_at_{90,95}spec`, TP/FP/TN/FN, `brier`/`ece` (calibration RAW) |
+| | `evaluator.py` | `Evaluator.evaluate()`, `save_predictions()` (ghi `predictions.csv`; train scripts cũng ghi `val_predictions.csv` = fit-set cho calibration) |
 | | `confusion_matrix.py` / `grad_cam.py` | trực quan hoá |
 | `src/inference/` | `predictor.py` / `ensemble.py` | inference đơn / ensemble |
 | `src/utils/` | `config.py` | `load_config()` — **compose Hydra `defaults:`** (script standalone cần cái này) |
@@ -103,7 +105,7 @@ defaults: data=isic2024 · training=distillation · augmentation=light · _self_
 | `data/` | `isic2024`, `pad_ufes_20`, `ham10000`, `fitzpatrick17k`, `poc` |
 | `teacher/` | `efficientnetv2_m`, `convnextv2_base`, `maxvit_base` |
 | `student/` | `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2` |
-| `training/` | `distillation` (KD), `baseline` (no-KD), `default`, `finetuning`, `ablation`, `poc` |
+| `training/` | `distillation` (KD), `distillation_rkd` (KD + RKD feature-KD), `baseline` (no-KD), `default`, `finetuning`, `ablation`, `poc` |
 | `augmentation/` | `light` (mặc định), `heavy` (anti-overfit) |
 
 Override CLI: `python scripts/train_student.py teacher=convnextv2_base student=fastvit_sa12 training=baseline`
@@ -121,13 +123,16 @@ experiments/runs/
   teacher/<name>/fold_{0..4}/
     checkpoints/best_model.pth
     config.yaml
-    test_metrics.json    ← số generalization KHÔNG bias → trích dẫn cái này
+    test_metrics.json    ← số generalization KHÔNG bias → trích dẫn cái này (kèm brier/ece RAW)
     val_metrics.json     ← best-epoch val (val−test = tín hiệu overfit)
+    predictions.csv      ← y_true,y_prob,y_pred[,source] trên test (offline PR/AUPRC/per-domain)
+    val_predictions.csv  ← fit-set cho calibration (val, giữ prevalence thật ~0,39%)
     training_curves.png
   kd_<teacher>_to_<student>/fold_{0..4}/...
-  <...>__<run_suffix>/    ← ablation (samp_off, ratio3, …)
+  <...>__<run_suffix>/    ← ablation (samp_off, ratio3, mselogit, rkd, …)
 ```
 Sau aggregate: `aggregated.{json,md}` = **mean ± std** — con số để báo cáo (1 fold đơn lẻ variance rất rộng).
+Calibration (offline, tùy chọn): `scripts/compute_calibration.py --run-dir <run>` → `calibration_metrics.json` (ECE/Brier raw vs corrected) + `reliability_curve.png`.
 
 ---
 
@@ -137,6 +142,7 @@ Sau aggregate: `aggregated.{json,md}` = **mean ± std** — con số để báo 
 - **Hiệu năng tĩnh** (so chéo thiết bị được): params / FLOPs / model size — `scripts/benchmark.py`.
 - **Latency** (device-specific): cluster CPU latency chỉ là **proxy**, KHÔNG phải số điện thoại; ranking có thể lật trên mobile (nhất là student transformer). On-device thật: export ExecuTorch `.pte` (`scripts/export_executorch.py`) → `scripts/benchmark_mobile.py` (Pixel 6a).
 - **Cross-domain / fairness:** HAM10000 (cross-domain), Fitzpatrick17k (fairness) — **chỉ post-hoc, không bao giờ train**.
+- **Calibration** (offline, KHÔNG đổi số ranking): `scripts/compute_calibration.py` sửa xác suất hiển thị (prior-shift / Platt / isotonic) + reliability curve + ECE/Brier. Prevalence undersample ~16,7% → `sigmoid` bị thổi phồng so với ~0,39% thật; pAUC/AUPRC miễn nhiễm.
 - Tổng hợp kết quả luận văn: [docs/BENCHMARK_AND_RESULTS.md](BENCHMARK_AND_RESULTS.md).
 
 ---

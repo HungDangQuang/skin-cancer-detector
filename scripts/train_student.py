@@ -110,6 +110,14 @@ def main(cfg: DictConfig) -> None:
         )
         evaluator.save_metrics(test_metrics, run_dir / "test_metrics.json")
         evaluator.save_predictions(test_metrics, run_dir / "predictions.csv")
+        # Calibration fit-set: val predictions. The val loader uses NO
+        # undersampler (datamodule.val_dataloader), so it preserves the true
+        # ~0.39% prevalence — the correct distribution to fit a Platt / isotonic
+        # calibrator on. scripts/compute_calibration.py consumes val_predictions.csv
+        # (fit) + predictions.csv (apply on test). No sources arg: val has no
+        # per-domain source method (only test_sources() exists).
+        val_metrics = evaluator.evaluate(datamodule.val_dataloader())
+        evaluator.save_predictions(val_metrics, run_dir / "val_predictions.csv")
     else:
         logger.warning(f"No best checkpoint at {best_ckpt}; skipping test-set evaluation.")
 
