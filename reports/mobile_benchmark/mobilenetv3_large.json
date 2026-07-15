@@ -1,0 +1,11 @@
+{
+  "model_name": "mobilenetv3_large",
+  "checkpoint": "experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth",
+  "params_millions": 4.203,
+  "fp32_size_mb": 16.128,
+  "image_size": 224,
+  "cpu_latency_ms_median": 8.642,
+  "cpu_latency_ms_p90": 12.495,
+  "cpu_threads": 1,
+  "iters": 100
+}

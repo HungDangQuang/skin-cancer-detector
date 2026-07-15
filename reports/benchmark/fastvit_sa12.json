@@ -1,0 +1,64 @@
+{
+  "model_name": "fastvit_sa12",
+  "checkpoint": "experiments/runs/kd_convnextv2_base_to_fastvit_sa12/fold_0/checkpoints/best_model.pth",
+  "image_size": 224,
+  "params_millions": 10.557,
+  "trainable_params_millions": 10.557,
+  "fp32_size_mb": 40.407,
+  "gflops": 2.962,
+  "gmacs": 1.481,
+  "iters": 100,
+  "warmup": 10,
+  "device_info": {
+    "platform": "Linux-6.8.0-90-generic-x86_64-with-glibc2.39",
+    "processor": "x86_64",
+    "torch_version": "2.5.1+cu121",
+    "cuda_available": true,
+    "gpu_name": "NVIDIA L40"
+  },
+  "latency_batch1": {
+    "cpu": {
+      "mean": 41.179,
+      "std": 1.111,
+      "median": 40.92,
+      "p90": 41.958,
+      "p95": 44.12,
+      "p99": 45.592,
+      "min": 39.674,
+      "max": 45.67,
+      "threads": 1
+    },
+    "cuda": {
+      "mean": 3.586,
+      "std": 0.073,
+      "median": 3.569,
+      "p90": 3.637,
+      "p95": 3.675,
+      "p99": 3.872,
+      "min": 3.515,
+      "max": 4.127
+    }
+  },
+  "throughput": {
+    "cuda": [
+      {
+        "batch_size": 1,
+        "images_per_sec": 284.29,
+        "ms_per_batch": 3.517,
+        "peak_mem_mb": 61.99
+      },
+      {
+        "batch_size": 8,
+        "images_per_sec": 2279.02,
+        "ms_per_batch": 3.51,
+        "peak_mem_mb": 151.76
+      },
+      {
+        "batch_size": 32,
+        "images_per_sec": 2954.92,
+        "ms_per_batch": 10.829,
+        "peak_mem_mb": 459.54
+      }
+    ]
+  }
+}
