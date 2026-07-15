@@ -66,13 +66,15 @@ Model của dự án xuất **1 raw logit + sigmoid** (`build_head()` = `Dropout
 
 **Binary classification không có quan hệ liên-lớp.** Teacher chỉ truyền được **một con số duy nhất**: mức độ tự tin.
 
+> **Lưu ý để không hiểu nhầm:** kết luận của §2 là *các method logit-**refinement** đa lớp (DKD, logit standardization) mất tác dụng ở binary* — **KHÔNG** phải *"KD vô dụng cho binary"*. "Một con số" đó (xác suất sigmoid của teacher) vẫn là dark-knowledge hợp lệ: nó mã hoá **độ tin cậy / độ khó của từng mẫu**. Loss BCE-KD hiện tại (§3) đã khai thác đúng tín hiệu này, và thực nghiệm của dự án cho thấy **KD có cải thiện student** — nên §2 không mâu thuẫn với pipeline.
+
 ### 2.2. Kiểm chứng toán học
 
 | Phương pháp | Với K=1 (sigmoid — thiết kế hiện tại) | Với K=2 (softmax — nếu đổi head) | Kết luận |
 |---|---|---|---|
 | **Logit Standardization** [4] | Z-score cần std trên chiều class → std = 0 → **không xác định** | μ=(z₀+z₁)/2, σ=\|z₁−z₀\|/2 → logit chuẩn hoá **luôn bằng [−1,+1]** bất kể input | ❌ **Suy biến ở cả hai** |
 | **DKD** (Decoupled KD) [5] | Không tồn tại non-target class | Chỉ 1 non-target → sau chuẩn hoá p̂ ≡ 1 → **NCKD ≡ 0** → DKD thoái hoá thành TCKD | ❌ **Vô dụng cho binary** |
-| **OFA-KD** [6] | Chiếu feature vào logit-space 1 chiều | Logit-space 2 chiều suy biến | ❌ Không dùng được như paper |
+| **OFA-KD** [6] | Chiếu **feature trung gian** vào logit-space 1-D — matching vẫn hợp lệ | Logit-target 2-D: ít chiều nhưng KHÔNG suy biến | ⚠️ **KHÔNG degenerate** — thực chất là method **feature-based** (feature-projection + adaptive target enhancement, cho heterogeneous arch); lợi ích giảm ở binary nhưng vẫn dùng được → xem §2.3 |
 | **DIST** — *inter-class* relation [7] | Suy biến | Suy biến | ❌ |
 | **DIST** — *intra-batch* relation [7] | Pearson correlation trên **chiều batch** → **vẫn hợp lệ** | Hợp lệ | ✅ **Dùng được** |
 
@@ -84,7 +86,7 @@ Không gian cải tiến KD nằm ở **feature-based** và **relational** KD, *
 
 | Hướng | Phương pháp | Vì sao hợp lệ ở K=1 | Chi phí | Ưu tiên |
 |---|---|---|---|---|
-| **Feature-based** | **SimKD** [10], ReviewKD [9], FitNet [8], Attention Transfer | Hoạt động trên **backbone features** — hoàn toàn độc lập với K | TB (cần projector, nhất là cross-architecture) | ⭐⭐⭐ |
+| **Feature-based** | **SimKD** [10], ReviewKD [9], FitNet [8], Attention Transfer, **OFA-KD** [6] (cho heterogeneous CNN↔Transformer) | Hoạt động trên **backbone features** — hoàn toàn độc lập với K | TB (cần projector, nhất là cross-architecture) | ⭐⭐⭐ |
 | **Relational** | **RKD** [11] (distance/angle giữa các sample), CRD [12], DIST intra-batch [7] | Quan hệ **giữa các mẫu trong batch**, không phải giữa các lớp | Thấp–TB | ⭐⭐⭐ |
 | **Logit** | **MSE trên raw logit** [13] | Hợp lệ ở K=1. Lý thuyết [13]: KL ở T lớn ≈ logit matching | **Rất thấp** | ⭐⭐ (thử ngay) |
 
@@ -92,9 +94,9 @@ Không gian cải tiến KD nằm ở **feature-based** và **relational** KD, *
 
 ### 2.4. Đoạn lập luận đề xuất cho **Chương 2**
 
-> *"Trong bài toán phân loại nhị phân với single-logit head, các phương pháp logit-based knowledge distillation tiên tiến — DKD [5], logit standardization [4], OFA-KD [6] — đều suy biến về mặt toán học, vì chúng khai thác quan hệ liên-lớp (inter-class relations) vốn không tồn tại khi K ≤ 2. Cụ thể, phép chuẩn hoá Z-score của [4] không xác định khi K=1 và cho kết quả hằng số khi K=2; thành phần NCKD của [5] triệt tiêu đồng nhất khi chỉ có một lớp non-target. Do đó, không gian cải tiến KD cho bài toán này nằm ở **feature-based distillation** và **relational distillation**, chứ không nằm ở việc tinh chỉnh logit loss. Đây cũng là lý do nghiên cứu này lựa chọn [phương pháp X] thay vì áp dụng máy móc các SOTA KD method vốn được thiết kế cho multi-class benchmark như CIFAR-100/ImageNet."*
+> *"Trong bài toán phân loại nhị phân với single-logit head, các phương pháp logit-based knowledge distillation tiên tiến khai thác quan hệ liên-lớp (inter-class relations) — tiêu biểu là DKD [5] và logit standardization [4] — đều suy biến về mặt toán học khi K ≤ 2, vì quan hệ liên-lớp không tồn tại trong bài toán nhị phân. Cụ thể, phép chuẩn hoá Z-score của [4] không xác định khi K=1 và cho kết quả hằng số khi K=2; thành phần NCKD của [5] — vốn được chính tác giả xác định là 'lý do chính khiến logit distillation hoạt động' — triệt tiêu đồng nhất khi chỉ có một lớp non-target. Do đó, không gian cải tiến KD cho bài toán này nằm ở **feature-based distillation** (kể cả các method như OFA-KD [6], vốn chiếu feature chứ không tinh chỉnh logit) và **relational distillation**, chứ không nằm ở việc tinh chỉnh logit loss. Đây cũng là lý do nghiên cứu này lựa chọn [phương pháp X] thay vì áp dụng máy móc các SOTA KD method vốn được thiết kế cho multi-class benchmark như CIFAR-100/ImageNet."*
 
-Đây là một luận điểm lý thuyết **có giá trị học thuật thật** — nó cho thấy tác giả hiểu *vì sao* không dùng SOTA method, thay vì chỉ không biết đến chúng.
+Đây là một luận điểm lý thuyết **có giá trị học thuật thật** — nó cho thấy tác giả hiểu *vì sao* không dùng SOTA method, thay vì chỉ không biết đến chúng. *(Trước khi viết bản Chương 2 cuối cùng, đối chiếu lại công thức gốc để trích chính xác: logit-standardization [4] arXiv:2403.01427, DKD [5] arXiv:2203.08679, OFA-KD [6] arXiv:2310.19444, DIST [7] arXiv:2205.10536.)*
 
 ---
 
