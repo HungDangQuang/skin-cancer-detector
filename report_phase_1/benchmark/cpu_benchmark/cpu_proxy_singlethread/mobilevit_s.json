@@ -1,0 +1,11 @@
+{
+  "model_name": "mobilevit_s",
+  "checkpoint": "experiments/runs/kd_efficientnet_b4_to_mobilevit_s/fold_0/checkpoints/best_model.pth",
+  "params_millions": 4.938,
+  "fp32_size_mb": 18.885,
+  "image_size": 224,
+  "cpu_latency_ms_median": 35.73,
+  "cpu_latency_ms_p90": 44.708,
+  "cpu_threads": 1,
+  "iters": 100
+}

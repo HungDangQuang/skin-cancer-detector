@@ -1,0 +1,11 @@
+{
+  "model_name": "mobilenetv4_conv_medium",
+  "checkpoint": "experiments/runs/kd_convnextv2_base_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth",
+  "params_millions": 8.436,
+  "fp32_size_mb": 32.44,
+  "image_size": 224,
+  "cpu_latency_ms_median": 17.357,
+  "cpu_latency_ms_p90": 27.42,
+  "cpu_threads": 1,
+  "iters": 100
+}
