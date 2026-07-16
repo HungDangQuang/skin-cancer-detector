@@ -30,6 +30,11 @@ ENV/
 .env
 *.env
 
+# Secrets / credentials (Kaggle API token, etc.)
+.kaggle/
+kaggle.json
+.tmp/
+
 # IDE
 .vscode/
 .idea/
