@@ -65,7 +65,7 @@ baseline's fold-to-fold std is within noise — say so rather than calling it a 
 ## Caveats to always surface
 
 - Pairing is by exact student name + `run_suffix`. A KD run with no matching `baseline_<student>` can't yield a delta — the script lists it under Ranking A but not B; mention if a baseline is missing so the user trains it.
-- Ablation runs (`__samp_off`, `__ratio3`, `__train_isic_only`, …) are excluded by default; only include them when the question is specifically about that ablation.
+- Ablation runs (`__samp_off`, `__ratio3`, `__train_isic_only`, `__mselogit`, `__rkd`, `__focal_a075`, …) are excluded by default; only include them when the question is specifically about that ablation. `__mselogit` (MSE-logit KD) and `__rkd` (RKD feature-KD) are the KD-variant ablations from the 2026-07-15 audit.
 - This judges the merged-dataset held-out test. Cross-domain (HAM10000) and fairness (Fitzpatrick17k) are separate, post-hoc evaluations — don't conflate.
 
 ## Don't

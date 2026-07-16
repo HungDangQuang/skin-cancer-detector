@@ -42,10 +42,10 @@ Read-only (`Read, Grep, Glob, Bash`); never trains, edits, or submits; says
 "missing" instead of guessing. Built to be spawned **in parallel** for triaging
 many runs.
 
-- **Single run:** "use result-analyst on `experiments/runs/teacher/efficientnet_b4`"
+- **Single run:** "use result-analyst on `experiments/runs/teacher/efficientnetv2_m`"
 - **Fan-out:** "use result-analyst in parallel on every student in `experiments/runs/`"
-- **KD vs baseline:** "result-analyst: did KD help `mobilenetv3_large`?"
-- **Eval JSON / log:** "result-analyst on `reports/results/poc_kd_b0.json`"
+- **KD vs baseline:** "result-analyst: did KD help `mobilenetv4_conv_medium`?"
+- **Eval JSON / log:** "result-analyst on `reports/results/poc_kd_mnv4.json`"
 
 Returns: verdict (good/moderate/poor/inconclusive) + headline AUPRC (vs prevalence
 baseline) + pAUC@TPR80 + sens/spec + aggregated mean±std (if present) + overfitting

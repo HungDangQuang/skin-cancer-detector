@@ -78,12 +78,12 @@ bash slurm/submit.sh slurm/<script>.slurm [VAR=value ...]
 
 Examples:
 ```bash
-bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv3_large
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilevit_s TRAINING=baseline
+bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=fastvit_sa12
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2 TRAINING=baseline
 bash slurm/submit.sh slurm/20_evaluate.slurm \
-    MODEL=efficientnet_b0 \
-    CKPT=experiments/poc/kd_efficientnet_b4_to_efficientnet_b0/checkpoints/best_model.pth \
-    OUT=reports/results/poc_kd_b0.json
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/poc/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/checkpoints/best_model.pth \
+    OUT=reports/results/poc_kd_mnv4.json
 ```
 
 ### 3. Track the job

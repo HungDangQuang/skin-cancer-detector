@@ -194,7 +194,7 @@ Catches "submitted student before teacher finished" — the student script will 
 
 ```bash
 # Run this on the cluster before submitting 03_poc_student.slurm:
-test -s experiments/poc/teacher/efficientnet_b4/checkpoints/best_model.pth \
+test -s experiments/poc/teacher/efficientnetv2_m/checkpoints/best_model.pth \
     && echo "teacher checkpoint OK" \
     || echo "MISSING — run 02_poc_teacher.slurm first and wait for [job] DONE"
 ```
@@ -202,9 +202,9 @@ test -s experiments/poc/teacher/efficientnet_b4/checkpoints/best_model.pth \
 ## What "clean" looks like
 
 ```
-imports ok | 3 models registered
-config       ok | teacher=efficientnet_b4 student=efficientnet_b0
-config_poc   ok | teacher=efficientnet_b4 student=efficientnet_b0
+imports ok | 6 models registered
+config       ok | teacher=efficientnetv2_m student=mobilenetv4_conv_medium
+config_poc   ok | teacher=efficientnetv2_m student=mobilenetv4_conv_medium
 --- a) Slurm vars without :- default ---
   (clean)
 --- b) nvidia-smi without 'command -v' guard ---
