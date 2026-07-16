@@ -1,0 +1,22 @@
+name: repvit_m1_0
+role: student
+paradigm: reparam_cnn
+# RepViT-M1.0 (CVPR 2024) — pure-CNN with structural reparameterization; a
+# second quantize-friendly CNN student alongside mobilenetv4_conv_medium to
+# strengthen the on-device (XNNPACK INT8) conclusion. Requires timm>=1.0.
+# VERIFY the exact tag on the server before a full run:
+#   python -c "import timm; print(timm.list_models('repvit*'))"
+# (expected `repvit_m1_0.dist_in1k`; adjust here if the installed timm differs).
+backbone: repvit_m1_0.dist_in1k
+pretrained: true
+num_classes: 1    # binary sigmoid output
+
+head:
+  dropout: 0.1
+
+# Stochastic depth (anti-overfit regularizer). Default 0.0 = off. Enable per-run,
+# e.g. `student.drop_path_rate=0.1`. Verify the backbone accepts the kwarg on the
+# server before a full run.
+drop_path_rate: 0.0
+
+freeze_backbone: false

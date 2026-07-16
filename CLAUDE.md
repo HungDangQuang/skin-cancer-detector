@@ -100,7 +100,7 @@ This is a **binary skin cancer classification** project (benign=0, malignant=1) 
 
 **Stage 1 — Teacher**: a high-capacity backbone trained standalone using `Trainer` + `BinaryFocalLoss`. Teachers: the SOTA set `{efficientnetv2_m, convnextv2_base, maxvit_base}`. Pick via `teacher=<name>` (Hydra) or `TEACHER=<name>` (slurm).
 
-**Stage 2 — Student**: one of the SOTA mobile-/on-device-latency-optimized backbones `{mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2}`, trained with `KDTrainer` using `BinaryDistillationLoss`:
+**Stage 2 — Student**: one of the SOTA mobile-/on-device-latency-optimized backbones `{mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2, repvit_m1_0}`, trained with `KDTrainer` using `BinaryDistillationLoss`:
 ```
 L_total = 0.3 * L_focal(student, true_labels) + 0.7 * T² * L_BCE(sigmoid(s/T), sigmoid(t/T))
 ```
@@ -127,7 +127,7 @@ Override at the CLI: `python scripts/train_student.py student=fastvit_sa12 train
 
 ### Model registry
 
-`src/models/registry.py` maps string names → classes. All models inherit from `BaseModel` (ABC), expose `forward(x) -> Tensor (B,)` returning a single raw logit, and share `freeze_backbone()` / `unfreeze()` helpers. Backbones are loaded from `timm`; the classification head is always `Dropout → Linear(in_features, 1)` via `build_head()`. All six models (efficientnetv2_m, convnextv2_base, maxvit_base, mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2) use one generic wrapper `TimmBackboneModel` (`src/models/timm_backbone.py`) — there's no per-arch logic, so a single class covers them (the older baseline family wrappers were removed). They require `timm>=1.0` (mobilenetv4/fastvit/efficientformerv2 are not in 0.9.x).
+`src/models/registry.py` maps string names → classes. All models inherit from `BaseModel` (ABC), expose `forward(x) -> Tensor (B,)` returning a single raw logit, and share `freeze_backbone()` / `unfreeze()` helpers. Backbones are loaded from `timm`; the classification head is always `Dropout → Linear(in_features, 1)` via `build_head()`. All seven timm models (teachers: efficientnetv2_m, convnextv2_base, maxvit_base; students: mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2, repvit_m1_0) use one generic wrapper `TimmBackboneModel` (`src/models/timm_backbone.py`) — there's no per-arch logic, so a single class covers them (the older baseline family wrappers were removed). They require `timm>=1.0` (mobilenetv4/fastvit/efficientformerv2/repvit are not in 0.9.x). (A domain-foundation teacher `panderm` is planned as an out-of-timm loader — see `docs/SOTA_MODEL_DECISION_2026-07.md`.)
 
 To add a new architecture: register it against `TimmBackboneModel` (or a new class if it needs custom logic) in `MODEL_REGISTRY`, and create a matching config under `configs/student/` or `configs/teacher/`. Use `infer_backbone_out_dim(backbone)` for the head input dim, never `backbone.num_features`.
 

@@ -24,6 +24,7 @@ def make_cfg(model_name: str, backbone: str, dropout: float = 0.2):
     ("mobilenetv4_conv_medium", "mobilenetv4_conv_medium.e500_r224_in1k", 0.2),  # student
     ("fastvit_sa12", "fastvit_sa12.apple_in1k", 0.1),                        # student
     ("efficientformerv2_s2", "efficientformerv2_s2.snap_dist_in1k", 0.1),    # student
+    ("repvit_m1_0", "repvit_m1_0.dist_in1k", 0.1),                           # student
 ])
 def test_model_forward_shape(model_name, backbone, dropout):
     """Model output must be (B,) — raw logit for BCEWithLogitsLoss."""
@@ -45,6 +46,7 @@ def test_model_registry_keys():
     assert "mobilenetv4_conv_medium" in MODEL_REGISTRY
     assert "fastvit_sa12" in MODEL_REGISTRY
     assert "efficientformerv2_s2" in MODEL_REGISTRY
+    assert "repvit_m1_0" in MODEL_REGISTRY
 
 
 def test_unknown_model_raises():

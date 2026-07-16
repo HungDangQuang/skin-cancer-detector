@@ -14,8 +14,8 @@
 # Submit (SOTA student distilled from a SOTA teacher):
 #   bash slurm/submit.sh slurm/12_train_student.slurm \
 #       STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m
-#   STUDENT in {mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2}
-#   TEACHER in {efficientnetv2_m, convnextv2_base, maxvit_base}
+#   STUDENT in {mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2, repvit_m1_0}
+#   TEACHER in {efficientnetv2_m, convnextv2_base}   (maxvit_base retired from the KD matrix — see docs/SOTA_MODEL_DECISION_2026-07.md)
 # Subset of folds (split a heavy run under the 72 h cap into two jobs):
 #   bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=fastvit_sa12 TEACHER=maxvit_base FOLDS="0 1 2"
 #   bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=fastvit_sa12 TEACHER=maxvit_base FOLDS="3 4"

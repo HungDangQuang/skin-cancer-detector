@@ -16,6 +16,7 @@ MODEL_REGISTRY: dict = {
     "mobilenetv4_conv_medium": TimmBackboneModel,
     "fastvit_sa12": TimmBackboneModel,
     "efficientformerv2_s2": TimmBackboneModel,
+    "repvit_m1_0": TimmBackboneModel,
 }
 
 

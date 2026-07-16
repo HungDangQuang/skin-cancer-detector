@@ -19,7 +19,7 @@ Two stages, all models output a single raw logit (`torch.sigmoid()` at inference
 2. **Student** — trained with `KDTrainer` + `BinaryDistillationLoss` against the
    frozen teacher:
    `L = 0.3·focal(student, y) + 0.7·T²·BCE(σ(s/T), σ(t/T))`, T = 4.0.
-   - `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2`
+   - `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2`, `repvit_m1_0`
 
 Each student is trained twice — **with KD** and **without KD (baseline)** — under
 identical data/hyperparameters/seed, over **5-fold CV** (StratifiedGroupKFold by

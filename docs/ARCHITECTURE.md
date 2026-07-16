@@ -27,7 +27,7 @@ splits_dir/  test_split.csv (độc lập, patient-disjoint)  +  fold_{0..4}/{tr
       │
       └─ GIAI ĐOẠN 2 — STUDENT (KD, teacher bị FREEZE)
             scripts/train_student.py  → KDTrainer + BinaryDistillationLoss
-            student ∈ {mobilenetv4_conv_medium | fastvit_sa12 | efficientformerv2_s2}
+            student ∈ {mobilenetv4_conv_medium | fastvit_sa12 | efficientformerv2_s2 | repvit_m1_0}
             → experiments/runs/kd_<teacher>_to_<student>/fold_N/...
       ▼
 Đánh giá tự động cuối train → test_metrics.json (+ val_metrics.json, predictions.csv)
@@ -43,7 +43,9 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 ```
 **Biến thể KD** (opt-in, mặc định giữ nguyên công thức trên): `training.distillation.soft_loss_type=mse` (Kim 2021 — MSE trên raw logit, bỏ T²) và `training=distillation_rkd` (bật RKD feature-KD `src/training/feature_distillation.py`, Park 2019 — khớp distance+angle giữa các mẫu trong batch, không cần projector, cộng thêm vào L_total).
 
-**Thiết kế thực nghiệm:** mỗi student train 2 lần (có KD / không KD) cùng seed+split+hparam → `compute_kd_delta()`. 5-fold CV. Con số **"30 run" = 3 *student* × 2 điều kiện × 5 fold, ứng với MỘT teacher cố định** ("3 arch" ở đây là 3 *student*, KHÔNG phải teacher). Registry khai báo **3 SOTA teacher** và hiện đang train cả 3 → tổng số run thực tế lớn hơn 30. Báo cáo phải nêu rõ phạm vi teacher đang dùng (1 teacher chính + 2 teacher ablation-1-fold, hay cả 3 đầy đủ) thay vì trích mặc định "30".
+**Thiết kế thực nghiệm:** mỗi student train 2 lần (có KD / không KD) cùng seed+split+hparam → `compute_kd_delta()`. 5-fold CV. Con số **"30 run" = 3 *student* × 2 điều kiện × 5 fold, ứng với MỘT teacher cố định** ("3 arch" ở đây là 3 *student*, KHÔNG phải teacher). Báo cáo phải nêu **phạm vi teacher thực tế**, không trích mặc định "30".
+
+> **Cập nhật scope (2026-07, xem [SOTA_MODEL_DECISION_2026-07.md](SOTA_MODEL_DECISION_2026-07.md) để biết ma trận + số lượng đầy đủ):** student giờ là **4** (thêm `repvit_m1_0`). Teacher: `efficientnetv2_m` (chính) + `convnextv2_base` (phụ); `maxvit_base` **giữ trong registry nhưng loại khỏi ma trận KD** (đã train teacher, KD bỏ dở — trích như bằng chứng capacity-gap); thêm teacher foundation da liễu **`panderm`** (ViT-B/16, out-of-timm loader, đang port). KD có thêm điều kiện **RKD** (`training=distillation_rkd`) cho teacher chính + PanDerm.
 
 ---
 
@@ -59,7 +61,7 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | `src/models/` | `registry.py` | `MODEL_REGISTRY` (string→class) + `build_model` / `build_model_from_name` |
 | | `base_model.py` | `BaseModel` (ABC): `forward(x)->Tensor(B,)`, `forward_features(x)->(feat(B,C), logit(B,))` cho feature-KD, `freeze_backbone()`, `unfreeze()` |
 | | `heads.py` | `build_head()` = `Dropout→Linear(in,1)`; dùng `infer_backbone_out_dim()`, **không** dùng `num_features` |
-| | `timm_backbone.py` | `TimmBackboneModel` — wrapper generic DUY NHẤT cho cả 6 model (3 teacher + 3 student; cần `timm>=1.0`) |
+| | `timm_backbone.py` | `TimmBackboneModel` — wrapper generic DUY NHẤT cho cả 7 model timm (3 teacher + 4 student; cần `timm>=1.0`) |
 | `src/training/` | `trainer.py` | `Trainer` (teacher/baseline) |
 | | `kd_trainer.py` | `KDTrainer` (student, teacher frozen) |
 | | `losses.py` | `BinaryFocalLoss` (gamma=2.0, alpha=0.25) |
@@ -87,6 +89,7 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | Student (mobile) | `mobilenetv4_conv_medium` | `TimmBackboneModel` |
 | | `fastvit_sa12` | `TimmBackboneModel` |
 | | `efficientformerv2_s2` | `TimmBackboneModel` |
+| | `repvit_m1_0` (RepViT-M1.0, reparam-CNN) | `TimmBackboneModel` |
 
 **Thêm arch mới:** đăng ký key → `TimmBackboneModel` (hoặc class mới nếu cần logic riêng) + tạo config `configs/{student,teacher}/<name>.yaml`. Dùng skill `add-model`.
 
@@ -103,7 +106,7 @@ defaults: data=isic2024 · training=distillation · augmentation=light · _self_
 |---|---|
 | `data/` | `isic2024`, `pad_ufes_20`, `ham10000`, `fitzpatrick17k`, `poc` |
 | `teacher/` | `efficientnetv2_m`, `convnextv2_base`, `maxvit_base` |
-| `student/` | `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2` |
+| `student/` | `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2`, `repvit_m1_0` |
 | `training/` | `distillation` (KD), `distillation_rkd` (KD + RKD feature-KD), `baseline` (no-KD), `default`, `finetuning`, `ablation`, `poc` |
 | `augmentation/` | `light` (mặc định), `heavy` (anti-overfit) |
 

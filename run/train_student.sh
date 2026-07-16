@@ -8,9 +8,9 @@
 #
 # Args are KEY=VALUE (slurm-wrapper style) OR env vars:
 #   STUDENT    student backbone (default mobilenetv4_conv_medium)
-#              choices: mobilenetv4_conv_medium | fastvit_sa12 | efficientformerv2_s2
+#              choices: mobilenetv4_conv_medium | fastvit_sa12 | efficientformerv2_s2 | repvit_m1_0
 #   TEACHER    teacher to distill from (default efficientnetv2_m)
-#   TRAINING   distillation | baseline    (default distillation; baseline = no KD)
+#   TRAINING   distillation | distillation_rkd | baseline    (default distillation; baseline = no KD)
 #   FOLDS      space-separated fold list  (default "0 1 2 3 4")
 #   AUG        light | heavy              (default light)
 #   DROP_PATH  stochastic depth rate      (default 0.0)
