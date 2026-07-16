@@ -1,0 +1,11 @@
+{
+  "model_name": "fastvit_sa12",
+  "checkpoint": "experiments/runs/kd_convnextv2_base_to_fastvit_sa12/fold_0/checkpoints/best_model.pth",
+  "params_millions": 10.557,
+  "fp32_size_mb": 40.407,
+  "image_size": 224,
+  "cpu_latency_ms_median": 41.729,
+  "cpu_latency_ms_p90": 44.202,
+  "cpu_threads": 1,
+  "iters": 100
+}

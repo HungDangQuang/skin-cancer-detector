@@ -1,0 +1,11 @@
+{
+  "model_name": "efficientnet_b0",
+  "checkpoint": "experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth",
+  "params_millions": 4.009,
+  "fp32_size_mb": 15.453,
+  "image_size": 224,
+  "cpu_latency_ms_median": 22.222,
+  "cpu_latency_ms_p90": 28.877,
+  "cpu_threads": 1,
+  "iters": 100
+}

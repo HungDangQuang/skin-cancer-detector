@@ -21,7 +21,10 @@ Step-by-step to run the project on the UIT cluster. For deeper background see [`
 | `14_ablation_pad.slurm` | Data-strategy ablation B — `ARM=isic_only\|isic_pad` (baseline, identical test) | sbatch |
 | `20_evaluate.slurm` | Evaluate any checkpoint | sbatch |
 | `21_benchmark_mobile.slurm` | Mobile deployability: params + FP32 size + CPU latency (CPU only) | sbatch |
+| `24_benchmark.slurm` | Full compute profile: params + FLOPs + size + CPU/GPU latency + throughput | sbatch |
+| `26_make_benchmark_set.slurm` | Build the FIXED benchmark input set (images + preprocessed tensors + ref logits) from the test split | sbatch |
 | `23_export_model.slurm` | Export a checkpoint to ONNX / TorchScript for deployment (CPU only) | sbatch |
+| `25_export_executorch.slurm` | Export a checkpoint to ExecuTorch `.pte` for Android on-device (CPU only, **isolated venv**) | sbatch |
 
 **Working dir on cluster:** `/datastore/keg/hungdang/skin-cancer-detector`. Override with `DATASTORE_USER_DIR=...` if your account is elsewhere.
 
@@ -141,13 +144,13 @@ tail -f logs/poc_teacher_<jobid>_runtime.log
 
 Done when the log ends with:
 ```
-[INFO] Teacher training complete. Checkpoint: experiments/poc/teacher/efficientnet_b4/checkpoints/best_model.pth
+[INFO] Teacher training complete. Checkpoint: experiments/poc/teacher/efficientnetv2_m/checkpoints/best_model.pth
 [job] DONE
 ```
 
 Verify before moving on:
 ```bash
-ls -lh experiments/poc/teacher/efficientnet_b4/checkpoints/best_model.pth
+ls -lh experiments/poc/teacher/efficientnetv2_m/checkpoints/best_model.pth
 ```
 
 ### 3.3 POC KD student (~5–10 min, GPU)
@@ -155,15 +158,15 @@ ls -lh experiments/poc/teacher/efficientnet_b4/checkpoints/best_model.pth
 ```bash
 bash slurm/submit.sh slurm/03_poc_student.slurm
 # Different student arch:
-bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv3_large
-bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilevit_s
+bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv4_conv_medium
+bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=efficientformerv2_s2
 # SOTA pair (TEACHER must match the one POC-trained in 3.2 first):
 bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv4_conv_medium TEACHER=convnextv2_base
 ```
 
 Verify:
 ```bash
-ls -lh experiments/poc/kd_efficientnet_b4_to_efficientnet_b0/checkpoints/best_model.pth
+ls -lh experiments/poc/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/checkpoints/best_model.pth
 ```
 
 ---
@@ -203,7 +206,7 @@ bash slurm/submit.sh slurm/10_prepare_data.slurm
 The script skips re-**writing** images whose JPG already exists on disk. Note: it still re-**reads** every image on a warm re-run, because the quality filter (corrupt / too-small / blank / exact-duplicate) and dedup re-run on the on-disk copies too — so a re-run after the filter changed will clean a previously-unfiltered dataset, but warm runs are **not** trivially fast. Dropped images are logged per dataset to `data/processed/<dataset>/excluded_images.csv`, and PAD `patient_id`s are namespaced (`pad_…`) so they can't collide with ISIC across folds. Full cleaning + augmentation spec: [`docs/PREPROCESSING.md`](../docs/PREPROCESSING.md).
 
 ### 4.3 Teacher (~24 h, GPU)
-`TEACHER=` selects the backbone (default `efficientnet_b4`). SOTA set needs `timm>=1.0`.
+`TEACHER=` selects the backbone (default `efficientnetv2_m`). SOTA set needs `timm>=1.0`.
 ```bash
 bash slurm/submit.sh slurm/11_train_teacher.slurm                            # baseline B4
 bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnetv2_m   # SOTA: also convnextv2_base, maxvit_base
@@ -214,17 +217,17 @@ bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnetv2_m   # S
 (default B4). Run-dir: `kd_<TEACHER>_to_<STUDENT>/`.
 ```bash
 # KD — baseline backbones (default teacher B4)
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientnet_b0
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilevit_s
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2
 # KD — SOTA students (mobile-latency-optimized) from a SOTA teacher
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=fastvit_sa12            TEACHER=efficientnetv2_m
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2    TEACHER=efficientnetv2_m
 # Baseline (no KD)
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientnet_b0    TRAINING=baseline
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large  TRAINING=baseline
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilevit_s        TRAINING=baseline
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium    TRAINING=baseline
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium  TRAINING=baseline
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2        TRAINING=baseline
 ```
 
 ### 4.5 Data-strategy ablations (prove PAD mixing + sampler help)
@@ -240,13 +243,13 @@ each run-dir with `22_aggregate_folds.slurm`, then compare with
 bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=off    # no resampling (natural ~1018:1)
 bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=3      # 1:3
 bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=10     # 1:10
-# -> experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large__{samp_off,ratio3,ratio10}/
+# -> experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium__{samp_off,ratio3,ratio10}/
 
 # B) PAD mixing — baseline (no KD, so the teacher can't leak PAD via soft labels),
 #    train ISIC-only vs ISIC+PAD, judged on the IDENTICAL combined held-out test.
 bash slurm/submit.sh slurm/14_ablation_pad.slurm ARM=isic_only
 bash slurm/submit.sh slurm/14_ablation_pad.slurm ARM=isic_pad
-# -> experiments/runs/baseline_mobilenetv3_large__train_{isic_only,isic_pad}/
+# -> experiments/runs/baseline_mobilenetv4_conv_medium__train_{isic_only,isic_pad}/
 #    Per-domain (ISIC vs PAD) split comes from predictions.csv's `source` column.
 ```
 
@@ -261,7 +264,7 @@ by `submit.sh`):
 ```bash
 # Stronger augmentation + stochastic depth on a student run:
 bash slurm/submit.sh slurm/12_train_student.slurm \
-    STUDENT=mobilenetv3_large AUG=heavy DROP_PATH=0.1
+    STUDENT=mobilenetv4_conv_medium AUG=heavy DROP_PATH=0.1
 # Teacher with stochastic depth:
 bash slurm/submit.sh slurm/11_train_teacher.slurm \
     TEACHER=convnextv2_base AUG=heavy DROP_PATH=0.2
@@ -287,12 +290,14 @@ accepts it on the cluster before a full run.
 
 ```bash
 bash slurm/submit.sh slurm/20_evaluate.slurm \
-    MODEL=efficientnet_b0 \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/checkpoints/best_model.pth \
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/checkpoints/best_model.pth \
     OUT=reports/results/kd_b0.json
 ```
 
 Metrics JSON contains `pauc_at_tpr80`, `auc_roc`, `sensitivity`, `specificity`, `f1_score`, threshold, TP/FP/TN/FN.
+
+> **Full PC + Android on-device workflow:** see [docs/MOBILE.md](../docs/MOBILE.md) — the end-to-end guide (build benchmark set → PC benchmark → ExecuTorch export → Android latency + parity), written to run after training completes.
 
 ### Mobile deployability benchmark
 
@@ -300,12 +305,46 @@ Architecture-level deployability numbers (params, FP32 size, single-core CPU lat
 
 ```bash
 bash slurm/submit.sh slurm/21_benchmark_mobile.slurm \
-    MODEL=efficientnet_b0 \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 # OUT defaults to reports/mobile_benchmark/<MODEL>.json
 ```
 
 Output JSON contains `params_millions`, `fp32_size_mb`, `cpu_latency_ms_median`, `cpu_latency_ms_p90`, `image_size`. (INT8/TFLite quantization is intentionally de-scoped — backbones run FP32 as-is.)
+
+### Build the fixed benchmark input set
+
+One small, reproducible set of test samples reused for **all** of: PC latency, mobile latency, and the PC↔mobile parity check (the proposal doesn't pin a benchmark dataset — this uses the internal test split = the smartphone-like deployment domain). Preprocessing is identical to evaluation (`build_transforms(cfg,"val")`). CPU-only:
+
+```bash
+bash slurm/submit.sh slurm/26_make_benchmark_set.slurm N=100
+# Also dump per-model reference logits for parity (optional):
+bash slurm/submit.sh slurm/26_make_benchmark_set.slurm N=100 \
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
+```
+
+Output `data/benchmark_set/` (rsync to Mac/phone, **don't commit**): `images/` (originals → parity layer 2), `inputs/<id>.bin` (fully-preprocessed float32 CHW → parity layer 1 + identical input both sides), `inputs.npy` (stacked, PC), `manifest.csv`, `meta.json` (image_size/mean/std/layout), and `ref_<model>.csv` (reference logits) when `MODEL`/`CKPT` given. Selection is seeded + label-stratified (oversamples the rare malignant class so inputs span the model's logit range).
+
+### Full compute profile (PC + device-independent)
+
+Superset of the mobile benchmark for the thesis "deployment story": also FLOPs/MACs, GPU latency, a batch-throughput sweep, and percentile latencies (p90/p95/p99). The CPU @ batch=1 latency (single-thread, phone-comparable) is **always** measured; GPU numbers are added when a GPU is allocated. Like the mobile benchmark these are weight-independent, so run **one checkpoint per architecture** (any fold):
+
+```bash
+# With GPU (CPU + GPU numbers):
+bash slurm/submit.sh slurm/24_benchmark.slurm \
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
+
+# CPU-only (skip GPU, queues immediately):
+bash slurm/submit.sh slurm/24_benchmark.slurm MODEL=... CKPT=... DEVICE=cpu
+
+# Custom throughput batch sizes:
+bash slurm/submit.sh slurm/24_benchmark.slurm MODEL=... CKPT=... BATCH_SIZES="1 16 64"
+# OUT defaults to reports/benchmark/<MODEL>.json
+```
+
+Output JSON adds `gflops`, `gmacs`, `trainable_params_millions`, `latency_batch1.{cpu,cuda}` (mean/std/median/p90/p95/p99), `throughput.{cpu,cuda}` (images/sec + peak GPU mem per batch size), and `device_info` (always cite the hardware). All FP32 — quantization de-scoped.
 
 ### Export a model for deployment
 
@@ -313,14 +352,34 @@ Export a trained checkpoint to **ONNX** (default) or **TorchScript**. CPU-only �
 
 ```bash
 bash slurm/submit.sh slurm/23_export_model.slurm \
-    MODEL=mobilenetv3_large \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 # Optional: FORMAT=torchscript  OUT=exports/skin_mnv3  CONFIG=<path>
 # Default OUT=exports/<MODEL>; CONFIG defaults to the run's saved config.yaml
 # (next to the checkpoint) so the ONNX dummy uses the trained image_size.
 ```
 
 Produces `exports/<name>.onnx` (or `.pt`). Download it and run with `onnxruntime` anywhere — **no torch needed at inference for ONNX**. The model emits a single raw logit: apply `sigmoid()` then compare against the **Youden threshold from that fold's `test_metrics.json`** (not 0.5). Export the **student** (deployment target), not the teacher. This is a research/thesis model — not a validated medical device.
+
+### Export to ExecuTorch (.pte) for Android on-device
+
+Runs the student **as-is** on Android via the PyTorch-native ExecuTorch runtime — no TFLite/TF conversion. ExecuTorch pins its own torch build, so it lives in an **isolated venv** (`${DATASTORE_USER_DIR}/venv-export`) that cannot perturb the training `torch>=2.2`. One-time setup on the **login node**:
+
+```bash
+bash slurm/setup_export_env.sh        # creates venv-export (separate from venv)
+```
+
+Then export per student (CPU-only job):
+
+```bash
+bash slurm/submit.sh slurm/25_export_executorch.slurm \
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
+# BACKEND=none for a portable-ops fallback if XNNPACK can't partition an arch
+# OUT defaults to exports/executorch/<MODEL>.pte
+```
+
+Uses `torch.export` (not TorchScript), so it handles the transformer students (efficientformerv2_s2 / fastvit / efficientformerv2) that `torch.jit.script` chokes on. Default backend lowers to the **XNNPACK delegate** (fast Android CPU). **Mandatory parity check on device:** feed the same preprocessed input through PC PyTorch and the `.pte`; require `max|Δlogit|` small (e.g. <1e-3) before trusting any on-device number.
 
 ---
 
@@ -412,7 +471,10 @@ Until UIT admin fixes that typo, every job's log starts with:
 | `12_train_student` | 4 | 16 G | 22 G | 18 h | KD, frozen teacher + student, batch 64 |
 | `20_evaluate` | 1 | 8 G | 6 G | 1 h | Inference |
 | `21_benchmark_mobile` | 1 | 4 G | — | 15 m | CPU only, single-thread latency |
+| `24_benchmark` | 2 | 8 G | 4 G | 30 m | CPU always; GPU latency/throughput when `DEVICE≠cpu` |
+| `26_make_benchmark_set` | none | 8 G | — | 20 m | CPU only, fixed benchmark input set from test split |
 | `23_export_model` | none | 8 G | — | 20 m | CPU only, ONNX/TorchScript export |
+| `25_export_executorch` | none | 8 G | — | 30 m | CPU only, ExecuTorch `.pte`, isolated venv-export |
 
 Cluster ceilings: 20 MPS, 5 concurrent jobs, 32 vCPU, 72 h max per job. vRAM ≤44 G on L40, ≤80 G on A100.
 

@@ -44,3 +44,5 @@ Drive).
 - [002 — Does the project have a training strategy for class imbalance?](002-class-imbalance-strategy.md)
 - [003 — Why do the chosen datasets work for edge deployment (ISIC 2024 ≠ phone photos)?](003-datasets-edge-deployment-domain-fit.md)
 - [004 — Knowledge Distillation vs Transfer Learning: phương pháp nào tốt hơn?](004-knowledge-distillation-vs-transfer-learning.md)
+- [005 — Các student SOTA được chọn dựa theo tiêu chí nào?](005-sota-student-selection-criteria.md)
+- [006 — Các metric đánh giá có được bài báo chính thống nào sử dụng không?](006-evaluation-metrics-published-references.md)

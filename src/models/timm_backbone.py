@@ -14,10 +14,10 @@ class TimmBackboneModel(BaseModel):
     The only per-arch differences (backbone name, dropout) come from ``cfg``,
     so one generic class covers every SOTA backbone we register.
 
-    Used for the SOTA model set (EfficientNetV2-M / ConvNeXtV2-Base / MaxViT-Base
-    teachers; MobileNetV4 / FastViT / EfficientFormerV2 students). The older
-    family-specific wrappers (EfficientNetModel, MobileNetV3Model, MobileViTModel)
-    are kept for the baseline comparison runs.
+    This is the ONLY model wrapper in the project: it covers the whole set
+    (EfficientNetV2-M / ConvNeXtV2-Base / MaxViT-Base teachers; MobileNetV4 /
+    FastViT / EfficientFormerV2 students). The earlier family-specific wrappers
+    (EfficientNet/MobileNetV3/MobileViT) were removed with the baseline set.
     """
 
     def __init__(self, cfg):

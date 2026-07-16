@@ -2,8 +2,8 @@
 Aggregate per-fold test_metrics.json files into mean ± std.
 
 Usage:
-    python scripts/aggregate_folds.py --run-dir experiments/runs/teacher/efficientnet_b4
-    python scripts/aggregate_folds.py --run-dir experiments/runs/kd_efficientnet_b4_to_mobilevit_s
+    python scripts/aggregate_folds.py --run-dir experiments/runs/teacher/efficientnetv2_m
+    python scripts/aggregate_folds.py --run-dir experiments/runs/kd_efficientnetv2_m_to_efficientformerv2_s2
 
 Expects layout:
     <run-dir>/fold_0/test_metrics.json

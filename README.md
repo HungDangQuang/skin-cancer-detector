@@ -15,20 +15,25 @@ mobile-deployable students.
 Two stages, all models output a single raw logit (`torch.sigmoid()` at inference):
 
 1. **Teacher** — trained standalone with `Trainer` + `BinaryFocalLoss`.
-   - Baseline: `efficientnet_b4`
-   - SOTA set: `efficientnetv2_m`, `convnextv2_base`, `maxvit_base`
+   - `efficientnetv2_m`, `convnextv2_base`, `maxvit_base`
 2. **Student** — trained with `KDTrainer` + `BinaryDistillationLoss` against the
    frozen teacher:
    `L = 0.3·focal(student, y) + 0.7·T²·BCE(σ(s/T), σ(t/T))`, T = 4.0.
-   - Baseline: `efficientnet_b0`, `mobilenetv3_large`, `mobilevit_s`
-   - SOTA set: `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2`
+   - `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2`
 
 Each student is trained twice — **with KD** and **without KD (baseline)** — under
 identical data/hyperparameters/seed, over **5-fold CV** (StratifiedGroupKFold by
-`patient_id`). `compute_kd_delta()` reports the KD effect.
+`patient_id`). `compute_kd_delta()` reports the KD effect. Opt-in KD variants:
+`training.distillation.soft_loss_type=mse` (MSE-on-logit, Kim et al. 2021) and
+`training=distillation_rkd` (RKD feature-KD, Park et al. 2019); probability
+calibration (ECE/Brier + reliability curve) via `scripts/compute_calibration.py`.
 
-**Primary metric:** pAUC@TPR≥80 (ISIC 2024 official, range ≈ [0.02, 0.20]).
-At ~0.4 % prevalence, quote **AUPRC** (not AUC-ROC) as the headline.
+**Metrics — two distinct roles (not a contradiction):** **pAUC@TPR≥80** (ISIC 2024
+official, range ≈ [0.02, 0.20]) is the **benchmark-comparison** metric — it lets the
+result sit next to the ISIC 2024 leaderboard/literature. **AUPRC** is the **clinical
+headline**: at the measured **~0.39 % prevalence** (ISIC 2024 + PAD-UFES-20 test set)
+AUPRC, not AUC-ROC, reflects real performance (AUC-ROC is inflated at extreme
+imbalance).
 
 ## Setup
 
@@ -50,19 +55,19 @@ make prepare
 make train-teacher
 
 # Stage 2 — students via KD
-make train-student-b0
-make train-student-mobilenet
-make train-student-mobilevit
+make train-student-mobilenetv4
+make train-student-fastvit
+make train-student-efficientformer
 make train-all-students          # all three sequentially
 
 # Evaluation / inference
 make evaluate
-python scripts/evaluate.py --model-name efficientnet_b4 --checkpoint path/to/best_model.pth
-python scripts/predict.py  --model-name mobilenetv3_large --checkpoint path/to/best_model.pth \
+python scripts/evaluate.py --model-name efficientnetv2_m --checkpoint path/to/best_model.pth
+python scripts/predict.py  --model-name mobilenetv4_conv_medium --checkpoint path/to/best_model.pth \
     --image path/to/lesion.jpg --threshold 0.61   # use the Youden threshold from test_metrics.json
 
 # Export for deployment (ONNX default; also torchscript). Export the STUDENT, not the teacher.
-python scripts/export_model.py --model-name mobilenetv3_large \
+python scripts/export_model.py --model-name mobilenetv4_conv_medium \
     --checkpoint path/to/best_model.pth --format onnx --output exports/skin_mnv3
 
 # Compare ALL runs: did KD help + best teacher→student pair (reads experiments/runs/*/fold_*/test_metrics.json)
@@ -76,7 +81,7 @@ make format   # apply isort + black
 
 Hydra overrides at the CLI, e.g.:
 ```bash
-python scripts/train_student.py student=mobilenetv3_large training=baseline
+python scripts/train_student.py student=mobilenetv4_conv_medium training=baseline
 python scripts/train_teacher.py teacher=efficientnetv2_m
 ```
 
@@ -89,11 +94,11 @@ make poc-all     # prepare-poc → poc-teacher → poc-student (2 epochs each)
 ### Cluster
 
 ```bash
-bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnet_b4
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv3_large
+bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnetv2_m
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium
 bash slurm/submit.sh slurm/23_export_model.slurm \
-    MODEL=mobilenetv3_large \
-    CKPT=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth
+    MODEL=mobilenetv4_conv_medium \
+    CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 ```
 The model emits one raw logit → `sigmoid()` then the Youden threshold from that fold's `test_metrics.json` (not 0.5). Research/thesis model, not a validated medical device. See `docs/SLURM.md` and `slurm/README.md`.
 
@@ -105,7 +110,7 @@ skin-cancer-detector/
 ├── data/             # raw, processed data and split CSVs
 ├── src/
 │   ├── data/         # Dataset, DataModule, transforms, sampler, preprocessing
-│   ├── models/       # BaseModel + registry (family wrappers + TimmBackboneModel)
+│   ├── models/       # BaseModel + registry (single generic TimmBackboneModel)
 │   ├── training/     # Trainer, KDTrainer, losses, distillation, optimizers, callbacks
 │   ├── evaluation/   # metrics (pAUC/AUPRC), evaluator, confusion matrix, Grad-CAM
 │   ├── inference/    # predictor and ensemble

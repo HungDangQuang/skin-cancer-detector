@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="820" viewBox="0 0 1600 820" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9AA0A6"/>
+    </marker>
+    <filter id="cardShadow" x="-6%" y="-6%" width="112%" height="118%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#1a1a1a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="820" fill="#FFFFFF"/>
+
+  <!-- serpentine flow:  3.1 → 3.2 → 3.3
+                                       ↓
+                          3.6 ← 3.5 ← 3.4   -->
+
+  <!-- ===== 3.1 Data sources (green) — col0 top ===== -->
+  <rect x="40" y="50" width="480" height="340" rx="14" fill="#E7F4EC" stroke="#B6DEC5"/>
+  <text x="280" y="84" text-anchor="middle" font-size="17" font-weight="700" fill="#1E7A45">3.1  Data sources</text>
+  <rect x="60" y="173" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#CDE8D7" filter="url(#cardShadow)"/>
+  <text x="166" y="201" text-anchor="middle" font-size="13" font-weight="700" fill="#1E7A45">ISIC 2024 SLICE-3D</text>
+  <text x="166" y="225" text-anchor="middle" font-size="11" fill="#5A5A5A">401,059 imgs · ~128×128</text>
+  <text x="166" y="247" text-anchor="middle" font-size="11" fill="#5A5A5A">~0.9% malignant</text>
+  <text x="166" y="271" text-anchor="middle" font-size="11" font-weight="600" fill="#3B3B3B">→ primary training</text>
+  <rect x="288" y="173" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#CDE8D7" filter="url(#cardShadow)"/>
+  <text x="394" y="201" text-anchor="middle" font-size="13" font-weight="700" fill="#1E7A45">PAD-UFES-20</text>
+  <text x="394" y="225" text-anchor="middle" font-size="11" fill="#5A5A5A">2,298 smartphone imgs</text>
+  <text x="394" y="247" text-anchor="middle" font-size="11" fill="#5A5A5A">6 classes → binary</text>
+  <text x="394" y="271" text-anchor="middle" font-size="11" font-weight="600" fill="#3B3B3B">→ +malignant (optional)</text>
+
+  <line x1="520" y1="220" x2="560" y2="220" stroke="#9AA0A6" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+  <!-- ===== 3.2 Cleaning & unification (gray) — col1 top ===== -->
+  <rect x="560" y="50" width="480" height="340" rx="14" fill="#EEEDEA" stroke="#D8D6D1"/>
+  <text x="800" y="84" text-anchor="middle" font-size="17" font-weight="700" fill="#55534E">3.2  Cleaning &amp; unification</text>
+  <rect x="580" y="170" width="212" height="70" rx="9" fill="#FFFFFF" stroke="#DCDAD5" filter="url(#cardShadow)"/>
+  <text x="686" y="196" text-anchor="middle" font-size="12" font-weight="700" fill="#3B3B3B">Quality filter</text>
+  <text x="686" y="218" text-anchor="middle" font-size="10" fill="#5A5A5A">corrupt · uniform · min-size</text>
+  <rect x="808" y="170" width="212" height="70" rx="9" fill="#FFFFFF" stroke="#DCDAD5" filter="url(#cardShadow)"/>
+  <text x="914" y="196" text-anchor="middle" font-size="12" font-weight="700" fill="#3B3B3B">Deduplicate</text>
+  <text x="914" y="218" text-anchor="middle" font-size="10" fill="#5A5A5A">exact-pixel</text>
+  <rect x="580" y="256" width="212" height="70" rx="9" fill="#FFFFFF" stroke="#DCDAD5" filter="url(#cardShadow)"/>
+  <text x="686" y="282" text-anchor="middle" font-size="12" font-weight="700" fill="#3B3B3B">Label unification</text>
+  <text x="686" y="304" text-anchor="middle" font-size="10" fill="#5A5A5A">6 / 7 → binary</text>
+  <rect x="808" y="256" width="212" height="70" rx="9" fill="#FFFFFF" stroke="#DCDAD5" filter="url(#cardShadow)"/>
+  <text x="914" y="282" text-anchor="middle" font-size="12" font-weight="700" fill="#3B3B3B">Resize + normalize</text>
+  <text x="914" y="304" text-anchor="middle" font-size="10" fill="#5A5A5A">224² · ImageNet</text>
+
+  <line x1="1040" y1="220" x2="1080" y2="220" stroke="#9AA0A6" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+  <!-- ===== 3.3 Splitting (purple) — col2 top ===== -->
+  <rect x="1080" y="50" width="480" height="340" rx="14" fill="#ECEBFB" stroke="#C9C6F0"/>
+  <text x="1320" y="84" text-anchor="middle" font-size="17" font-weight="700" fill="#4B41B8">3.3  Data splitting</text>
+  <rect x="1100" y="150" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#D6D3F5" filter="url(#cardShadow)"/>
+  <text x="1206" y="178" text-anchor="middle" font-size="13" font-weight="700" fill="#4B41B8">StratifiedGroupKFold</text>
+  <text x="1206" y="202" text-anchor="middle" font-size="11" fill="#5A5A5A">patient-level · K=5</text>
+  <text x="1206" y="224" text-anchor="middle" font-size="11" fill="#5A5A5A">stratified by label</text>
+  <rect x="1328" y="150" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#D6D3F5" filter="url(#cardShadow)"/>
+  <text x="1434" y="178" text-anchor="middle" font-size="13" font-weight="700" fill="#4B41B8">Held-out test set</text>
+  <text x="1434" y="202" text-anchor="middle" font-size="11" fill="#5A5A5A">carved BEFORE CV (~17%)</text>
+  <text x="1434" y="224" text-anchor="middle" font-size="11" fill="#5A5A5A">patient-disjoint · unbiased</text>
+  <rect x="1100" y="316" width="440" height="30" rx="8" fill="#E0DEF7"/>
+  <text x="1320" y="336" text-anchor="middle" font-size="11" font-weight="600" fill="#4B41B8">No patient leakage — same patient in one split only</text>
+
+  <line x1="1320" y1="390" x2="1320" y2="430" stroke="#9AA0A6" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+  <!-- ===== 3.4 Class imbalance (red) — col2 bottom ===== -->
+  <rect x="1080" y="430" width="480" height="340" rx="14" fill="#FBEAE7" stroke="#F0C9C1"/>
+  <text x="1320" y="464" text-anchor="middle" font-size="17" font-weight="700" fill="#B23A2A">3.4  Class imbalance</text>
+  <rect x="1100" y="530" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#F3D3CC" filter="url(#cardShadow)"/>
+  <text x="1206" y="558" text-anchor="middle" font-size="13" font-weight="700" fill="#B23A2A">Dynamic undersample</text>
+  <text x="1206" y="582" text-anchor="middle" font-size="11" fill="#5A5A5A">1:5 malig:benign / epoch</text>
+  <text x="1206" y="604" text-anchor="middle" font-size="11" fill="#5A5A5A">ratio = tunable</text>
+  <rect x="1328" y="530" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#F3D3CC" filter="url(#cardShadow)"/>
+  <text x="1434" y="558" text-anchor="middle" font-size="13" font-weight="700" fill="#B23A2A">Focal loss</text>
+  <text x="1434" y="582" text-anchor="middle" font-size="11" fill="#5A5A5A">γ = 2.0 · α = 0.25</text>
+  <text x="1434" y="604" text-anchor="middle" font-size="11" fill="#5A5A5A">α tuned with ratio</text>
+  <rect x="1100" y="696" width="440" height="30" rx="8" fill="#F6DBD5"/>
+  <text x="1320" y="716" text-anchor="middle" font-size="11" font-weight="600" fill="#9E3324">Class-symmetric — NO stronger aug on malignant</text>
+
+  <line x1="1080" y1="600" x2="1040" y2="600" stroke="#9AA0A6" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+  <!-- ===== 3.5 Augmentation (olive) — col1 bottom ===== -->
+  <rect x="560" y="430" width="480" height="340" rx="14" fill="#EFF5E2" stroke="#D2E3B0"/>
+  <text x="800" y="464" text-anchor="middle" font-size="17" font-weight="700" fill="#55801F">3.5  Augmentation (train only)</text>
+  <rect x="580" y="527" width="212" height="70" rx="9" fill="#FFFFFF" stroke="#DCEBC3" filter="url(#cardShadow)"/>
+  <text x="686" y="553" text-anchor="middle" font-size="12" font-weight="700" fill="#55801F">Geometric</text>
+  <text x="686" y="575" text-anchor="middle" font-size="10" fill="#5A5A5A">flip · rotate 360° · scale</text>
+  <rect x="808" y="527" width="212" height="70" rx="9" fill="#FFFFFF" stroke="#DCEBC3" filter="url(#cardShadow)"/>
+  <text x="914" y="553" text-anchor="middle" font-size="12" font-weight="700" fill="#55801F">Photometric</text>
+  <text x="914" y="575" text-anchor="middle" font-size="10" fill="#5A5A5A">jitter · CLAHE · blur</text>
+  <rect x="580" y="613" width="212" height="70" rx="9" fill="#FFFFFF" stroke="#DCEBC3" filter="url(#cardShadow)"/>
+  <text x="686" y="639" text-anchor="middle" font-size="12" font-weight="700" fill="#55801F">Config presets</text>
+  <text x="686" y="661" text-anchor="middle" font-size="10" fill="#5A5A5A">light / heavy</text>
+  <rect x="808" y="613" width="212" height="70" rx="9" fill="#FFFFFF" stroke="#DCEBC3" filter="url(#cardShadow)"/>
+  <text x="914" y="639" text-anchor="middle" font-size="12" font-weight="700" fill="#55801F">Stochastic depth</text>
+  <text x="914" y="661" text-anchor="middle" font-size="10" fill="#5A5A5A">drop_path_rate</text>
+  <rect x="580" y="699" width="440" height="30" rx="8" fill="#E6EFD3"/>
+  <text x="800" y="719" text-anchor="middle" font-size="11" font-weight="600" fill="#55801F">Excluded &amp; enforced in code: MixUp · CutMix · CutOut · microscope-crop</text>
+
+  <line x1="560" y1="600" x2="520" y2="600" stroke="#9AA0A6" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+  <!-- ===== 3.6 External validation (blue) — col0 bottom ===== -->
+  <rect x="40" y="430" width="480" height="340" rx="14" fill="#E8F0FB" stroke="#C2D8F2"/>
+  <text x="280" y="464" text-anchor="middle" font-size="17" font-weight="700" fill="#2C63B0">3.6  External validation (test only)</text>
+  <rect x="60" y="530" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#D2E1F6" filter="url(#cardShadow)"/>
+  <text x="166" y="558" text-anchor="middle" font-size="13" font-weight="700" fill="#2C63B0">HAM10000</text>
+  <text x="166" y="582" text-anchor="middle" font-size="11" fill="#5A5A5A">10,015 dermoscopic</text>
+  <text x="166" y="604" text-anchor="middle" font-size="11" fill="#5A5A5A">cross-domain eval</text>
+  <rect x="288" y="530" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#D2E1F6" filter="url(#cardShadow)"/>
+  <text x="394" y="558" text-anchor="middle" font-size="13" font-weight="700" fill="#2C63B0">Fitzpatrick17k</text>
+  <text x="394" y="582" text-anchor="middle" font-size="11" fill="#5A5A5A">16,577 clinical · I–VI</text>
+  <text x="394" y="604" text-anchor="middle" font-size="11" fill="#5A5A5A">fairness analysis</text>
+  <rect x="60" y="696" width="440" height="30" rx="8" fill="#DCE8F8"/>
+  <text x="280" y="716" text-anchor="middle" font-size="11" font-weight="600" fill="#2C63B0">Never used for training — inference only on final models</text>
+</svg>

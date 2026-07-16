@@ -28,6 +28,7 @@ loss:
 distillation:
   temperature: 4.0    # T — softens teacher/student distributions
   alpha: 0.3          # weight of hard-label focal loss (0.3 hard + 0.7 soft)
+  soft_loss_type: bce # bce (default, T^2 soft BCE) | mse (Kim et al. 2021, MSE on raw logits)
 
 callbacks:
   early_stopping:

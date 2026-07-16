@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="650" viewBox="0 0 1000 650" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9AA0A6"/>
+    </marker>
+    <filter id="cardShadow" x="-6%" y="-6%" width="112%" height="118%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#1a1a1a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1000" height="650" fill="#FFFFFF"/>
+
+  <!-- ============ Step 1 Teacher training (red) ============ -->
+  <rect x="40" y="30" width="920" height="178" rx="14" fill="#FBEAE7" stroke="#F0C9C1"/>
+  <text x="500" y="64" text-anchor="middle" font-size="18" font-weight="700" fill="#B23A2A">Step 1 · Teacher training</text>
+  <rect x="60" y="86" width="430" height="66" rx="10" fill="#FFFFFF" stroke="#F3D3CC" filter="url(#cardShadow)"/>
+  <text x="275" y="110" text-anchor="middle" font-size="14" font-weight="700" fill="#B23A2A">Training data</text>
+  <text x="275" y="130" text-anchor="middle" font-size="12" fill="#5A5A5A">ISIC 2024 + PAD-UFES-20</text>
+  <text x="275" y="148" text-anchor="middle" font-size="12" fill="#5A5A5A">224×224 images + binary labels</text>
+  <rect x="510" y="86" width="430" height="66" rx="10" fill="#FFFFFF" stroke="#F3D3CC" filter="url(#cardShadow)"/>
+  <text x="725" y="110" text-anchor="middle" font-size="14" font-weight="700" fill="#B23A2A">EfficientNet-B4 teacher</text>
+  <text x="725" y="130" text-anchor="middle" font-size="12" fill="#5A5A5A">~19M params · focal loss (γ=2, α=0.25)</text>
+  <text x="725" y="148" text-anchor="middle" font-size="12" fill="#5A5A5A">checkpoint = best_model.pth (PyTorch)</text>
+  <rect x="60" y="162" width="880" height="28" rx="8" fill="#F6DBD5"/>
+  <text x="500" y="180" text-anchor="middle" font-size="12" font-weight="600" fill="#9E3324">Output: trained teacher + frozen soft-label logits for every training image</text>
+
+  <line x1="500" y1="208" x2="500" y2="236" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+  <!-- ============ Step 2 Knowledge distillation (purple) ============ -->
+  <rect x="40" y="236" width="920" height="178" rx="14" fill="#ECEBFB" stroke="#C9C6F0"/>
+  <text x="500" y="270" text-anchor="middle" font-size="18" font-weight="700" fill="#4B41B8">Step 2 · Knowledge distillation (×3 students)</text>
+  <rect x="60" y="292" width="430" height="66" rx="10" fill="#FFFFFF" stroke="#D6D3F5" filter="url(#cardShadow)"/>
+  <text x="275" y="316" text-anchor="middle" font-size="14" font-weight="700" fill="#4B41B8">Inputs</text>
+  <text x="275" y="336" text-anchor="middle" font-size="12" fill="#5A5A5A">224×224 images + hard labels (ground truth)</text>
+  <text x="275" y="354" text-anchor="middle" font-size="12" fill="#5A5A5A">+ teacher logits (soft labels)</text>
+  <rect x="510" y="292" width="430" height="66" rx="10" fill="#FFFFFF" stroke="#D6D3F5" filter="url(#cardShadow)"/>
+  <text x="725" y="316" text-anchor="middle" font-size="14" font-weight="700" fill="#4B41B8">Student + KD (teacher frozen)</text>
+  <text x="725" y="336" text-anchor="middle" font-size="12" fill="#5A5A5A">5-fold CV · 50 epochs · 3 arch × 5 = 15 ckpts</text>
+  <text x="725" y="354" text-anchor="middle" font-size="12" fill="#5A5A5A">→ EffNet-B0 · MobileNetV3-L · MobileViT-S</text>
+  <rect x="60" y="368" width="880" height="28" rx="8" fill="#E0DEF7"/>
+  <text x="500" y="386" text-anchor="middle" font-size="12" font-weight="600" fill="#4B41B8">L = 0.3 · focal(y, student) + 0.7 · T² · BCE( σ(student/T), σ(teacher/T) ),  T = 4</text>
+
+  <line x1="500" y1="414" x2="500" y2="442" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+  <!-- ============ Step 3 Evaluation + deployment (green) ============ -->
+  <rect x="40" y="442" width="920" height="178" rx="14" fill="#E7F4EC" stroke="#B6DEC5"/>
+  <text x="500" y="476" text-anchor="middle" font-size="18" font-weight="700" fill="#1E7A45">Step 3 · Evaluation + on-device deployment</text>
+  <rect x="60" y="498" width="430" height="66" rx="10" fill="#FFFFFF" stroke="#CDE8D7" filter="url(#cardShadow)"/>
+  <text x="275" y="522" text-anchor="middle" font-size="14" font-weight="700" fill="#1E7A45">Evaluation (FP32 checkpoints)</text>
+  <text x="275" y="542" text-anchor="middle" font-size="12" fill="#5A5A5A">pAUC@TPR80 · AUPRC · AUC-ROC</text>
+  <text x="275" y="560" text-anchor="middle" font-size="12" fill="#5A5A5A">sensitivity · specificity · threshold via Youden J</text>
+  <rect x="510" y="498" width="430" height="66" rx="10" fill="#FFFFFF" stroke="#CDE8D7" filter="url(#cardShadow)"/>
+  <text x="725" y="522" text-anchor="middle" font-size="14" font-weight="700" fill="#1E7A45">Deploy best student</text>
+  <text x="725" y="542" text-anchor="middle" font-size="12" fill="#5A5A5A">ExecuTorch .pte (FP32, no quantization)</text>
+  <text x="725" y="560" text-anchor="middle" font-size="12" fill="#5A5A5A">Android · report params / FLOPs / size / latency</text>
+  <rect x="60" y="574" width="880" height="28" rx="8" fill="#DCEBD9"/>
+  <text x="500" y="592" text-anchor="middle" font-size="12" font-weight="600" fill="#1E7A45">Test sets: ISIC 2024 held-out + HAM10000 (cross-domain) + Fitzpatrick17k (fairness)</text>
+</svg>

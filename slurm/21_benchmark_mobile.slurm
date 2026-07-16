@@ -8,8 +8,8 @@
 #
 # Submit:
 #   bash slurm/submit.sh slurm/21_benchmark_mobile.slurm \
-#       MODEL=efficientnet_b0 \
-#       CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth
+#       MODEL=mobilenetv4_conv_medium \
+#       CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 #
 # Output (default): reports/mobile_benchmark/<MODEL>.json
 # ============================================================================
@@ -26,7 +26,7 @@ source "${SLURM_SUBMIT_DIR:-$(pwd)}/slurm/_lib.sh"
 load_python_env
 # No GPU — single-core CPU latency proxy is the point of this job.
 
-: "${MODEL:?MODEL env var required (e.g. efficientnet_b0)}"
+: "${MODEL:?MODEL env var required (e.g. mobilenetv4_conv_medium)}"
 : "${CKPT:?CKPT env var required (path to best_model.pth)}"
 OUT="${OUT:-reports/mobile_benchmark/${MODEL}.json}"
 

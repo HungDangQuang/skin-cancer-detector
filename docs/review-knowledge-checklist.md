@@ -2,7 +2,13 @@
 
 A self-study checklist covering every concept and technique in this project, ordered **fundamental → advanced**. Each item has: what to know, where it lives in the code, and a "be able to explain" prompt (the kind of question a thesis examiner asks). Tick a box once you can explain it *without looking*.
 
-> **Project in one sentence:** Binary skin-cancer classification (benign=0 / malignant=1) where a large **EfficientNet-B4 teacher** distills knowledge into small **EfficientNet-B0 / MobileNetV3-Large / MobileViT-S students**, evaluated with the official **ISIC 2024 pAUC@TPR≥80** metric on a patient-disjoint held-out test set, using 5-fold CV.
+> **Project in one sentence:** Binary skin-cancer classification (benign=0 / malignant=1) where a large **teacher** distills knowledge into small, mobile-deployable **students**, evaluated with the official **ISIC 2024 pAUC@TPR≥80** metric on a patient-disjoint held-out test set, using 5-fold CV.
+
+> **⚠️ Model set — read this first.** This checklist was first written for the **baseline set** (teacher `efficientnet_b4` → students `efficientnet_b0 / mobilenetv3_large / mobilevit_s`). The project has since moved to a **SOTA set** which is now the primary story:
+> - **Teachers:** `convnextv2_base`, `maxvit_base` (both strong, AUPRC ~0.68), `efficientnetv2_m`; `efficientnet_b4` is now the **weak baseline teacher** (AUPRC 0.60 — lower than its own students).
+> - **Students (mobile-latency-optimized):** `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2`.
+> - All SOTA models use one generic `TimmBackboneModel` wrapper (needs `timm>=1.0`); the baseline models keep their family wrappers.
+> Use this file for **concepts**; use `report_phase_1/` for **current numbers, rankings, and the deploy recommendation** (best-balanced = `mobilenetv4_conv_medium ← convnextv2_base`).
 
 ---
 
@@ -56,6 +62,12 @@ A self-study checklist covering every concept and technique in this project, ord
 - [ ] **EfficientNet** — compound scaling (depth/width/resolution), MBConv blocks. *Code:* [efficientnet.py](../src/models/efficientnet.py).
 - [ ] **MobileNetV3-Large** — depthwise-separable conv, squeeze-excite, h-swish. *Code:* [mobilenet.py](../src/models/mobilenet.py).
 - [ ] **MobileViT-S** — hybrid CNN + transformer blocks for mobile. *Code:* [mobilevit.py](../src/models/mobilevit.py).
+- [ ] **SOTA student set (current primary)** — all via one generic wrapper [timm_backbone.py](../src/models/timm_backbone.py):
+  - [ ] **MobileNetV4-Conv-Medium** — pure-conv, best mobile latency/accuracy balance (22 ms on Pixel 6a). *Config:* [configs/student/mobilenetv4_conv_medium.yaml](../configs/student/mobilenetv4_conv_medium.yaml).
+  - [ ] **FastViT-SA12** — hybrid CNN+transformer, highest pAUC but transformer penalty on ARM (65 ms). *Config:* `configs/student/fastvit_sa12.yaml`.
+  - [ ] **EfficientFormerV2-S2** — highest AUPRC (0.684) but largest `.pte` (47 MB). *Config:* `configs/student/efficientformerv2_s2.yaml`.
+  - [ ] *Explain:* why **latency ranking flips on real hardware** — CPU-proxy says fastvit ≈ mobilenetv4, but on-device fastvit is ~7.8× slower than mobilenetv3 (transformers pay a 3.4× ARM penalty). *Doc:* report_phase_1/benchmark, [MOBILE.md](MOBILE.md).
+- [ ] **SOTA teacher set** — `convnextv2_base` (ConvNeXt V2, FCMAE-pretrained), `maxvit_base` (multi-axis attention), `efficientnetv2_m`. *Explain:* why a stronger teacher matters — see Tier 6 (teacher quality gates KD's AUPRC gain).
 - [ ] **timm** as backbone source; `num_classes=0` returns features only. *Explain:* what `num_classes=0` does.
 - [ ] **Backbone + head pattern & the registry.** `BaseModel` ABC, `forward → (B,)` raw logit, `freeze_backbone()`/`unfreeze()`. *Code:* [base_model.py](../src/models/base_model.py), [registry.py](../src/models/registry.py).
 - [ ] **The `num_features` pitfall** — `infer_backbone_out_dim()` runs a dummy forward because `timm`'s reported `num_features` (e.g. MobileNetV3 says 960) ≠ true forward output (1280). *Code:* [heads.py](../src/models/heads.py). *Gotcha:* CLAUDE.md.
@@ -94,6 +106,9 @@ A self-study checklist covering every concept and technique in this project, ord
 - [ ] **Frozen teacher** — `requires_grad=False`, `eval()`, `torch.no_grad()` for teacher forward. *Code:* [kd_trainer.py](../src/training/kd_trainer.py) `__init__` + `_train_epoch`. *Explain:* why the teacher must not update.
 - [ ] **Baseline vs KD arm** — same student, same data/seed/hparams, trained with (`KDTrainer`) and without (`Trainer`) KD via the `use_kd` flag. *Code:* `train_student.py`; *Gotcha:* CLAUDE.md "use_kd flag." *Explain:* why an identical-everything-but-KD pairing is required to attribute the gain to KD.
 - [ ] **KD effectiveness delta** `delta_pauc = pauc_KD − pauc_baseline`. *Code:* `compute_kd_delta` in [metrics.py](../src/evaluation/metrics.py).
+- [ ] **The two headline KD findings (know these cold — they ARE the thesis result):** *Doc:* [report_phase_1/evaluation/03_kd_effectiveness.md](../report_phase_1/evaluation/03_kd_effectiveness.md).
+  - [ ] **(1) KD improves pAUC@80 and Sensitivity *consistently*** — Δ pAUC > 0 on **every** student×teacher pair (+0.001→+0.005); the high-sensitivity region (what matters for screening) always improves. This is the strongest, safest claim.
+  - [ ] **(2) The AUPRC gain is *gated by teacher quality*** — a **strong** teacher (`convnextv2_base`) lifts MobileNetV4 AUPRC **+0.052** (0.609→0.661); a **weak** teacher (`efficientnet_b4`) gives Δ AUPRC in the noise or negative. *Explain:* distilling from a weak teacher only helps the high-sensitivity tail, not overall ranking. **Best case study = `mobilenetv4_conv_medium ← convnextv2_base`.**
 
 ---
 
@@ -116,7 +131,8 @@ A self-study checklist covering every concept and technique in this project, ord
 ## Tier 8 — Experimental design & rigor
 
 - [ ] **5-fold cross-validation** and why a single split is unreliable. *Explain:* what the 5 folds vary.
-- [ ] **The 30-run design:** 3 architectures × 2 KD conditions × 5 folds. *Doc:* CLAUDE.md "Experiment design."
+- [ ] **The paired-run design:** each student trained twice (KD / baseline) on identical folds+seed, per teacher. The baseline set was 3 arch × 2 × 5 = 30 runs; the SOTA matrix adds more student×teacher pairings (see the full ranking in [report_phase_1/evaluation/02_model_comparison.md](../report_phase_1/evaluation/02_model_comparison.md)). *Doc:* CLAUDE.md "Experiment design."
+- [ ] **Fold-completeness caveat** — some SOTA pairs are not yet at 5 folds (maxvit-KD 1 fold, efficientformerv2_s2 2–4 folds); a claim from n<5 folds carries lower confidence. *Explain:* why you must say "n=4 folds, preliminary" rather than quote it as final.
 - [ ] **Aggregation: report mean ± std** (not a single fold) — `aggregate_folds.py` → `aggregated.{json,md}`. *Explain:* why a lone fold's number is misleading.
 - [ ] **Paired comparison** (KD vs baseline on identical folds/seed) and why pairing reduces variance.
 - [ ] **Ablations** — `ratio × α` ablation (still TODO in the plan), augmentation choices. *Doc:* PREPROCESSING.md §3/§6.
@@ -151,4 +167,4 @@ A self-study checklist covering every concept and technique in this project, ord
 
 ---
 
-*Generated 2026-06-06 as a study aid. Source of truth remains the code and [CLAUDE.md](../CLAUDE.md); if an item here ever disagrees with the code, the code wins — update this file.*
+*Generated 2026-06-06 as a study aid; updated 2026-07-08 for the SOTA model set + headline KD findings. Source of truth remains the code, [CLAUDE.md](../CLAUDE.md), and `report_phase_1/`; if an item here ever disagrees with them, they win — update this file. Companion: [review-knowledge-summary-vi.md](review-knowledge-summary-vi.md) (Vietnamese tier-by-tier summary).*

@@ -3,8 +3,8 @@
 # Evaluate a checkpoint on the held-out test split.
 # Submit:
 #   bash slurm/submit.sh slurm/20_evaluate.slurm \
-#       MODEL=efficientnet_b4 \
-#       CKPT=experiments/runs/teacher/efficientnet_b4/checkpoints/best_model.pth \
+#       MODEL=efficientnetv2_m \
+#       CKPT=experiments/runs/teacher/efficientnetv2_m/checkpoints/best_model.pth \
 #       OUT=reports/results/teacher.json
 # ============================================================================
 #SBATCH --job-name=evaluate
@@ -22,7 +22,7 @@ load_python_env
 acquire_gpu 6144
 setup_mps
 
-: "${MODEL:?MODEL env var required (e.g. efficientnet_b0)}"
+: "${MODEL:?MODEL env var required (e.g. mobilenetv4_conv_medium)}"
 : "${CKPT:?CKPT env var required (path to .pth)}"
 OUT="${OUT:-reports/results/${MODEL}_metrics.json}"
 

@@ -54,6 +54,7 @@ The "is this good?" family — pick by **what artifact you have** and **how many
 | Skill | Use it when… | Focus |
 |---|---|---|
 | [answer-qa](answer-qa/SKILL.md) | a methodology/results question you want **saved** | Answer grounded in code/results, store as `QA/NNN-*.md` |
+| [diagram-style](diagram-style/SKILL.md) | drawing a pipeline/architecture **figure** for the report or slides | House "soft-card" SVG style — pastel containers, white cards, gray arrows; canonical example in `report_phase_1/figures/` |
 
 ---
 

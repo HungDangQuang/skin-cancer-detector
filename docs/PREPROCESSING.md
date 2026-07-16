@@ -7,10 +7,17 @@ proposal text and the code can be aligned to one spec instead of drifting.
 
 Legend: ✅ implemented & kept · ⬜ proposed, not yet implemented · ⚠️ revise vs proposal · ❌ drop
 
-Dataset facts this spec is designed around (from proposal): ISIC 2024 ≈ 401,059
-images, **native ~128×128**, non-dermoscopic; **malignant ≈ 0.9%** (~3,600
-positives); deployment domain = plain smartphone photos. PAD-UFES-20 ≈ 2,298
-smartphone clinical images, added for extra malignant samples.
+Dataset facts this spec is designed around: ISIC 2024 ≈ 401,059 images, **native
+~128×128**, non-dermoscopic; deployment domain = plain smartphone photos.
+PAD-UFES-20 ≈ 2,298 smartphone clinical images, added for extra malignant samples.
+
+**Prevalence — quote the measured figure, not the proposal's.** The proposal's
+"malignant ≈ 0.9% (~3,600 positives)" is an ~9× overcount and must not be cited.
+Measured in this project: processed **ISIC-only ≈ 0.098%** positive; after merging
+PAD-UFES-20 the independent, patient-disjoint held-out **test set ≈ 0.39%**
+(241 malignant / 61,831 benign — job 28250 logs, confirmed). **Report 0.39% as the
+working prevalence, on the combined ISIC 2024 + PAD-UFES-20 test set** — this is the
+number all headline-metric choices (AUPRC over AUC-ROC) are justified against.
 
 **Obtaining the raw data.** ISIC 2024 → Kaggle (`train-image.hdf5` +
 `train-metadata.csv`). PAD-UFES-20 → Mendeley `zr7vgbcyr2` v1; stage it with

@@ -3,7 +3,7 @@ Single-image inference script.
 
 Usage:
     python scripts/predict.py --image path/to/image.jpg \\
-        --model-name efficientnet_b0 --checkpoint path/to/best_model.pth
+        --model-name mobilenetv4_conv_medium --checkpoint path/to/best_model.pth
 """
 import argparse
 import sys

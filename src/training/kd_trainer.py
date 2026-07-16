@@ -11,6 +11,7 @@ import torch.nn as nn
 from tqdm import tqdm
 
 from src.training.distillation import BinaryDistillationLoss
+from src.training.feature_distillation import RKDLoss
 from src.training.losses import build_loss
 from src.training.optimizers import build_optimizer
 from src.training.schedulers import build_scheduler
@@ -59,8 +60,20 @@ class KDTrainer:
         self.criterion = BinaryDistillationLoss(
             temperature=kd_cfg.temperature,
             alpha=kd_cfg.alpha,
+            soft_loss_type=kd_cfg.get("soft_loss_type", "bce"),
             hard_loss_fn=hard_loss_fn,
         )
+
+        # Optional feature-based (relational) KD — opt-in via a `feature_kd` block
+        # in the training config (present only in distillation_rkd.yaml). Absent
+        # -> self.rkd is None -> the trainer behaves exactly like plain logit KD.
+        fk = kd_cfg.get("feature_kd", None)
+        self.rkd = RKDLoss(fk.weight_dist, fk.weight_angle) if fk else None
+        if self.rkd is not None:
+            logger.info(
+                f"Feature KD enabled: RKD(weight_dist={fk.weight_dist}, "
+                f"weight_angle={fk.weight_angle})"
+            )
 
         self.optimizer = build_optimizer(self.cfg, self.student)
         self.scheduler = build_scheduler(self.cfg, self.optimizer)
@@ -78,9 +91,14 @@ class KDTrainer:
             save_last=cb_cfg.checkpoint.save_last,
         ) if cb_cfg.checkpoint.enabled else None
 
+        # train_rkd_loss is ALWAYS declared and ALWAYS appended each epoch (0.0
+        # when RKD is off), so the history lists never desync — the trainer's
+        # historical shape-mismatch gotcha. It is not plotted / read elsewhere,
+        # so a plain-KD run's observable behaviour is unchanged.
         self.history = {
             "train_loss": [], "val_loss": [],
             "train_hard_loss": [], "train_soft_loss": [],
+            "train_rkd_loss": [],
             "val_pauc": [],
         }
         # Best-epoch val metrics (aligned to the checkpoint monitor) — persisted
@@ -116,13 +134,15 @@ class KDTrainer:
             self.history["train_loss"].append(train_metrics["loss"])
             self.history["train_hard_loss"].append(train_metrics["hard_loss"])
             self.history["train_soft_loss"].append(train_metrics["soft_loss"])
+            self.history["train_rkd_loss"].append(train_metrics["rkd_loss"])
             self.history["val_loss"].append(val_metrics["loss"])
             self.history["val_pauc"].append(val_metrics.get("pauc_at_tpr80", 0.0))
 
             logger.info(
                 f"Epoch {epoch}/{epochs} | "
                 f"train_loss={train_metrics['loss']:.4f} "
-                f"(hard={train_metrics['hard_loss']:.4f}, soft={train_metrics['soft_loss']:.4f}) | "
+                f"(hard={train_metrics['hard_loss']:.4f}, soft={train_metrics['soft_loss']:.4f}, "
+                f"rkd={train_metrics['rkd_loss']:.4f}) | "
                 f"val_loss={val_metrics['loss']:.4f} "
                 f"val_pauc={val_metrics.get('pauc_at_tpr80', 0):.4f} "
                 f"acc={val_metrics.get('accuracy', 0):.4f} "
@@ -163,20 +183,33 @@ class KDTrainer:
     def _train_epoch(self, loader, epoch: int, total_epochs: int) -> dict:
         self.student.train()
         self.teacher.eval()
-        total_loss, soft_sum, hard_sum, total = 0.0, 0.0, 0.0, 0
+        total_loss, soft_sum, hard_sum, rkd_sum, total = 0.0, 0.0, 0.0, 0.0, 0
 
         pbar = tqdm(loader, desc=f"KD Train [{epoch}/{total_epochs}]", leave=False)
         for images, labels in pbar:
             images = images.to(self.device)
             labels = labels.to(self.device)
 
+            # Feature KD needs the penultimate features -> forward_features; plain
+            # logit KD uses the cheaper forward(). Teacher is always frozen/no_grad.
             with torch.no_grad():
-                teacher_logits = self.teacher(images)
+                if self.rkd is not None:
+                    teacher_feat, teacher_logits = self.teacher.forward_features(images)
+                else:
+                    teacher_logits = self.teacher(images)
 
             self.optimizer.zero_grad()
-            student_logits = self.student(images)
+            if self.rkd is not None:
+                student_feat, student_logits = self.student.forward_features(images)
+            else:
+                student_logits = self.student(images)
 
             loss, components = self.criterion(student_logits, teacher_logits, labels)
+            rkd_val = 0.0
+            if self.rkd is not None:
+                rkd_loss = self.rkd(student_feat, teacher_feat)
+                loss = loss + rkd_loss  # gradient now includes the relational term
+                rkd_val = rkd_loss.item()
             loss.backward()
 
             grad_clip = self.cfg.training.get("grad_clip", None)
@@ -186,16 +219,20 @@ class KDTrainer:
             self.optimizer.step()
 
             n = images.size(0)
+            # total_loss keeps its historical meaning (the logit-KD component); the
+            # RKD term is tracked separately so plain-KD runs report identically.
             total_loss += components["total_loss"] * n
             hard_sum += components["hard_loss"] * n
             soft_sum += components["soft_loss"] * n
+            rkd_sum += rkd_val * n
             total += n
-            pbar.set_postfix(loss=f"{components['total_loss']:.4f}")
+            pbar.set_postfix(loss=f"{components['total_loss'] + rkd_val:.4f}")
 
         return {
             "loss": total_loss / total,
             "hard_loss": hard_sum / total,
             "soft_loss": soft_sum / total,
+            "rkd_loss": rkd_sum / total,
         }
 
     @torch.no_grad()

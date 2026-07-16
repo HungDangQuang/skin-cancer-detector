@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================================
 # Ablation A — imbalance-SAMPLING strategy (data-strategy proof).
-# Re-trains the BEST student (KD: efficientnet_b4 -> mobilenetv3_large) varying
+# Re-trains the BEST student (KD: efficientnetv2_m -> mobilenetv4_conv_medium) varying
 # ONLY the DynamicUndersampledSampler, holding teacher/seed/folds/hparams/loss
 # fixed. Isolates the sampler's contribution so we can prove (or refute) that
 # 1:5 dynamic undersampling beats its alternatives.
@@ -15,7 +15,7 @@
 #   SAMP=off  -> data.use_weighted_sampler=false   (no resampling; natural ~1018:1)
 #   SAMP=3    -> 1:3 malignant:benign
 #   SAMP=10   -> 1:10
-#   SAMP=5    == the MAIN run (kd_..._to_mobilenetv3_large); already trained.
+#   SAMP=5    == the MAIN run (kd_..._to_mobilenetv4_conv_medium); already trained.
 #               Re-run only if you want a __ratio5 copy; otherwise reuse the main.
 #
 # Submit one arm (kicks off 5 folds, <=2 concurrent):
@@ -29,7 +29,7 @@
 #           └── predictions.csv     (y_true,y_prob,y_pred,source)
 # Aggregate each arm, then compare to the main ratio-5 run with analyze-evaluation:
 #   bash slurm/submit.sh slurm/22_aggregate_folds.slurm \
-#       RUN_DIR=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large__samp_off
+#       RUN_DIR=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium__samp_off
 # ============================================================================
 #SBATCH --job-name=ablation_sampler
 #SBATCH --output=logs/ablation_sampler_%A_%a.out
@@ -47,8 +47,8 @@ load_python_env
 acquire_gpu 18432      # teacher (frozen) + student + grads, batch 64
 setup_mps
 
-STUDENT="${STUDENT:-mobilenetv3_large}"
-TEACHER="${TEACHER:-efficientnet_b4}"
+STUDENT="${STUDENT:-mobilenetv4_conv_medium}"
+TEACHER="${TEACHER:-efficientnetv2_m}"
 SAMP="${SAMP:-off}"
 FOLD="${SLURM_ARRAY_TASK_ID:-0}"
 

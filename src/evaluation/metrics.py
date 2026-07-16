@@ -123,6 +123,48 @@ def class_prevalence_baselines(labels: list[int] | np.ndarray) -> dict:
     }
 
 
+def brier_score(y_true: np.ndarray, y_prob: np.ndarray) -> float:
+    """
+    Brier score = mean squared error between predicted probability and label.
+
+    Lower is better (0 = perfect). Unlike the ranking metrics (pAUC/AUPRC/AUC),
+    this is *calibration-sensitive*: it penalizes probabilities that are
+    systematically too confident — which is exactly what the undersampled prior
+    (~16.7% malignant vs true ~0.39% prevalence) does to sigmoid(logit).
+    """
+    y_true = np.asarray(y_true, dtype=float)
+    y_prob = np.asarray(y_prob, dtype=float)
+    return float(np.mean((y_prob - y_true) ** 2))
+
+
+def expected_calibration_error(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int = 15) -> float:
+    """
+    Expected Calibration Error with equal-width probability bins.
+
+    ECE = sum_b (|B_b| / N) * |acc_b - conf_b|, where for each bin B_b, conf_b is
+    the mean predicted probability and acc_b is the observed positive rate. Lower
+    is better (0 = perfectly calibrated). Reports the RAW miscalibration of the
+    model's sigmoid output; see scripts/compute_calibration.py for the corrected
+    (prior-shift / Platt / isotonic) version.
+    """
+    y_true = np.asarray(y_true, dtype=float)
+    y_prob = np.asarray(y_prob, dtype=float)
+    bins = np.linspace(0.0, 1.0, n_bins + 1)
+    idx = np.digitize(y_prob, bins[1:-1])  # bin index per sample, in [0, n_bins-1]
+    ece = 0.0
+    n = len(y_prob)
+    if n == 0:
+        return 0.0
+    for b in range(n_bins):
+        m = idx == b
+        if not np.any(m):
+            continue
+        conf = float(np.mean(y_prob[m]))
+        acc = float(np.mean(y_true[m]))
+        ece += (np.sum(m) / n) * abs(acc - conf)
+    return float(ece)
+
+
 def compute_metrics(
     y_true: list[int],
     y_prob: np.ndarray,
@@ -178,6 +220,14 @@ def compute_metrics(
     metrics["fp"] = int(fp)
     metrics["tn"] = int(tn)
     metrics["fn"] = int(fn)
+
+    # Calibration diagnostics (RAW — sigmoid output as-is). These are the only
+    # metrics here sensitive to probability *magnitude* (not just ranking), so
+    # they flag the inflated-confidence effect of the undersampled training prior.
+    # Ranking metrics above are unaffected; scripts/compute_calibration.py
+    # produces the prior-corrected / Platt / isotonic versions.
+    metrics["brier"] = brier_score(y_true, y_prob)
+    metrics["ece"] = expected_calibration_error(y_true, y_prob)
 
     return metrics
 

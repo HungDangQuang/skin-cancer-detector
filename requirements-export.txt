@@ -1,0 +1,17 @@
+# ============================================================================
+# ISOLATED dependencies for ExecuTorch (.pte) export ONLY.
+#
+# Do NOT merge these into requirements.txt. ExecuTorch pins its own torch
+# build, which can differ from the training venv's torch>=2.2 — keeping it in a
+# separate venv (${DATASTORE_USER_DIR}/venv-export, created by
+# slurm/setup_export_env.sh) guarantees the export step can never perturb the
+# torch version the training/eval jobs depend on.
+#
+# executorch brings its own torch; we only add the bits needed to BUILD the
+# model from a checkpoint (registry + config), nothing from the training stack.
+# ============================================================================
+executorch
+timm>=1.0.0          # model registry backbones (mobilenetv4/fastvit/efficientformerv2 need >=1.0)
+hydra-core>=1.3.2    # load_config composes the Hydra defaults list
+omegaconf>=2.3.0
+numpy>=1.26.0

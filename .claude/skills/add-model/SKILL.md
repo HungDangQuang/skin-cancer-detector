@@ -97,7 +97,7 @@ from src.models.registry import MODEL_REGISTRY, build_model_from_name
 import yaml
 cfg = OmegaConf.load('configs/config.yaml')
 cfg.student = OmegaConf.load('configs/student/<my_arch_key>.yaml')
-cfg.teacher = OmegaConf.load('configs/teacher/efficientnet_b4.yaml')
+cfg.teacher = OmegaConf.load('configs/teacher/efficientnetv2_m.yaml')
 model, _ = build_model_from_name('<my_arch_key>', cfg)
 import torch
 out = model(torch.randn(2, 3, 224, 224))

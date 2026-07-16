@@ -28,10 +28,16 @@ Scope: `src/training/` (`trainer.py`, `kd_trainer.py`, `losses.py`,
 
 ## The training contract (review against this)
 
-- **Stage 1 Teacher**: `EfficientNet-B4` + `Trainer` + `BinaryFocalLoss`.
-- **Stage 2 Student**: one of `{efficientnet_b0, mobilenetv3_large, mobilevit_s}`
+- **Stage 1 Teacher**: one of the SOTA set `{efficientnetv2_m (default), convnextv2_base, maxvit_base}`
+  + `Trainer` + `BinaryFocalLoss`.
+- **Stage 2 Student**: one of the mobile-SOTA set `{mobilenetv4_conv_medium (default), fastvit_sa12, efficientformerv2_s2}`
   + `KDTrainer` + `BinaryDistillationLoss`, teacher **frozen**:
   `L = 0.3·L_focal(student, y) + 0.7·T²·L_BCE(σ(s/T), σ(t/T))`, **T=4.0**.
+  (The old baseline set `efficientnet_b4`/`efficientnet_b0`/`mobilenetv3_large`/`mobilevit_s` was **deleted 2026-07-15** — project is SOTA-only now, all 6 via `TimmBackboneModel`, needs `timm>=1.0`.)
+- **KD variants (opt-in, default OFF — must stay byte-for-byte back-compat):**
+  `training.distillation.soft_loss_type` = `bce` (default) | `mse` (Kim 2021, MSE on raw logits, **no** T²);
+  `training=distillation_rkd` adds `RKDLoss` (`src/training/feature_distillation.py`, Park 2019 — distance+angle,
+  projector-free) on top of logit KD, tapping features via `BaseModel.forward_features(x)->(feat,logit)`.
 - Every model `forward(x) -> Tensor (B,)` — a **single raw logit**, sigmoid at
   inference. Losses expect `(B,)`, not `(B,1)`.
 - Run-dir is fold-scoped: `experiments/runs/<run>/fold_{0..4}/` with
@@ -65,12 +71,23 @@ Scope: `src/training/` (`trainer.py`, `kd_trainer.py`, `losses.py`,
   student steps — an unfrozen teacher leaks gradients and invalidates the KD comparison.
 - [ ] Teacher checkpoint is actually loaded before student training (not random weights).
 - [ ] Focal/BCE applied to **logits** with the right reduction; no double sigmoid.
+- [ ] **KD variants stay opt-in / back-compat:** `soft_loss_type` defaults to `bce` (constructed via
+  `kd_cfg.get("soft_loss_type", "bce")`); the `mse` branch uses `F.mse_loss(student_logits, teacher_logits)`
+  with **no** T² scaling. RKD is gated on `kd_cfg.get("feature_kd", None)` being present — no `feature_kd`
+  block ⇒ `self.rkd is None` ⇒ zero behavior change to the main KD/baseline runs.
+- [ ] **RKD correctness:** `RKDLoss` matches teacher-space distance/angle to student-space distance/angle
+  (never compares `feat_s` vs `feat_t` directly — different dims). Teacher features come from
+  `forward_features` under `torch.no_grad()`. `_pdist` clamps to ≥0 before `sqrt` and normalizes by the
+  mean of **nonzero** distances (NaN guard). `forward_features` returns `(feat (B,C), logit (B,))` and must
+  not perturb the plain `forward` path.
 
 ### C. Trainer mechanics (curve/metric class)
 - [ ] Every key declared in `self.history = {...}` is `.append()`ed each epoch —
   `Trainer` historically declared `val_pauc` but never appended it →
   `plot_training_curves` shape mismatch. `KDTrainer` appends at
   [kd_trainer.py:104](src/training/kd_trainer.py#L104); a new subclass must too.
+  (Same trap if RKD logging adds a `train_rkd_loss` history key — declare it only if you also `.append()`
+  it every epoch; if not logging RKD, don't declare an empty key.)
 - [ ] Early stopping reads `cfg.training.callbacks.early_stopping`; mode/patience
   match the monitored metric direction.
 - [ ] Optimizer/scheduler step order correct; scheduler stepped per-epoch vs

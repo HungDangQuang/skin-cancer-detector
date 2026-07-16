@@ -2,9 +2,9 @@
 Step 2 — Train a student model via knowledge distillation from the teacher.
 
 Usage:
-    python scripts/train_student.py student=efficientnet_b0
-    python scripts/train_student.py student=mobilenetv3_large
-    python scripts/train_student.py student=mobilevit_s
+    python scripts/train_student.py student=mobilenetv4_conv_medium
+    python scripts/train_student.py student=fastvit_sa12
+    python scripts/train_student.py student=efficientformerv2_s2
 
 The teacher checkpoint must exist (run train_teacher.py first).
 Override the teacher checkpoint path with:
@@ -110,6 +110,14 @@ def main(cfg: DictConfig) -> None:
         )
         evaluator.save_metrics(test_metrics, run_dir / "test_metrics.json")
         evaluator.save_predictions(test_metrics, run_dir / "predictions.csv")
+        # Calibration fit-set: val predictions. The val loader uses NO
+        # undersampler (datamodule.val_dataloader), so it preserves the true
+        # ~0.39% prevalence — the correct distribution to fit a Platt / isotonic
+        # calibrator on. scripts/compute_calibration.py consumes val_predictions.csv
+        # (fit) + predictions.csv (apply on test). No sources arg: val has no
+        # per-domain source method (only test_sources() exists).
+        val_metrics = evaluator.evaluate(datamodule.val_dataloader())
+        evaluator.save_predictions(val_metrics, run_dir / "val_predictions.csv")
     else:
         logger.warning(f"No best checkpoint at {best_ckpt}; skipping test-set evaluation.")
 

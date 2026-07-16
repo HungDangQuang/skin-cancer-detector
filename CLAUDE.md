@@ -45,14 +45,14 @@ cp .env.example .env    # Configure data paths
 make prepare            # Run scripts/prepare_data.py (requires raw data in data/raw/)
 
 # Training (must run teacher before students)
-make train-teacher                  # Step 1: Train EfficientNet-B4 teacher
-make train-student-b0               # Step 2: KD → EfficientNet-B0
-make train-student-mobilenet        # Step 2: KD → MobileNetV3-Large
-make train-student-mobilevit        # Step 2: KD → MobileViT-S
+make train-teacher                  # Step 1: Train EfficientNetV2-M teacher (default)
+make train-student-mobilenetv4      # Step 2: KD → MobileNetV4-Conv-Medium
+make train-student-fastvit          # Step 2: KD → FastViT-SA12
+make train-student-efficientformer  # Step 2: KD → EfficientFormerV2-S2
 make train-all-students             # Run all three students sequentially
 
 # Evaluation
-python scripts/evaluate.py --model-name efficientnet_b4 --checkpoint path/to/best_model.pth
+python scripts/evaluate.py --model-name efficientnetv2_m --checkpoint path/to/best_model.pth
 
 # Tests
 make test                           # All tests with coverage
@@ -85,34 +85,38 @@ The POC config (`configs/config_poc.yaml` + `configs/training/poc.yaml`) uses 2 
 Cluster scripts live in `slurm/`. **Always submit via the wrapper**:
 ```bash
 bash slurm/submit.sh slurm/01_prepare_poc.slurm
-bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv3_large
+bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv4_conv_medium
 ```
 
 The wrapper does `mkdir -p logs` before `sbatch` (Slurm 23 silently drops output if `logs/` doesn't exist). Every `*.slurm` script sources `slurm/_lib.sh` which provides `set -euo pipefail`, a fallback `tee` log at `logs/<job>_<jobid>_runtime.log`, a diagnostic header, and helpers `load_python_env` / `acquire_gpu` / `setup_mps`. See `docs/SLURM.md` for the full guide.
 
 ## Architecture
 
+> **Quick-load map:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) is the one-file architecture + pipeline map (dir tree, model registry, config groups, run-dirs, execution backends) for getting a new session up to speed fast. Keep it in sync when the pipeline changes.
+
 This is a **binary skin cancer classification** project (benign=0, malignant=1) using **Knowledge Distillation (KD)**. All models output a single raw logit; `torch.sigmoid()` is applied at inference time.
 
 ### Two-stage training pipeline
 
-**Stage 1 — Teacher**: a high-capacity backbone trained standalone using `Trainer` + `BinaryFocalLoss`. Teachers: `efficientnet_b4` (baseline) and the SOTA set `{efficientnetv2_m, convnextv2_base, maxvit_base}`. Pick via `teacher=<name>` (Hydra) or `TEACHER=<name>` (slurm).
+**Stage 1 — Teacher**: a high-capacity backbone trained standalone using `Trainer` + `BinaryFocalLoss`. Teachers: the SOTA set `{efficientnetv2_m, convnextv2_base, maxvit_base}`. Pick via `teacher=<name>` (Hydra) or `TEACHER=<name>` (slurm).
 
-**Stage 2 — Student**: one of the baseline backbones `{efficientnet_b0, mobilenetv3_large, mobilevit_s}` or the SOTA mobile-/on-device-latency-optimized set `{mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2}`, trained with `KDTrainer` using `BinaryDistillationLoss`:
+**Stage 2 — Student**: one of the SOTA mobile-/on-device-latency-optimized backbones `{mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2}`, trained with `KDTrainer` using `BinaryDistillationLoss`:
 ```
 L_total = 0.3 * L_focal(student, true_labels) + 0.7 * T² * L_BCE(sigmoid(s/T), sigmoid(t/T))
 ```
 where T=4.0. The teacher is always frozen during student training.
+
+Two opt-in KD variants leave this default untouched: `training.distillation.soft_loss_type=mse` swaps the soft term for MSE on the raw logits (Kim et al. 2021 — no temperature, no T²), and `training=distillation_rkd` adds a Relational-KD feature term (`RKDLoss` in `src/training/feature_distillation.py`, Park et al. 2019 — matches within-batch distance+angle, projector-free so teacher/student dims may differ) on top of the logit KD loss. Both default off (`soft_loss_type: bce`, no `feature_kd` block), so the main KD/baseline runs are byte-for-byte unchanged; the trainer taps features via `BaseModel.forward_features(x) -> (feat, logit)` only when RKD is enabled.
 
 ### Config system (Hydra)
 
 All scripts use `@hydra.main(config_path="../configs", config_name="config")`. The root `configs/config.yaml` composes defaults from sub-configs:
 - `configs/data/` — dataset paths and split settings
 - `configs/teacher/` and `configs/student/` — model name, backbone, head dropout
-- `configs/training/` — `distillation.yaml` (KD), `baseline.yaml` (no KD), `default.yaml`
+- `configs/training/` — `distillation.yaml` (KD), `distillation_rkd.yaml` (KD + RKD feature-KD), `baseline.yaml` (no KD), `default.yaml`
 - `configs/augmentation/` — `light.yaml` or `heavy.yaml`
 
-Override at the CLI: `python scripts/train_student.py student=mobilenetv3_large training=baseline`
+Override at the CLI: `python scripts/train_student.py student=fastvit_sa12 training=baseline`
 
 ### Data flow
 
@@ -123,19 +127,21 @@ Override at the CLI: `python scripts/train_student.py student=mobilenetv3_large 
 
 ### Model registry
 
-`src/models/registry.py` maps string names → classes. All models inherit from `BaseModel` (ABC), expose `forward(x) -> Tensor (B,)` returning a single raw logit, and share `freeze_backbone()` / `unfreeze()` helpers. Backbones are loaded from `timm`; the classification head is always `Dropout → Linear(in_features, 1)` via `build_head()`. The SOTA set (efficientnetv2_m, convnextv2_base, maxvit_base, mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2) all use one generic wrapper `TimmBackboneModel` (`src/models/timm_backbone.py`) — there's no per-arch logic, so a single class covers them; the older family wrappers (`EfficientNetModel`/`MobileNetV3Model`/`MobileViTModel`) remain for the baseline backbones. The SOTA set requires `timm>=1.0` (mobilenetv4/fastvit/efficientformerv2 are not in 0.9.x).
+`src/models/registry.py` maps string names → classes. All models inherit from `BaseModel` (ABC), expose `forward(x) -> Tensor (B,)` returning a single raw logit, and share `freeze_backbone()` / `unfreeze()` helpers. Backbones are loaded from `timm`; the classification head is always `Dropout → Linear(in_features, 1)` via `build_head()`. All six models (efficientnetv2_m, convnextv2_base, maxvit_base, mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2) use one generic wrapper `TimmBackboneModel` (`src/models/timm_backbone.py`) — there's no per-arch logic, so a single class covers them (the older baseline family wrappers were removed). They require `timm>=1.0` (mobilenetv4/fastvit/efficientformerv2 are not in 0.9.x).
 
 To add a new architecture: register it against `TimmBackboneModel` (or a new class if it needs custom logic) in `MODEL_REGISTRY`, and create a matching config under `configs/student/` or `configs/teacher/`. Use `infer_backbone_out_dim(backbone)` for the head input dim, never `backbone.num_features`.
 
 ### Evaluation
 
-Primary metric: **pAUC@TPR≥80%** (ISIC 2024 official metric), normalized to [0, 0.2]. Decision threshold is selected via Youden's J statistic. `compute_metrics()` in `src/evaluation/metrics.py` returns `pauc_at_tpr80`, `auc_roc`, `auprc` (+ `prevalence` = its random baseline), `sensitivity`, `specificity`, `f1_score`, fixed-specificity operating points `sens_at_90spec`/`sens_at_95spec`, and raw TP/FP/TN/FN counts. `Evaluator.save_predictions()` also writes `predictions.csv` (`y_true,y_prob,y_pred,source`) next to `test_metrics.json` so PR-curve / AUPRC / per-domain (ISIC-vs-PAD) / bootstrap CIs are recomputable offline without re-running inference. Use **AUPRC**, not AUC-ROC, as the headline at ~0.4% prevalence (AUC-ROC is optimistic).
+Primary metric: **pAUC@TPR≥80%** (ISIC 2024 official metric), normalized to [0, 0.2]. Decision threshold is selected via Youden's J statistic. `compute_metrics()` in `src/evaluation/metrics.py` returns `pauc_at_tpr80`, `auc_roc`, `auprc` (+ `prevalence` = its random baseline), `sensitivity`, `specificity`, `f1_score`, fixed-specificity operating points `sens_at_90spec`/`sens_at_95spec`, raw TP/FP/TN/FN counts, and RAW calibration diagnostics `brier`/`ece`. `Evaluator.save_predictions()` also writes `predictions.csv` (`y_true,y_prob,y_pred,source`) next to `test_metrics.json` so PR-curve / AUPRC / per-domain (ISIC-vs-PAD) / bootstrap CIs are recomputable offline without re-running inference. Use **AUPRC**, not AUC-ROC, as the headline at the measured **~0.39% prevalence** (ISIC 2024 + PAD-UFES-20 test set, job 28250; AUC-ROC is optimistic). pAUC is the ISIC-benchmark-comparison metric; AUPRC is the clinical headline — two roles, not a contradiction.
+
+**Calibration** (distinct from ranking): `brier`/`ece` in `test_metrics.json` are the RAW miscalibration — the undersampled ~16.7% training prior inflates `sigmoid(logit)` vs the true ~0.39% prevalence. `scripts/compute_calibration.py --run-dir <run>` corrects the *displayed* probabilities offline (prior-shift closed-form by default; Platt/isotonic with `--method`, fit on the `val_predictions.csv` the training scripts now emit) and writes `calibration_metrics.json` + `reliability_curve.png`. Ranking metrics (pAUC/AUPRC/AUC) are invariant to any monotone re-scaling, so this changes **no** Chapter-4 number — it only makes shown "% risk" honest.
 
 External test sets (HAM10000, Fitzpatrick17k) are **never used for training** — only for post-hoc cross-domain and fairness evaluation.
 
 ### Experiment design
 
-Each student is trained twice (with KD / without KD) using identical hyperparameters, data splits, and seed. `compute_kd_delta()` computes the effectiveness delta between the two runs. 5-fold CV is used; 30 total training runs (3 arch × 2 KD conditions × 5 folds).
+Each student is trained twice (with KD / without KD) using identical hyperparameters, data splits, and seed. `compute_kd_delta()` computes the effectiveness delta between the two runs. 5-fold CV is used. The **"30 runs"** figure = **3 *students* × 2 KD conditions × 5 folds for ONE fixed teacher** ("3 arch" = students, not teachers). The registry declares **3 SOTA teachers** and all three are being trained, so the real total exceeds 30 — reports must state the actual teacher scope (one main teacher + 1-fold ablation of the others, or all three in full) rather than quoting "30".
 
 ### Run-dir convention (fold-aware)
 
@@ -143,15 +149,17 @@ Each training script writes results to a fold-scoped subdirectory so one job can
 
 ```
 experiments/runs/
-  teacher/efficientnet_b4/fold_{0..4}/
+  teacher/efficientnetv2_m/fold_{0..4}/
     checkpoints/best_model.pth
     config.yaml
     test_metrics.json          ← auto-eval on held-out test set, written at end of training
     val_metrics.json           ← best-epoch val metrics (for val-vs-test overfitting gap)
+    predictions.csv            ← test y_true,y_prob,y_pred[,source] (offline PR/AUPRC/per-domain)
+    val_predictions.csv        ← val fit-set for calibration (no sampler → true ~0.39% prevalence)
     training_curves.png
-  kd_efficientnet_b4_to_efficientnet_b0/fold_{0..4}/...
-  kd_efficientnet_b4_to_mobilenetv3_large/fold_{0..4}/...
-  kd_efficientnet_b4_to_mobilevit_s/fold_{0..4}/...
+  kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_{0..4}/...
+  kd_efficientnetv2_m_to_fastvit_sa12/fold_{0..4}/...
+  kd_efficientnetv2_m_to_efficientformerv2_s2/fold_{0..4}/...
 ```
 
 `scripts/train_teacher.py` and `scripts/train_student.py` reload the best checkpoint from `checkpoints/best_model.pth` after training and run `Evaluator.evaluate(test_dataloader())`, saving the result alongside as `test_metrics.json`. The val-set metrics logged each epoch are *biased* (early-stopping optimizes against val); the `test_metrics.json` is the unbiased generalization number — quote that, not val_pauc, for verdicts. The trainers also write `val_metrics.json` (best-epoch val metrics, aligned to `best_model.pth`); a large **val − test** gap (esp. in AUPRC/pAUC) is the overfitting signal — `val_metrics.json` minus `test_metrics.json`.

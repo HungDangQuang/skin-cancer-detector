@@ -2,20 +2,12 @@ from pathlib import Path
 
 from omegaconf import OmegaConf, open_dict
 
-from .efficientnet import EfficientNetModel
-from .mobilenet import MobileNetV3Model
-from .mobilevit import MobileViTModel
 from .timm_backbone import TimmBackboneModel
 
 MODEL_REGISTRY: dict = {
-    # --- Baseline set (kept for the SOTA-vs-baseline comparison) ---
-    # Teacher
-    "efficientnet_b4": EfficientNetModel,
-    # Students
-    "efficientnet_b0": EfficientNetModel,
-    "mobilenetv3_large": MobileNetV3Model,
-    "mobilevit_s": MobileViTModel,
-    # --- SOTA set (generic timm wrapper) ---
+    # SOTA set — one generic timm wrapper (`TimmBackboneModel`) covers every arch;
+    # there is no per-arch logic, so no family-specific wrapper is needed. Requires
+    # timm>=1.0 (mobilenetv4/fastvit/efficientformerv2 are not in 0.9.x).
     # Teachers (high-capacity, frozen during KD)
     "efficientnetv2_m": TimmBackboneModel,
     "convnextv2_base": TimmBackboneModel,
@@ -56,7 +48,7 @@ def build_model_from_name(model_name: str, base_cfg) -> tuple:
     else:
         # base_cfg's composed teacher/student doesn't match the requested name
         # (e.g. evaluate.py loading configs/config.yaml — student is always
-        # efficientnet_b0 by default). Fall back to the standalone group config
+        # mobilenetv4_conv_medium by default). Fall back to the standalone group config
         # so callers don't need to also pass a Hydra override.
         configs_dir = Path(__file__).resolve().parents[2] / "configs"
         for group in ("student", "teacher"):

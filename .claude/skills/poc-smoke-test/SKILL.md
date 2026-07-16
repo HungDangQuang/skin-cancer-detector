@@ -32,11 +32,11 @@ make prepare-poc
 
 # 3. Teacher (2 epochs)
 make poc-teacher
-# → experiments/poc/teacher/efficientnet_b4/checkpoints/best_model.pth
+# → experiments/poc/teacher/efficientnetv2_m/checkpoints/best_model.pth
 
 # 4. KD student (2 epochs)
 make poc-student
-# → experiments/poc/kd_efficientnet_b4_to_efficientnet_b0/checkpoints/best_model.pth
+# → experiments/poc/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/checkpoints/best_model.pth
 
 # Or all at once:
 make poc-all
@@ -58,7 +58,7 @@ bash slurm/submit.sh slurm/02_poc_teacher.slurm
 
 bash slurm/submit.sh slurm/03_poc_student.slurm
 # Or with a different student:
-bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv3_large
+bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=fastvit_sa12
 ```
 
 ## Success criteria
@@ -66,8 +66,8 @@ bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv3_large
 After all 3 stages, all of these must be true:
 
 - [ ] `data/splits/poc/fold_0/{train,val}_split.csv` exist
-- [ ] `experiments/poc/teacher/efficientnet_b4/checkpoints/best_model.pth` exists
-- [ ] `experiments/poc/kd_efficientnet_b4_to_efficientnet_b0/checkpoints/best_model.pth` exists
+- [ ] `experiments/poc/teacher/efficientnetv2_m/checkpoints/best_model.pth` exists
+- [ ] `experiments/poc/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/checkpoints/best_model.pth` exists
 - [ ] Teacher log shows 2 epochs ran (search for `Epoch 2/2`)
 - [ ] Student log shows both `hard_loss=` and `soft_loss=` per epoch
 - [ ] `train_loss` decreased from epoch 1 to epoch 2 (any decrease is fine — synthetic data, 2 epochs)

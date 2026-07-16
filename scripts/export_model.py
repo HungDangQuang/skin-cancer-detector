@@ -2,7 +2,7 @@
 Export trained model to ONNX or TorchScript.
 
 Usage:
-    python scripts/export_model.py --model-name efficientnet_b0 \\
+    python scripts/export_model.py --model-name mobilenetv4_conv_medium \\
         --checkpoint path/to/best_model.pth --format onnx
 """
 import argparse

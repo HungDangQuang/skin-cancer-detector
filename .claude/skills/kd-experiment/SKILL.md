@@ -26,23 +26,23 @@ Runs the proposal's controlled comparison: train one student architecture **twic
 
 The teacher must be trained first. Check:
 ```bash
-ls experiments/runs/teacher/efficientnet_b4/checkpoints/best_model.pth
+ls experiments/runs/teacher/efficientnetv2_m/checkpoints/best_model.pth
 ```
-If missing, train it first via `submit-slurm` skill (`slurm/11_train_teacher.slurm`).
+If missing, train it first via `submit-slurm` skill (`slurm/11_train_teacher.slurm`), passing `TEACHER=<name>`.
 
 ### Step 2 — Submit the KD run
 
 ```bash
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=<arch> TRAINING=distillation
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=<arch> TEACHER=<teacher> TRAINING=distillation
 ```
-Output dir: `experiments/runs/kd_efficientnet_b4_to_<arch>/`
+Output dir: `experiments/runs/kd_<teacher>_to_<arch>/` (default teacher `efficientnetv2_m`)
 
 ### Step 3 — Submit the baseline run
 
 ```bash
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=<arch> TRAINING=baseline
 ```
-Output dir: `experiments/runs/<arch>_baseline/` (depends on `train_student.py`'s naming — verify with `ls experiments/runs/`)
+Output dir: `experiments/runs/baseline_<arch>/` (per `train_student.py` naming — verify with `ls experiments/runs/`)
 
 ### Step 4 — Evaluate both checkpoints on the test split
 
@@ -71,12 +71,17 @@ print(delta)   # {'delta_pauc': ..., 'delta_auc': ..., 'delta_sensitivity': ...,
 
 ## Architectures available
 
-`efficientnet_b0`, `mobilenetv3_large`, `mobilevit_s` — see `src/models/registry.py`.
+Students (mobile-SOTA): `mobilenetv4_conv_medium` (default), `fastvit_sa12`, `efficientformerv2_s2`.
+Teachers (SOTA): `efficientnetv2_m` (default), `convnextv2_base`, `maxvit_base`. See `src/models/registry.py`.
+(The old baseline set `efficientnet_b0`/`mobilenetv3_large`/`mobilevit_s`/`efficientnet_b4` was deleted 2026-07-15.)
 
 ## Key invariants
 
-- Teacher is **EfficientNet-B4** and **always frozen** (`KDTrainer` enforces this).
+- Teacher (default **EfficientNetV2-M**) is **always frozen** (`KDTrainer` enforces this).
 - KD loss: `L = 0.3 * focal(student, true) + 0.7 * T² * BCE(σ(s/T), σ(t/T))`, T=4.0 (`configs/training/distillation.yaml`).
 - Baseline loss: `BinaryFocalLoss` only (`configs/training/baseline.yaml`).
+- **KD variants** (opt-in, don't change the controlled default comparison unless that's the ablation you want):
+  `EXTRA="training.distillation.soft_loss_type=mse run_suffix=__mselogit"` (MSE-logit KD) or
+  `TRAINING=distillation_rkd EXTRA="run_suffix=__rkd"` (RKD feature-KD). Each writes an isolated `__suffix` run-dir.
 - Primary metric: **pAUC@TPR≥80%** (`src/evaluation/metrics.py::pauc_at_tpr`). Higher is better.
 - 5-fold CV planned — POC uses fold 0 only.
