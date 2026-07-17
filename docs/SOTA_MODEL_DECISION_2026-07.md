@@ -101,14 +101,20 @@ Ký hiệu ô = `folds_done/5`. Student: **MNV4**=mobilenetv4_conv_medium · **F
 - **Chưa xác nhận (verify trên server):** input size/normalize + feature dim CLS (ViT-B kỳ vọng **768** — kiểm
   từ notebook `feature_extraction_and_umap.ipynb`).
 
-**Cách port (Approach B1(b)):**
-1. Vendor model-definition của PanDerm (BEiT-ViT builder) vào `src/models/` hoặc load qua repo của họ.
-2. Thêm class `PanDermModel(BaseModel)` ([src/models/base_model.py](../src/models/base_model.py) ABC):
-   `forward(x) -> logit (B,)` và `forward_features(x) -> (feat (B,768?), logit (B,))`, tái dùng `build_head()`
-   + `infer_backbone_out_dim()`. RKD **projector-free** → mismatch ViT768→CNN OK, không cần projector.
-3. Đăng ký `"panderm": PanDermModel` trong [src/models/registry.py](../src/models/registry.py).
-4. Config `configs/teacher/panderm.yaml` (đường dẫn weight GDrive + head dropout ~0.3 + input size/norm đã verify).
-5. Test + docs như RepViT.
+**Cách port (Approach B1(b)) — ĐÃ CODE (2026-07-17):**
+1. ✅ Không vendor builder riêng: [src/models/panderm.py](../src/models/panderm.py) dựng **timm ViT-B/16** (mặc
+   định `vit_base_patch16_224`, cấu hình qua `cfg.model.backbone`) rồi **nạp weight PanDerm đè lên backbone**.
+2. ✅ Class `PanDermModel(TimmBackboneModel)` (không phải `BaseModel` trực tiếp — subclass để tái dùng
+   backbone+head+`forward`+`forward_features` sẵn có; `forward_features` inherit chuẩn cho RKD projector-free).
+   Loader `_load_panderm_weights` bóc container key (`model/module/state_dict/model_ema`), strip prefix
+   (`backbone./encoder./module./model.`), chỉ nạp tensor **khớp tên+shape**, log tỉ lệ match và **raise nếu <
+   `min_weight_match`** (chống train nhầm net gần-random khi chọn sai arch).
+3. ✅ Đăng ký `"panderm": PanDermModel` trong [src/models/registry.py](../src/models/registry.py).
+4. ✅ Config [configs/teacher/panderm.yaml](../configs/teacher/panderm.yaml): `backbone`, `pretrained:false`,
+   `weights_path:null` (đặt trên server), `min_weight_match:0.5`, `head.dropout:0.3`.
+5. ✅ Test [tests/test_models.py](../tests/test_models.py) (forward-shape + round-trip loader + guard-raise) + docs.
+   **CÒN LẠI (trên server):** tải weight GDrive → set `teacher.weights_path` → xác nhận arch (`vit_*` vs
+   `beit_*`, dùng tỉ lệ match làm tín hiệu) + feature dim 768 + input size/normalize → poc-smoke-test.
 
 **Fallback (Task B0):** nếu BEiT-loader/weight bất khả thi trong ngân sách công sức → dùng `efficientnetv2_s`
 (timm thuần, teacher gap thấp ~2–3×) làm trục "teacher nhẹ" thay cho trục foundation. Ghi rõ quyết định.
@@ -149,8 +155,9 @@ khi đầu tư train PanDerm.
 - ✅ **Task A (RepViT)** — xong: [configs/student/repvit_m1_0.yaml](../configs/student/repvit_m1_0.yaml),
   registry, [tests/test_models.py](../tests/test_models.py), docs. Static-check thuần shell pass; import +
   Hydra-compose **defer sang server** (no-local-python). Verify timm tag `repvit_m1_0.dist_in1k` trên server.
-- ⏳ **Task B (PanDerm)** — verify công khai xong (§5). Chờ: port loader + tải weight + smoke test trên server;
-  hoặc fallback `efficientnetv2_s`.
+- 🟡 **Task B (PanDerm)** — **loader + class + config + test ĐÃ CODE** (2026-07-17, §5). Chờ trên server: tải
+  weight GDrive → set `teacher.weights_path` → xác nhận arch/feature-dim/normalize → smoke test; hoặc fallback
+  `efficientnetv2_s` nếu weight/arch bất khả thi.
 - ⏳ **Task C (chạy)** — §9.
 - ⏳ **Task D (doc)** — doc này + cập nhật [ARCHITECTURE.md](ARCHITECTURE.md) §1 (số run thực) + memory.
 
@@ -175,8 +182,10 @@ for S in mobilenetv4_conv_medium fastvit_sa12 efficientformerv2_s2 repvit_m1_0; 
   bash run/train_student.sh STUDENT=$S TEACHER=efficientnetv2_m TRAINING=distillation_rkd run_suffix=rkd
 done
 
-# --- PanDerm (SAU khi port §5 + smoke test) ---
-bash run/train_teacher.sh TEACHER=panderm
+# --- PanDerm (SAU khi tải weight GDrive + smoke test) ---
+# weights_path đi qua EXTRA (Hydra override), KHÔNG phải positional (dấu chấm phá KEY=VALUE parser).
+bash run/train_teacher.sh TEACHER=panderm \
+  EXTRA="teacher.weights_path=/abs/path/panderm_bb_data6_checkpoint-499.pth"
 for S in mobilenetv4_conv_medium fastvit_sa12 efficientformerv2_s2 repvit_m1_0; do
   bash run/train_student.sh STUDENT=$S TEACHER=panderm TRAINING=distillation_rkd run_suffix=rkd
 done

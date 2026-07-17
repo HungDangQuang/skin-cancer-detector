@@ -25,6 +25,7 @@ def make_cfg(model_name: str, backbone: str, dropout: float = 0.2):
     ("fastvit_sa12", "fastvit_sa12.apple_in1k", 0.1),                        # student
     ("efficientformerv2_s2", "efficientformerv2_s2.snap_dist_in1k", 0.1),    # student
     ("repvit_m1_0", "repvit_m1_0.dist_in1k", 0.1),                           # student
+    ("panderm", "vit_base_patch16_224", 0.3),                               # foundation teacher
 ])
 def test_model_forward_shape(model_name, backbone, dropout):
     """Model output must be (B,) — raw logit for BCEWithLogitsLoss."""
@@ -42,6 +43,7 @@ def test_model_registry_keys():
     assert "efficientnetv2_m" in MODEL_REGISTRY
     assert "convnextv2_base" in MODEL_REGISTRY
     assert "maxvit_base" in MODEL_REGISTRY
+    assert "panderm" in MODEL_REGISTRY  # domain-foundation teacher (out-of-timm)
     # Students (mobile-/on-device-latency-optimized)
     assert "mobilenetv4_conv_medium" in MODEL_REGISTRY
     assert "fastvit_sa12" in MODEL_REGISTRY
@@ -70,3 +72,35 @@ def test_sigmoid_output_range():
     with torch.no_grad():
         probs = torch.sigmoid(model(x))
     assert probs.min() >= 0.0 and probs.max() <= 1.0
+
+
+def make_panderm_cfg(weights_path=None, min_weight_match=0.5):
+    cfg = make_cfg("panderm", "vit_base_patch16_224", dropout=0.3)
+    cfg.model.weights_path = weights_path
+    cfg.model.min_weight_match = min_weight_match
+    return cfg
+
+
+def test_panderm_loads_matching_foundation_weights(tmp_path):
+    """A PanDerm-style checkpoint (backbone.* keys) loads into the ViT backbone."""
+    ref = build_model(make_panderm_cfg())  # random-init, no weights
+    # Fake a PanDerm checkpoint: container key "model", "backbone." prefix.
+    fake = {"model": {f"backbone.{k}": torch.randn_like(v)
+                      for k, v in ref.backbone.state_dict().items()}}
+    ckpt_path = tmp_path / "panderm_fake.pth"
+    torch.save(fake, ckpt_path)
+
+    model = build_model(make_panderm_cfg(weights_path=str(ckpt_path), min_weight_match=0.9))
+    # Every backbone tensor should now equal the checkpoint's (100% match).
+    for k, v in model.backbone.state_dict().items():
+        assert torch.allclose(v, fake["model"][f"backbone.{k}"]), f"{k} not loaded"
+
+
+def test_panderm_raises_on_arch_mismatch(tmp_path):
+    """A checkpoint that matches almost nothing must RAISE, not silently no-op."""
+    bad = {"model": {"totally.unrelated.key": torch.zeros(3)}}
+    ckpt_path = tmp_path / "panderm_bad.pth"
+    torch.save(bad, ckpt_path)
+
+    with pytest.raises(RuntimeError, match="matched only"):
+        build_model(make_panderm_cfg(weights_path=str(ckpt_path), min_weight_match=0.5))

@@ -5,7 +5,8 @@
 #
 # Args are KEY=VALUE (same style as the slurm submit wrapper) OR env vars:
 #   TEACHER    teacher backbone (default efficientnetv2_m)
-#              choices: efficientnetv2_m | convnextv2_base | maxvit_base
+#              choices: efficientnetv2_m | convnextv2_base | maxvit_base | panderm
+#              (panderm needs the PanDerm checkpoint — pass it via EXTRA, see below)
 #   FOLDS      space-separated fold list (default "0 1 2 3 4")
 #   AUG        light | heavy                (default light)
 #   DROP_PATH  stochastic depth rate        (default 0.0)
@@ -18,6 +19,8 @@
 #   bash run/train_teacher.sh TEACHER=convnextv2_base
 #   bash run/train_teacher.sh TEACHER=maxvit_base GPU=1 FOLDS="0 1 2" \
 #        EXTRA="cudnn_deterministic=false training.batch_size=16"
+#   bash run/train_teacher.sh TEACHER=panderm \
+#        EXTRA="teacher.weights_path=/abs/path/panderm_bb_data6_checkpoint-499.pth"
 #
 # Output: experiments/runs/teacher/${TEACHER}/fold_{0..4}/
 # Aggregate after all folds finish:

@@ -8,6 +8,9 @@
 #          bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnetv2_m   # SOTA
 #          bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=convnextv2_base
 #          bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=maxvit_base
+#          # panderm (foundation): pass the downloaded checkpoint via EXTRA
+#          bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=panderm \
+#              EXTRA="teacher.weights_path=/abs/path/panderm_bb_data6_checkpoint-499.pth"
 # Subset of folds (e.g. to split a heavy teacher under the 72 h cap into two jobs):
 #          bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=maxvit_base FOLDS="0 1 2"
 #          bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=maxvit_base FOLDS="3 4"

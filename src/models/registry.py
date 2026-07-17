@@ -2,16 +2,20 @@ from pathlib import Path
 
 from omegaconf import OmegaConf, open_dict
 
+from .panderm import PanDermModel
 from .timm_backbone import TimmBackboneModel
 
 MODEL_REGISTRY: dict = {
-    # SOTA set — one generic timm wrapper (`TimmBackboneModel`) covers every arch;
-    # there is no per-arch logic, so no family-specific wrapper is needed. Requires
-    # timm>=1.0 (mobilenetv4/fastvit/efficientformerv2 are not in 0.9.x).
+    # SOTA set — one generic timm wrapper (`TimmBackboneModel`) covers every timm
+    # arch; there is no per-arch logic, so no family-specific wrapper is needed.
+    # Requires timm>=1.0 (mobilenetv4/fastvit/efficientformerv2/repvit are not in
+    # 0.9.x). The lone exception is `panderm`, a domain-foundation teacher whose
+    # weights ship OUT of timm (BEiT-style checkpoint) -> its own `PanDermModel`.
     # Teachers (high-capacity, frozen during KD)
     "efficientnetv2_m": TimmBackboneModel,
     "convnextv2_base": TimmBackboneModel,
     "maxvit_base": TimmBackboneModel,
+    "panderm": PanDermModel,
     # Students (mobile-/on-device-latency-optimized)
     "mobilenetv4_conv_medium": TimmBackboneModel,
     "fastvit_sa12": TimmBackboneModel,

@@ -61,7 +61,8 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | `src/models/` | `registry.py` | `MODEL_REGISTRY` (string→class) + `build_model` / `build_model_from_name` |
 | | `base_model.py` | `BaseModel` (ABC): `forward(x)->Tensor(B,)`, `forward_features(x)->(feat(B,C), logit(B,))` cho feature-KD, `freeze_backbone()`, `unfreeze()` |
 | | `heads.py` | `build_head()` = `Dropout→Linear(in,1)`; dùng `infer_backbone_out_dim()`, **không** dùng `num_features` |
-| | `timm_backbone.py` | `TimmBackboneModel` — wrapper generic DUY NHẤT cho cả 7 model timm (3 teacher + 4 student; cần `timm>=1.0`) |
+| | `timm_backbone.py` | `TimmBackboneModel` — wrapper generic cho cả 7 model timm (3 teacher + 4 student; cần `timm>=1.0`) |
+| | `panderm.py` | `PanDermModel(TimmBackboneModel)` — teacher foundation da liễu (ViT-B/16 BEiT-style, out-of-timm); nạp weight PanDerm đè lên backbone timm bằng loader remap "loud" (raise nếu match < `min_weight_match`) |
 | `src/training/` | `trainer.py` | `Trainer` (teacher/baseline) |
 | | `kd_trainer.py` | `KDTrainer` (student, teacher frozen) |
 | | `losses.py` | `BinaryFocalLoss` (gamma=2.0, alpha=0.25) |
@@ -86,6 +87,7 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | Teacher | `efficientnetv2_m` (EfficientNetV2-M) | `TimmBackboneModel` |
 | | `convnextv2_base` (ConvNeXtV2-Base) | `TimmBackboneModel` |
 | | `maxvit_base` | `TimmBackboneModel` |
+| | `panderm` (PanDerm ViT-B/16, domain-foundation) | `PanDermModel` — out-of-timm BEiT-style weights loaded over a timm ViT (`src/models/panderm.py`) |
 | Student (mobile) | `mobilenetv4_conv_medium` | `TimmBackboneModel` |
 | | `fastvit_sa12` | `TimmBackboneModel` |
 | | `efficientformerv2_s2` | `TimmBackboneModel` |
@@ -105,7 +107,7 @@ defaults: data=isic2024 · training=distillation · augmentation=light · _self_
 | Group | Lựa chọn |
 |---|---|
 | `data/` | `isic2024`, `pad_ufes_20`, `ham10000`, `fitzpatrick17k`, `poc` |
-| `teacher/` | `efficientnetv2_m`, `convnextv2_base`, `maxvit_base` |
+| `teacher/` | `efficientnetv2_m`, `convnextv2_base`, `maxvit_base`, `panderm` (foundation — set `teacher.weights_path` on server) |
 | `student/` | `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2`, `repvit_m1_0` |
 | `training/` | `distillation` (KD), `distillation_rkd` (KD + RKD feature-KD), `baseline` (no-KD), `default`, `finetuning`, `ablation`, `poc` |
 | `augmentation/` | `light` (mặc định), `heavy` (anti-overfit) |
