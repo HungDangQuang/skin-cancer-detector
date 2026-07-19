@@ -4,10 +4,11 @@ paradigm: reparam_cnn
 # RepViT-M1.0 (CVPR 2024) — pure-CNN with structural reparameterization; a
 # second quantize-friendly CNN student alongside mobilenetv4_conv_medium to
 # strengthen the on-device (XNNPACK INT8) conclusion. Requires timm>=1.0.
-# VERIFY the exact tag on the server before a full run:
-#   python -c "import timm; print(timm.list_models('repvit*'))"
-# (expected `repvit_m1_0.dist_in1k`; adjust here if the installed timm differs).
-backbone: repvit_m1_0.dist_in1k
+# Tag verified on the cluster (timm 1.0.27, job 3004447): repvit_m1_0 ships
+# `dist_300e_in1k` and `dist_450e_in1k` (NOT the bare `dist_in1k`). Using the
+# 450-epoch distilled weights. Re-check if the installed timm changes:
+#   python -c "import timm; print([t for t in timm.list_pretrained() if 'repvit_m1_0' in t])"
+backbone: repvit_m1_0.dist_450e_in1k
 pretrained: true
 num_classes: 1    # binary sigmoid output
 
