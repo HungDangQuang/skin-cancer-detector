@@ -29,18 +29,21 @@ fi
 # doesn't exist when sbatch runs, Slurm silently drops the job's stdout.
 mkdir -p logs
 
-# Build --export string from VAR=value pairs.
-EXPORT_VARS="ALL"
+# Forward VAR=value pairs into the environment, then let `--export=ALL` carry the
+# whole environment to the job. We deliberately do NOT append 'VAR=value' to the
+# --export list: a comma is sbatch's delimiter between export entries, so a value
+# containing a comma (e.g. META_COLS=tbp_lv_a,tbp_lv_b) would be split into bogus
+# entries. Exporting the var (its comma stays inside the value) avoids that.
 for arg in "$@"; do
     if [[ ! "${arg}" =~ ^[A-Za-z_][A-Za-z0-9_]*=.* ]]; then
         echo "ERROR: arg '${arg}' is not VAR=value form"
         exit 1
     fi
-    EXPORT_VARS="${EXPORT_VARS},${arg}"
+    export "${arg}"
 done
 
 echo "Submitting:  ${SCRIPT}"
-echo "Exports:     ${EXPORT_VARS}"
+echo "Exports:     ALL${*:+ + $*}"
 echo "Logs dir:    $(pwd)/logs"
 
-sbatch --export="${EXPORT_VARS}" "${SCRIPT}"
+sbatch --export=ALL "${SCRIPT}"
