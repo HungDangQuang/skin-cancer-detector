@@ -21,6 +21,12 @@
 #   bash run/train_student.sh STUDENT=fastvit_sa12
 #   bash run/train_student.sh STUDENT=mobilenetv4_conv_medium TEACHER=convnextv2_base
 #   bash run/train_student.sh STUDENT=efficientformerv2_s2 TRAINING=baseline    # no-KD control
+#   # privileged (LUPI) teacher (direction A) — student stays image-only, distills
+#   # the fused (image+tbp_lv_*) structure via RKD. Needs the privileged teacher
+#   # already trained and prepare run with the SAME META_COLS:
+#   bash run/train_student.sh STUDENT=mobilenetv4_conv_medium \
+#        TEACHER=efficientnetv2_m_privileged TRAINING=distillation_privileged PRIVILEGED=1 \
+#        META_COLS=tbp_lv_symm_2axis,tbp_lv_norm_border,tbp_lv_norm_color
 #
 # Output: experiments/runs/kd_<teacher>_to_<student>/fold_{0..4}/   (or baseline_* dirs)
 # Aggregate after all folds finish:
@@ -42,10 +48,23 @@ DROP_PATH="${DROP_PATH:-0.0}"
 EXTRA="${EXTRA:-}"
 DEVICE_OVERRIDE=""
 [ "${GPU:-auto}" = "cpu" ] && DEVICE_OVERRIDE="device=cpu"
+# Privileged (LUPI) teacher (direction A): PRIVILEGED=1 feeds metadata into the
+# frozen teacher (student stays image-only). Requires TEACHER=<name>_privileged,
+# TRAINING=distillation_privileged, and prepare run with the same META_COLS.
+# META_COLS must be comma-separated with NO spaces (word-split safe).
+PRIVILEGED="${PRIVILEGED:-0}"
+META_COLS="${META_COLS:-tbp_lv_symm_2axis,tbp_lv_norm_border,tbp_lv_norm_color,tbp_lv_areaMM2,tbp_lv_eccentricity,tbp_lv_deltaLBnorm}"
+PRIV_ARGS=""
+if [ "${PRIVILEGED}" = "1" ]; then
+    PRIV_ARGS="data.metadata_as_input=true data.metadata_cols=[${META_COLS}]"
+fi
 
-echo "[run] Student ${STUDENT} | Teacher ${TEACHER} | ${TRAINING} | folds ${FOLDS} | aug=${AUG} drop_path=${DROP_PATH} | extra='${EXTRA}'"
+echo "[run] Student ${STUDENT} | Teacher ${TEACHER} | ${TRAINING} | folds ${FOLDS} | aug=${AUG} drop_path=${DROP_PATH} | privileged=${PRIVILEGED} | extra='${EXTRA}'"
 command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi || true
 
+# noglob so the unquoted ${PRIV_ARGS} 'data.metadata_cols=[...]' bracket token is
+# passed to Hydra verbatim (word-split on spaces, never pathname-expanded).
+set -f
 for FOLD in ${FOLDS}; do
     echo "[run] === ${TRAINING}: ${TEACHER} -> ${STUDENT} | fold ${FOLD} (start $(date '+%F %T')) ==="
     python scripts/train_student.py \
@@ -55,7 +74,8 @@ for FOLD in ${FOLDS}; do
         "data.fold=${FOLD}" \
         "augmentation=${AUG}" \
         "student.drop_path_rate=${DROP_PATH}" \
-        ${DEVICE_OVERRIDE} ${EXTRA}
+        ${DEVICE_OVERRIDE} ${PRIV_ARGS} ${EXTRA}
 done
+set +f
 
 echo "[run] DONE"

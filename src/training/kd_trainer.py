@@ -16,6 +16,7 @@ from src.training.losses import build_loss
 from src.training.optimizers import build_optimizer
 from src.training.schedulers import build_scheduler
 from src.training.callbacks import EarlyStopping, ModelCheckpoint
+from src.utils.batch import unpack_batch
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -51,7 +52,22 @@ class KDTrainer:
 
         self.student = student.to(self.device)
         self.datamodule = datamodule
+        # A privileged (LUPI) teacher takes (images, meta, mask); a plain teacher
+        # takes (images). The student is ALWAYS image-only. See direction A.
+        self.teacher_accepts_meta = getattr(teacher, "accepts_metadata", False)
         self._setup_training()
+
+    def _teacher_forward(self, images, meta, mask):
+        """Teacher logits, feeding metadata only to a privileged teacher."""
+        if self.teacher_accepts_meta:
+            return self.teacher(images, meta, mask)
+        return self.teacher(images)
+
+    def _teacher_forward_features(self, images, meta, mask):
+        """Teacher (features, logits) — fused feature for a privileged teacher."""
+        if self.teacher_accepts_meta:
+            return self.teacher.forward_features(images, meta, mask)
+        return self.teacher.forward_features(images)
 
     def _setup_training(self) -> None:
         hard_loss_fn = build_loss(self.cfg)
@@ -186,17 +202,22 @@ class KDTrainer:
         total_loss, soft_sum, hard_sum, rkd_sum, total = 0.0, 0.0, 0.0, 0.0, 0
 
         pbar = tqdm(loader, desc=f"KD Train [{epoch}/{total_epochs}]", leave=False)
-        for images, labels in pbar:
+        for batch in pbar:
+            images, meta, mask, labels = unpack_batch(batch)
             images = images.to(self.device)
             labels = labels.to(self.device)
+            if meta is not None:
+                meta, mask = meta.to(self.device), mask.to(self.device)
 
             # Feature KD needs the penultimate features -> forward_features; plain
             # logit KD uses the cheaper forward(). Teacher is always frozen/no_grad.
+            # A privileged teacher fuses (meta, mask); the student stays image-only,
+            # so the RKD term leaks the teacher's fused structure into image features.
             with torch.no_grad():
                 if self.rkd is not None:
-                    teacher_feat, teacher_logits = self.teacher.forward_features(images)
+                    teacher_feat, teacher_logits = self._teacher_forward_features(images, meta, mask)
                 else:
-                    teacher_logits = self.teacher(images)
+                    teacher_logits = self._teacher_forward(images, meta, mask)
 
             self.optimizer.zero_grad()
             if self.rkd is not None:
@@ -243,9 +264,12 @@ class KDTrainer:
         total_loss, total = 0.0, 0
         all_labels, all_probs = [], []
 
-        for images, labels in tqdm(loader, desc="Val", leave=False):
+        for batch in tqdm(loader, desc="Val", leave=False):
+            images, meta, mask, labels = unpack_batch(batch)
             images = images.to(self.device)
-            teacher_logits = self.teacher(images)
+            if meta is not None:
+                meta, mask = meta.to(self.device), mask.to(self.device)
+            teacher_logits = self._teacher_forward(images, meta, mask)
             student_logits = self.student(images)
 
             loss, _ = self.criterion(student_logits, teacher_logits, labels.to(self.device))

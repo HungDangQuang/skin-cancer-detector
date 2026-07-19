@@ -192,6 +192,32 @@ bash slurm/submit.sh slurm/11_train_teacher.slurm  TEACHER=maxvit_base EXTRA="cu
 Each fold also writes `val_metrics.json` (best-epoch val metrics) → compute the
 **val − test** gap (esp. AUPRC/pAUC) as the overfitting signal.
 
+### 3.4c Metadata knobs (`META_COLS`, `PRIVILEGED`) — direction A/D
+Opt-in, default off (image-only runs byte-for-byte unchanged). See
+`docs/metadata_training_plan.md`.
+- `META_COLS=<c1,c2,...>` (comma-separated, **no spaces**; `iddx_*`/`mel_*`
+  rejected as post-biopsy leakage). On `10_prepare_data` it carries those columns
+  into the split CSVs. Splits are seed-deterministic, so adding columns doesn't
+  change rows/order — existing checkpoints stay valid.
+- **Direction D** (subgroup calibration, no retrain): prepare with
+  `META_COLS=anatom_site_general,sex`, re-run eval, then
+  `python scripts/compute_calibration.py --run-dir <run> --subgroup anatom_site_general`.
+- **Direction A** (privileged/LUPI teacher): `PRIVILEGED=1` on `11`/`12` sets
+  `data.metadata_as_input=true data.metadata_cols=[$META_COLS]`. The teacher
+  (`TEACHER=<name>_privileged`) fuses image ⊕ tabular `tbp_lv_*`; the student
+  stays image-only and distills the fused structure via RKD
+  (`TRAINING=distillation_privileged`), so `.pte`/benchmark are unchanged. Use the
+  SAME `META_COLS` for prepare + both training steps (the dataset raises `KeyError`
+  otherwise). Fold loops run under `set -f` so the `[...]` list token reaches Hydra
+  verbatim.
+```bash
+# Direction A end-to-end (privileged-vs-plain ablation on the same student):
+bash slurm/submit.sh slurm/10_prepare_data.slurm META_COLS=tbp_lv_symm_2axis,tbp_lv_norm_border,tbp_lv_norm_color
+bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnetv2_m_privileged PRIVILEGED=1 META_COLS=tbp_lv_symm_2axis,tbp_lv_norm_border,tbp_lv_norm_color
+bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m_privileged TRAINING=distillation_privileged PRIVILEGED=1 META_COLS=tbp_lv_symm_2axis,tbp_lv_norm_border,tbp_lv_norm_color
+# -> experiments/runs/kd_efficientnetv2_m_privileged_to_mobilenetv4_conv_medium/ (vs the plain kd_..._to_... run)
+```
+
 ### 3.5 Controlled comparison (no KD)
 ```bash
 bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium    TRAINING=baseline

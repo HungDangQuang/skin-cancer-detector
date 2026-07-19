@@ -3,6 +3,7 @@ from pathlib import Path
 from omegaconf import OmegaConf, open_dict
 
 from .panderm import PanDermModel
+from .privileged import PrivilegedTimmBackboneModel
 from .timm_backbone import TimmBackboneModel
 
 MODEL_REGISTRY: dict = {
@@ -16,6 +17,12 @@ MODEL_REGISTRY: dict = {
     "convnextv2_base": TimmBackboneModel,
     "maxvit_base": TimmBackboneModel,
     "panderm": PanDermModel,
+    # Privileged (LUPI) teachers — image ⊕ tabular `tbp_lv_*` metadata fusion
+    # (direction A). Same timm backbone as their plain counterpart; require
+    # data.metadata_cols set. Student stays image-only (distills the fused
+    # feature structure via RKD). See docs/metadata_training_plan.md §A.
+    "efficientnetv2_m_privileged": PrivilegedTimmBackboneModel,
+    "convnextv2_base_privileged": PrivilegedTimmBackboneModel,
     # Students (mobile-/on-device-latency-optimized)
     "mobilenetv4_conv_medium": TimmBackboneModel,
     "fastvit_sa12": TimmBackboneModel,

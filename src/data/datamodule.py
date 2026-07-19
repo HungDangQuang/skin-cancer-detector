@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 from torch.utils.data import DataLoader
 
 from src.utils.logger import get_logger
@@ -57,6 +58,10 @@ class SkinLesionDataModule:
         self._val_dataset = None
         self._test_dataset = None
         self._train_sampler = None
+        # Train-fold metadata scaler (privileged teacher / direction A). None
+        # unless data.metadata_cols is set.
+        self.meta_mean = None
+        self.meta_std = None
 
     def setup(self) -> None:
         train_transform = build_transforms(self.cfg, split="train")
@@ -64,17 +69,32 @@ class SkinLesionDataModule:
 
         fold_dir = self.splits_dir / f"fold_{self.fold}"
 
+        # Privileged metadata as MODEL INPUT (direction A). Two conditions must
+        # both hold, else datasets return (image, label) exactly as before:
+        #   - data.metadata_cols is a non-empty list, AND
+        #   - data.metadata_as_input is true (a privileged teacher run).
+        # Direction D sets metadata_cols but NOT metadata_as_input -> the columns
+        # ride in the split CSVs / predictions.csv side-channel only, model stays
+        # image-only, and this stays None (dataset 2-tuple).
+        metadata_cols = self.data_cfg.get("metadata_cols", None)
+        metadata_cols = list(metadata_cols) if metadata_cols else None
+        if not self.data_cfg.get("metadata_as_input", False):
+            metadata_cols = None
+
         self._train_dataset = SkinLesionDataset(
             split_csv=fold_dir / "train_split.csv",
             transform=train_transform,
+            metadata_cols=metadata_cols,
         )
         self._val_dataset = SkinLesionDataset(
             split_csv=fold_dir / "val_split.csv",
             transform=val_transform,
+            metadata_cols=metadata_cols,
         )
         self._test_dataset = SkinLesionDataset(
             split_csv=self.splits_dir / "test_split.csv",
             transform=val_transform,
+            metadata_cols=metadata_cols,
         )
 
         # PAD ablation: optionally restrict TRAIN+VAL to a subset of source
@@ -87,6 +107,12 @@ class SkinLesionDataModule:
             keep = list(train_sources)
             self._filter_to_sources(self._train_dataset, keep, "train")
             self._filter_to_sources(self._val_dataset, keep, "val")
+
+        # Fit the metadata scaler on the TRAIN fold ONLY (after any train_sources
+        # filter), then push it to all three splits so val/test never leak into
+        # the standardization stats.
+        if metadata_cols:
+            self._fit_meta_scaler()
 
         # Dynamic undersampling sampler (1:5 ratio, resampled each epoch)
         if self.data_cfg.get("use_weighted_sampler", True):
@@ -129,6 +155,26 @@ class SkinLesionDataModule:
             pin_memory=True,
         )
 
+    def _fit_meta_scaler(self) -> None:
+        """Fit per-column mean/std on the TRAIN fold's raw metadata (NaN-aware)
+        and install it on all three splits, so val/test never leak into the
+        standardization stats. PAD rows are all-NaN and ignored by nanmean/nanstd;
+        a fully-NaN or zero-variance column falls back to mean 0 / std 1."""
+        raw = self._train_dataset._meta_raw
+        with np.errstate(invalid="ignore", all="ignore"):
+            mean = np.nanmean(raw, axis=0)
+            std = np.nanstd(raw, axis=0)
+        mean = np.nan_to_num(mean, nan=0.0)
+        std = np.where(~np.isfinite(std) | (std == 0.0), 1.0, std)
+        self.meta_mean, self.meta_std = mean, std
+        for ds in (self._train_dataset, self._val_dataset, self._test_dataset):
+            ds.set_meta_scaler(mean, std)
+        n_present = int(np.isfinite(raw).any(axis=1).sum())
+        logger.info(
+            f"Metadata scaler fit on {len(raw)} train rows "
+            f"({n_present} with any present value), {raw.shape[1]} columns."
+        )
+
     def _filter_to_sources(self, dataset: SkinLesionDataset, keep: list[str], split: str) -> None:
         """Drop rows whose origin dataset is not in ``keep`` (in place, row-reset).
 
@@ -147,6 +193,9 @@ class SkinLesionDataModule:
                 f"train_sources={keep} filtered the {split} split to 0 rows "
                 f"(had {n0}). Check the source tags / paths in the split CSV."
             )
+        # Keep the precomputed metadata matrix row-aligned with the filtered df.
+        if dataset.metadata_cols:
+            dataset._build_meta()
         logger.info(
             f"train_sources={keep}: {split} split filtered {n0} -> {n1} rows "
             f"({n0 - n1} dropped)."
@@ -160,3 +209,19 @@ class SkinLesionDataModule:
         """
         col = self._test_dataset.image_col
         return [source_from_path(p) for p in self._test_dataset.df[col].astype(str)]
+
+    def test_metadata(self, cols: list[str] | None) -> dict[str, list] | None:
+        """
+        Per-sample raw metadata columns for the test set, row-aligned to
+        test_dataloader() (shuffle=False). Parallels test_sources(): lets
+        Evaluator.save_predictions record extra columns in predictions.csv for
+        offline SUBGROUP calibration (direction D — e.g. anatom_site_general / sex).
+
+        Only columns actually present in the test split CSV are returned; a
+        column absent because metadata_cols was null at prepare-time is skipped.
+        Returns None when cols is falsy so callers stay on the image-only path.
+        """
+        if not cols:
+            return None
+        df = self._test_dataset.df
+        return {c: df[c].tolist() for c in cols if c in df.columns} or None

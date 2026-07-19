@@ -284,6 +284,35 @@ runs are unchanged unless you pass these. `DROP_PATH` maps to the student's
 (script 12) or teacher's (script 11) `drop_path_rate`; verify the backbone
 accepts it on the cluster before a full run.
 
+**Metadata knobs** (`META_COLS`, `PRIVILEGED` — direction A/D of
+`docs/metadata_training_plan.md`; default off = image-only runs unchanged):
+
+```bash
+# Direction D — carry metadata columns into the split CSVs for subgroup calibration
+# (comma-separated, NO spaces; iddx_*/mel_* rejected as leakage):
+bash slurm/submit.sh slurm/10_prepare_data.slurm META_COLS=anatom_site_general,sex
+
+# Direction A — privileged (LUPI) teacher: prepare with the tbp_lv_* columns, then
+# train a *_privileged teacher, then distill an image-only student from it.
+bash slurm/submit.sh slurm/10_prepare_data.slurm \
+    META_COLS=tbp_lv_symm_2axis,tbp_lv_norm_border,tbp_lv_norm_color
+bash slurm/submit.sh slurm/11_train_teacher.slurm \
+    TEACHER=efficientnetv2_m_privileged PRIVILEGED=1 \
+    META_COLS=tbp_lv_symm_2axis,tbp_lv_norm_border,tbp_lv_norm_color
+bash slurm/submit.sh slurm/12_train_student.slurm \
+    STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m_privileged \
+    TRAINING=distillation_privileged PRIVILEGED=1 \
+    META_COLS=tbp_lv_symm_2axis,tbp_lv_norm_border,tbp_lv_norm_color
+```
+
+`PRIVILEGED=1` sets `data.metadata_as_input=true data.metadata_cols=[$META_COLS]`
+(the teacher fuses image ⊕ tabular metadata; the student stays image-only and
+distills the fused structure via RKD, so `.pte`/benchmark are unchanged). Use the
+SAME `META_COLS` for prepare and both training steps — the dataset raises
+`KeyError` if a column isn't in the split CSVs. The privileged student run-dir is
+`experiments/runs/kd_<teacher>_privileged_to_<student>/` — compare it against the
+plain `kd_<teacher>_to_<student>/` for the privileged-vs-non-privileged ablation.
+
 ---
 
 ## 5. Evaluate a checkpoint

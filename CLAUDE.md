@@ -204,6 +204,7 @@ These have all bitten this repo at least once. Run the `validate-pipeline` skill
 - **`load_config()` composes Hydra `defaults:`** for the root config — standalone scripts break without it.
 - **NumPy 2.0 removed `np.trapz`** — use `np.trapezoid`.
 - **New trainer subclass must append `val_pauc`** per epoch, or `plot_training_curves` shape-mismatches.
+- **Metadata has TWO independent gates** (`docs/metadata_training_plan.md`, default off = image-only unchanged): `data.metadata_cols` = *which* raw cols to carry into the split CSVs (direction D subgroup calibration + the privileged inputs); `data.metadata_as_input` = whether the dataset feeds them into the batch as a 4-tuple `(image, meta, mask, label)` (direction A privileged/LUPI teacher). D sets only `metadata_cols` (model stays image-only, cols ride the `predictions.csv` side-channel via `test_metadata()`); A sets **both**. Any new DataLoader consumer must unpack via `src/utils/batch.py::unpack_batch` (2- or 4-tuple). `iddx_*`/`mel_*` are rejected as leakage; the metadata scaler is fit on the **train fold only**.
 
 **Operational / postmortems (context for helper behavior):**
 - **`keg` is shared** — filter your jobs by name: `squeue -u keg --name=<job>`.

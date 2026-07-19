@@ -11,6 +11,11 @@
 #          # panderm (foundation): pass the downloaded checkpoint via EXTRA
 #          bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=panderm \
 #              EXTRA="teacher.weights_path=/abs/path/panderm_bb_data6_checkpoint-499.pth"
+#          # privileged (LUPI) teacher (direction A) — needs prepare run with the
+#          # SAME META_COLS, and a *_privileged teacher name:
+#          bash slurm/submit.sh slurm/11_train_teacher.slurm \
+#              TEACHER=efficientnetv2_m_privileged PRIVILEGED=1 \
+#              META_COLS=tbp_lv_symm_2axis,tbp_lv_norm_border,tbp_lv_norm_color
 # Subset of folds (e.g. to split a heavy teacher under the 72 h cap into two jobs):
 #          bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=maxvit_base FOLDS="0 1 2"
 #          bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=maxvit_base FOLDS="3 4"
@@ -50,11 +55,24 @@ DROP_PATH="${DROP_PATH:-0.0}"
 #   EXTRA="cudnn_deterministic=false training.batch_size=16"
 # Deliberately UNquoted at the call site so multiple overrides word-split.
 EXTRA="${EXTRA:-}"
-echo "[job] Training teacher (full) | teacher ${TEACHER} | folds ${FOLDS} | aug=${AUG} drop_path=${DROP_PATH} | extra='${EXTRA}'"
+# Privileged (LUPI) teacher (direction A): PRIVILEGED=1 feeds metadata into the
+# teacher (requires TEACHER=<name>_privileged and prepare run with the same
+# META_COLS). META_COLS must be comma-separated with NO spaces (word-split safe).
+PRIVILEGED="${PRIVILEGED:-0}"
+META_COLS="${META_COLS:-tbp_lv_symm_2axis,tbp_lv_norm_border,tbp_lv_norm_color,tbp_lv_areaMM2,tbp_lv_eccentricity,tbp_lv_deltaLBnorm}"
+PRIV_ARGS=""
+if [ "${PRIVILEGED}" = "1" ]; then
+    PRIV_ARGS="data.metadata_as_input=true data.metadata_cols=[${META_COLS}]"
+fi
+echo "[job] Training teacher (full) | teacher ${TEACHER} | folds ${FOLDS} | aug=${AUG} drop_path=${DROP_PATH} | privileged=${PRIVILEGED} | extra='${EXTRA}'"
 nvidia-smi || true
+# noglob so the unquoted ${PRIV_ARGS} 'data.metadata_cols=[...]' bracket token
+# is passed to Hydra verbatim (word-split on spaces, never pathname-expanded).
+set -f
 for FOLD in ${FOLDS}; do
     echo "[job] === teacher ${TEACHER} | fold ${FOLD} (start $(date '+%F %T')) ==="
-    python scripts/train_teacher.py "teacher=${TEACHER}" "data.fold=${FOLD}" "augmentation=${AUG}" "teacher.drop_path_rate=${DROP_PATH}" ${EXTRA}
+    python scripts/train_teacher.py "teacher=${TEACHER}" "data.fold=${FOLD}" "augmentation=${AUG}" "teacher.drop_path_rate=${DROP_PATH}" ${PRIV_ARGS} ${EXTRA}
 done
+set +f
 
 echo "[job] DONE"

@@ -14,6 +14,38 @@ from sklearn.model_selection import StratifiedGroupKFold
 from tqdm import tqdm
 
 
+# Post-biopsy diagnosis / histopathology fields. Their mere presence (or NaN)
+# leaks the label in ISIC 2024, so they are FORBIDDEN as training metadata even
+# in the privileged teacher — see docs/metadata_training_plan.md §0.
+_LEAKAGE_PREFIXES = ("iddx_", "mel_")
+# Base record schema. A metadata_col colliding with one of these would OVERWRITE
+# it (e.g. PAD would set patient_id/label to NaN -> group leakage / label loss).
+_RESERVED_COLS = frozenset(
+    {"image_id", "patient_id", "image_path", "label", "class_name", "source"}
+)
+
+
+def _validate_metadata_cols(metadata_cols: list[str] | None) -> None:
+    """Raise if metadata_cols contains a leakage (iddx_*/mel_*) or reserved column."""
+    if not metadata_cols:
+        return
+    bad = [c for c in metadata_cols if str(c).startswith(_LEAKAGE_PREFIXES)]
+    if bad:
+        raise ValueError(
+            f"metadata_cols contains post-biopsy LEAKAGE columns {bad}: "
+            f"iddx_*/mel_* are diagnosis/histopathology fields whose presence "
+            f"(or NaN) reveals the label. Remove them "
+            f"(see docs/metadata_training_plan.md §0)."
+        )
+    reserved = [c for c in metadata_cols if c in _RESERVED_COLS]
+    if reserved:
+        raise ValueError(
+            f"metadata_cols may not name base schema columns {reserved} "
+            f"(they would overwrite the record's {sorted(_RESERVED_COLS)} — for "
+            f"PAD that means NaN patient_id/label = group leakage / label loss)."
+        )
+
+
 def resize_and_save(src: Image.Image | Path, dst_path: Path, size: tuple[int, int] = (224, 224)) -> None:
     """Resize a PIL image (or path) and save to destination."""
     dst_path.parent.mkdir(parents=True, exist_ok=True)
@@ -56,6 +88,7 @@ def process_isic2024(
     image_id_col: str = "isic_id",
     label_col: str = "target",
     min_size: int = 32,
+    metadata_cols: list[str] | None = None,
 ) -> pd.DataFrame:
     """
     Extract and resize images from ISIC 2024 HDF5 archive.
@@ -65,9 +98,18 @@ def process_isic2024(
           train-image.hdf5     <- HDF5 with keys = isic_id, values = JPEG bytes
           train-metadata.csv   <- isic_id, patient_id, target (0/1), ...
 
+    Args:
+        metadata_cols: optional extra columns to carry from ``train-metadata.csv``
+            into each record (e.g. ``tbp_lv_*`` for the privileged teacher, or
+            ``anatom_site_general``/``sex`` for subgroup calibration). Default
+            ``None`` keeps the historical 6-column schema byte-for-byte. Leakage
+            columns (``iddx_*``/``mel_*``) are rejected up front.
+
     Returns:
-        DataFrame with columns: image_id, patient_id, image_path, label, class_name.
+        DataFrame with columns: image_id, patient_id, image_path, label,
+        class_name, source (+ any ``metadata_cols``).
     """
+    _validate_metadata_cols(metadata_cols)
     raw_dir = Path(raw_dir)
     processed_dir = Path(processed_dir)
     hdf5_path = raw_dir / "train-image.hdf5"
@@ -144,14 +186,20 @@ def process_isic2024(
             else:
                 skipped += 1
 
-            records.append({
+            record = {
                 "image_id": image_id,
                 "patient_id": patient_id,
                 "image_path": str(dst),
                 "label": label,
                 "class_name": class_name,
                 "source": "isic2024",
-            })
+            }
+            if metadata_cols:
+                # Carry the requested raw metadata verbatim; missing -> NaN so the
+                # column exists uniformly and NaN-masking downstream still works.
+                for col in metadata_cols:
+                    record[col] = row.get(col, np.nan)
+            records.append(record)
 
     if excluded:
         processed_dir.mkdir(parents=True, exist_ok=True)
@@ -176,6 +224,7 @@ def process_pad_ufes_20(
     processed_dir: str | Path,
     image_size: int = 224,
     min_size: int = 32,
+    metadata_cols: list[str] | None = None,
 ) -> pd.DataFrame:
     """
     Process PAD-UFES-20 dataset and map 6 classes to binary labels.
@@ -189,9 +238,17 @@ def process_pad_ufes_20(
         Malignant (1): BCC, SCC, MEL
         Benign    (0): ACK, NEV, SEK
 
+    Args:
+        metadata_cols: extra columns kept in the ISIC records. PAD-UFES-20 has a
+            different schema (no ``tbp_lv_*``), so every requested column is set
+            to ``NaN`` here — the NaN mask lets the privileged tabular branch skip
+            (not backprop) PAD samples. Default ``None`` keeps the 6-column schema.
+
     Returns:
-        DataFrame with columns: image_id, patient_id, image_path, label, class_name, source.
+        DataFrame with columns: image_id, patient_id, image_path, label,
+        class_name, source (+ any ``metadata_cols``, all NaN for PAD).
     """
+    _validate_metadata_cols(metadata_cols)
     raw_dir = Path(raw_dir)
     processed_dir = Path(processed_dir)
     images_dir = raw_dir / "images"
@@ -272,7 +329,7 @@ def process_pad_ufes_20(
         else:
             skipped += 1
 
-        records.append({
+        record = {
             "image_id": f"pad_{stem}",
             # Namespace the group key so a PAD patient_id can never collide with
             # an ISIC patient_id and leak across folds in StratifiedGroupKFold.
@@ -281,7 +338,13 @@ def process_pad_ufes_20(
             "label": label,
             "class_name": class_name,
             "source": "pad_ufes_20",
-        })
+        }
+        if metadata_cols:
+            # PAD has no tbp_lv_* — NaN so the column aligns with ISIC; the mask
+            # (NaN -> 0) stops the privileged tabular branch from training on it.
+            for col in metadata_cols:
+                record[col] = np.nan
+        records.append(record)
 
     if excluded:
         processed_dir.mkdir(parents=True, exist_ok=True)

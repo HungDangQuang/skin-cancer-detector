@@ -74,6 +74,14 @@ def main(cfg: DictConfig) -> None:
 
         teacher_cfg = OmegaConf.merge(cfg, {"model": OmegaConf.to_container(cfg.teacher, resolve=True)})
         teacher = build_model(teacher_cfg)
+        # A privileged (LUPI) teacher must receive metadata in the batch, else the
+        # tabular branch is all-zero (silently image-only) and RKD leaks nothing.
+        if getattr(teacher, "accepts_metadata", False) and not cfg.data.get("metadata_as_input", False):
+            raise ValueError(
+                f"Teacher {cfg.teacher.name} is privileged but data.metadata_as_input is not true. "
+                "Set data.metadata_as_input=true and a non-empty data.metadata_cols "
+                "(see docs/metadata_training_plan.md §A)."
+            )
         load_checkpoint(teacher_ckpt, teacher, device=cfg.device)
         logger.info(f"KD: {cfg.teacher.name} -> {student_name} (fold {fold}); teacher={teacher_ckpt}")
 
@@ -105,8 +113,13 @@ def main(cfg: DictConfig) -> None:
         logger.info(f"Evaluating best student checkpoint on held-out test set: {best_ckpt}")
         load_checkpoint(str(best_ckpt), student, device=cfg.device)
         evaluator = Evaluator(student, device=cfg.device)
+        # metadata (site/sex) is recorded into predictions.csv only when
+        # data.metadata_cols is set (direction D); null -> None -> unchanged CSV.
+        test_meta = datamodule.test_metadata(student_cfg.data.get("metadata_cols", None))
         test_metrics = evaluator.evaluate(
-            datamodule.test_dataloader(), sources=datamodule.test_sources()
+            datamodule.test_dataloader(),
+            sources=datamodule.test_sources(),
+            metadata=test_meta,
         )
         evaluator.save_metrics(test_metrics, run_dir / "test_metrics.json")
         evaluator.save_predictions(test_metrics, run_dir / "predictions.csv")

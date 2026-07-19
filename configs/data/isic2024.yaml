@@ -43,3 +43,21 @@ undersample_ratio: 5
 # Set to a list (e.g. [isic2024]) to restrict TRAIN+VAL to those source datasets;
 # the held-out TEST set is unaffected so both arms share an identical test.
 train_sources: null
+
+# Metadata knob (default null = drop ALL metadata; 6-column schema, image-only
+# runs byte-for-byte unchanged). Set to a list of raw ISIC metadata columns to
+# carry them into the split CSVs, enabling:
+#   - subgroup calibration (direction D): [anatom_site_general, sex]
+#   - privileged teacher (direction A):   [tbp_lv_symm_2axis, tbp_lv_norm_border, ...]
+# FORBIDDEN: iddx_*/mel_* (post-biopsy leakage — prepare_data raises).
+# PAD-UFES-20 has no tbp_lv_* schema, so these columns are NaN for PAD rows.
+# See docs/metadata_training_plan.md §0 (taxonomy) and §A/§D.
+metadata_cols: null
+
+# Gate for feeding metadata INTO the model as a batch tensor (direction A —
+# privileged/LUPI teacher). Default false = the dataset returns (image, label)
+# and metadata_cols only flow into the CSVs / predictions.csv side-channel
+# (direction D, model stays image-only). Set true ONLY with a privileged teacher
+# (teacher=<name>_privileged), which then receives (image, meta, mask). The
+# scaler is fit on the train fold only. See docs/metadata_training_plan.md §A.
+metadata_as_input: false

@@ -23,6 +23,17 @@
 # Controlled comparison (no KD — works since 2026-06-04 via the use_kd flag):
 #   bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium TRAINING=baseline
 #
+# Privileged (LUPI) teacher (direction A) — student stays image-only, distills the
+# teacher's fused (image+tbp_lv_*) structure via RKD. Needs the privileged teacher
+# already trained (11_train_teacher ... PRIVILEGED=1) and prepare run with the SAME
+# META_COLS:
+#   bash slurm/submit.sh slurm/12_train_student.slurm \
+#       STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m_privileged \
+#       TRAINING=distillation_privileged PRIVILEGED=1 \
+#       META_COLS=tbp_lv_symm_2axis,tbp_lv_norm_border,tbp_lv_norm_color
+#   Output run-dir: experiments/runs/kd_efficientnetv2_m_privileged_to_<student>/
+#   (compare against the plain kd_efficientnetv2_m_to_<student> — the ablation).
+#
 # Output: experiments/runs/kd_<teacher>_to_<student>/fold_{0..4}/
 #         ├── checkpoints/best_model.pth
 #         └── test_metrics.json
@@ -58,11 +69,25 @@ DROP_PATH="${DROP_PATH:-0.0}"
 # teacher is maxvit_base: EXTRA="cudnn_deterministic=false".
 # Deliberately UNquoted at the call site so multiple overrides word-split.
 EXTRA="${EXTRA:-}"
-echo "[job] Student: ${STUDENT} | Teacher: ${TEACHER} | Training: ${TRAINING} | folds ${FOLDS} | aug=${AUG} drop_path=${DROP_PATH} | extra='${EXTRA}'"
+# Privileged (LUPI) teacher (direction A): PRIVILEGED=1 feeds metadata into the
+# frozen teacher (student stays image-only). Requires TEACHER=<name>_privileged,
+# TRAINING=distillation_privileged, and prepare run with the same META_COLS.
+# META_COLS must be comma-separated with NO spaces (word-split safe).
+PRIVILEGED="${PRIVILEGED:-0}"
+META_COLS="${META_COLS:-tbp_lv_symm_2axis,tbp_lv_norm_border,tbp_lv_norm_color,tbp_lv_areaMM2,tbp_lv_eccentricity,tbp_lv_deltaLBnorm}"
+PRIV_ARGS=""
+if [ "${PRIVILEGED}" = "1" ]; then
+    PRIV_ARGS="data.metadata_as_input=true data.metadata_cols=[${META_COLS}]"
+fi
+echo "[job] Student: ${STUDENT} | Teacher: ${TEACHER} | Training: ${TRAINING} | folds ${FOLDS} | aug=${AUG} drop_path=${DROP_PATH} | privileged=${PRIVILEGED} | extra='${EXTRA}'"
 nvidia-smi || true
+# noglob so the unquoted ${PRIV_ARGS} 'data.metadata_cols=[...]' bracket token
+# is passed to Hydra verbatim (word-split on spaces, never pathname-expanded).
+set -f
 for FOLD in ${FOLDS}; do
     echo "[job] === ${TRAINING}: ${TEACHER} -> ${STUDENT} | fold ${FOLD} (start $(date '+%F %T')) ==="
-    python scripts/train_student.py "student=${STUDENT}" "teacher=${TEACHER}" "training=${TRAINING}" "data.fold=${FOLD}" "augmentation=${AUG}" "student.drop_path_rate=${DROP_PATH}" ${EXTRA}
+    python scripts/train_student.py "student=${STUDENT}" "teacher=${TEACHER}" "training=${TRAINING}" "data.fold=${FOLD}" "augmentation=${AUG}" "student.drop_path_rate=${DROP_PATH}" ${PRIV_ARGS} ${EXTRA}
 done
+set +f
 
 echo "[job] DONE"
