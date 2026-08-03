@@ -2,7 +2,7 @@
 
 These have all bitten this repo at least once. `CLAUDE.md` keeps a short index of
 these under "Recurring gotchas"; this file holds the **full detail** for each one.
-Run the `validate-pipeline` skill after touching `src/`, `configs/`, or `slurm/`
+Run the `code-change` skill's `validate-pipeline` checks after touching `src/`, `configs/`, or `slurm/`
 to catch them before submitting cluster jobs.
 
 Sections are grouped: **hard rules** (never violate) → **live coding traps**
@@ -16,7 +16,7 @@ kept for the paper trail).
 
 ### Shared-cluster rule for `*.slurm` scripts
 
-UIT's cluster is shared. **No `slurm/*.slurm` script we author may terminate, preempt, or reset other users' work.** If resources are exhausted, the job goes into `PD` (pending) state and waits — that is the only acceptable behavior. Forbidden in every script: `scancel`/`kill`/`pkill`/`killall`, `nvidia-smi --reset-gpu`, `fuser -k`, `#SBATCH --preempt`, priority-bumping `--nice`, and any write to `/tmp/nvidia-mps` without a job-unique suffix. `validate-pipeline §3f / §3g` lint enforces this — see `.claude/skills/submit-slurm/SKILL.md` "Authoring new `*.slurm` scripts" for the full table and the queue-don't-evict rationale.
+UIT's cluster is shared. **No `slurm/*.slurm` script we author may terminate, preempt, or reset other users' work.** If resources are exhausted, the job goes into `PD` (pending) state and waits — that is the only acceptable behavior. Forbidden in every script: `scancel`/`kill`/`pkill`/`killall`, `nvidia-smi --reset-gpu`, `fuser -k`, `#SBATCH --preempt`, priority-bumping `--nice`, and any write to `/tmp/nvidia-mps` without a job-unique suffix. `validate-pipeline §3f / §3g` lint enforces this — see `.claude/skills/code-change/reference/submit-slurm.md` "Authoring new `*.slurm` scripts" for the full table and the queue-don't-evict rationale.
 
 ### QOS caps `gres/gpu=0` — jobs MUST request `--gres=mps`, never `--gres=gpu` (added 2026-06-28)
 

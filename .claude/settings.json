@@ -67,10 +67,10 @@
       "Bash(kaggle datasets files:*)",
       "Bash(kaggle --version)",
       "Bash(df -h:*)",
-      "Edit(/.claude/skills/analyze-evaluation/**)",
+      "Edit(/.claude/skills/eval-results/**)",
       "mcp__claude_ai_Google_Drive__read_file_content",
       "mcp__claude_ai_Google_Drive__create_file",
-      "Edit(/.claude/skills/kd-experiment/**)",
+      "Edit(/.claude/skills/code-change/**)",
       "Read(//Users/hungdang/Documents/android-projects/SkinDetector/**)",
       "Bash(mkdir -p docs app/src/main/java/com/nemis/skindetector/ml)"
     ],
@@ -129,7 +129,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -z \"$f\" ] && exit 0; rel=${f#*/skin-cancer-detector/}; case \"$rel\" in src/data/*|scripts/prepare_data.py) skill=review-preprocessing ;; src/training/*|src/models/*|scripts/train_teacher.py|scripts/train_student.py) skill=review-training ;; slurm/*|docs/SLURM*) skill=review-slurm ;; *) exit 0 ;; esac; case \"$rel\" in src/*|configs/*|slurm/*) vp=\" Then run validate-pipeline (static checks) before concluding.\" ;; *) vp=\"\" ;; esac; msg=\"[modification-workflow] You edited ${rel}. Before finishing this task: (1) run the ${skill} skill to review the change; (2) update any affected slurm script AND its docs; (3) keep CLAUDE.md / docs / memory current.${vp}\"; jq -cn --arg m \"$msg\" '{hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:$m},suppressOutput:true}'",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -z \"$f\" ] && exit 0; rel=${f#*/skin-cancer-detector/}; case \"$rel\" in src/data/*|scripts/prepare_data.py) area=\"preprocessing (reference/review-preprocessing.md)\" ;; src/training/*|src/models/*|scripts/train_teacher.py|scripts/train_student.py) area=\"training (reference/review-training.md)\" ;; slurm/*|docs/SLURM*) area=\"slurm (reference/review-slurm.md)\" ;; *) exit 0 ;; esac; case \"$rel\" in src/*|configs/*|slurm/*) vp=\" Then run the validate-pipeline static checks (reference/validate-pipeline.md, via code-change) before concluding.\" ;; *) vp=\"\" ;; esac; msg=\"[modification-workflow] You edited ${rel}. Before finishing this task: (1) run the code-change skill and review the ${area} contract; (2) update any affected slurm script AND its docs; (3) keep CLAUDE.md / docs / memory current.${vp}\"; jq -cn --arg m \"$msg\" '{hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:$m},suppressOutput:true}'",
             "statusMessage": "Routing modification-workflow review reminder"
           }
         ]

@@ -1,5 +1,5 @@
 ---
-name: diagram-style
+name: draw-diagram
 description: >
   Draw a project figure (pipeline / architecture / flow diagram) in the house
   "soft-card" style — pastel rounded containers, white inner cards, thin gray

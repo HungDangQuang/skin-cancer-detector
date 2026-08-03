@@ -4,34 +4,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## ⚠️ CRITICAL — authoring/editing Slurm scripts (a job must never be blocked or evict others)
 
-This has cost real days of stuck jobs — treat it as the highest-priority rule set, not a gotcha. These are now **hook-enforced** (`.claude/settings.json`: `slurm-submit-guard` blocks submitting a bad script with exit 2; the slurm-edit guard flags a bad script the moment it's written) AND linted by `validate-pipeline §3f/§3g/§3h`. Full detail: [docs/GOTCHAS.md](docs/GOTCHAS.md); authoring table in [.claude/skills/submit-slurm/SKILL.md](.claude/skills/submit-slurm/SKILL.md); review checklist in [.claude/skills/review-slurm/SKILL.md](.claude/skills/review-slurm/SKILL.md).
+This has cost real days of stuck jobs — treat it as the highest-priority rule set, not a gotcha. These are now **hook-enforced** (`.claude/settings.json`: `slurm-submit-guard` blocks submitting a bad script with exit 2; the slurm-edit guard flags a bad script the moment it's written) AND linted by `validate-pipeline §3f/§3g/§3h`. Full detail: [docs/GOTCHAS.md](docs/GOTCHAS.md); authoring table in [code-change/reference/submit-slurm.md](.claude/skills/code-change/reference/submit-slurm.md); review checklist in [code-change/reference/review-slurm.md](.claude/skills/code-change/reference/review-slurm.md).
 
 1. **GPU jobs MUST request `--gres=mps:l40:N` (e.g. `mps:l40:4`) — NEVER `--gres=gpu`.** QOS `uit` caps `gres/gpu=0` per user, so any whole-GPU request sits `PD` forever (`Reason=QOSMaxGRESPerUser`) even while you hold 0 GPUs. Pair it with `setup_mps`.
 2. **Never terminate/preempt/reset other users' work** — no `scancel`/`kill`/`pkill`/`killall`, `nvidia-smi --reset-gpu`, `fuser -k`, `#SBATCH --preempt`, `#SBATCH --nice=-N`, `scontrol requeue` / `USE_CLUSTER_GPU_CHECK=1`. Out of resources = let the job wait in `PD`. That is the only acceptable behavior on this shared cluster.
 3. **Always submit via `bash slurm/submit.sh ...`** — never raw `sbatch` (it drops logs on Slurm 23 if `logs/` is absent).
 4. **Repo/data/runs live under `/datastore/keg/hungdang/...`** (or `DATASTORE_USER_DIR=`) — never raw `/datastore/${USER}/...` (`${USER}` is the shared `keg` account).
-5. **Start from `slurm/_template.slurm`; `source slurm/_lib.sh`; `${VAR:-default}` for every Slurm var.** After editing, run `validate-pipeline` then the `review-slurm` skill before submitting.
+5. **Start from `slurm/_template.slurm`; `source slurm/_lib.sh`; `${VAR:-default}` for every Slurm var.** After editing, run the `code-change` skill's `validate-pipeline` then `review-slurm` checks before submitting.
 
 ## Local environment ≠ runtime environment
 
 The local Mac is for editing only. **Do not install Python dependencies locally** (no `pip install`, no `make install-dev` on the Mac, no expectation that `pytest` / `torch` / `sklearn` will import here). The code runs on the UIT Slurm cluster (`slurm.uit.edu.vn`, venv at `${DATASTORE_USER_DIR:-/datastore/keg/hungdang}/venv` — created by `slurm/setup_env.sh`), and that is the only environment that has the full dependency set.
 
 Consequences for verification:
-- After editing `src/`, `configs/`, or `slurm/`, run the **`validate-pipeline`** skill (static checks — Python AST + Hydra config compose + slurm lint, no imports needed) instead of trying to import/run code.
-- Real correctness verification (pytest, training smoke test) happens on the cluster — submit `slurm/01_prepare_poc.slurm` → `02_poc_teacher.slurm` → `03_poc_student.slurm` or invoke the `poc-smoke-test` skill.
+- After editing `src/`, `configs/`, or `slurm/`, run the **`code-change`** skill's **`validate-pipeline`** checks (static checks — Python AST + Hydra config compose + slurm lint, no imports needed) instead of trying to import/run code.
+- Real correctness verification (pytest, training smoke test) happens on the cluster — submit `slurm/01_prepare_poc.slurm` → `02_poc_teacher.slurm` → `03_poc_student.slurm` or invoke the `code-change` skill's `poc-smoke-test`.
 - Do not propose `pip install <x>` to fix a `ModuleNotFoundError` you hit locally — it's expected; the import will resolve on the cluster.
 
 ## Modification workflow (mandatory after any code/config/slurm change)
 
-Every edit to project source must be **reviewed, verified, and documented before the task is considered done** — not left for a follow-up. After modifying a file, run this loop automatically (don't wait to be asked). A `PostToolUse` hook in `.claude/settings.json` injects a `[modification-workflow]` reminder naming the right review skill for the edited path; treat that reminder as a required step, not a suggestion.
+Every edit to project source must be **reviewed, verified, and documented before the task is considered done** — not left for a follow-up. After modifying a file, run this loop automatically (don't wait to be asked). A `PostToolUse` hook in `.claude/settings.json` injects a `[modification-workflow]` reminder naming the **`code-change`** skill and the review area for the edited path; treat that reminder as a required step, not a suggestion.
 
 1. **Code** the change.
-2. **Review** with the area-specific skill, routed by what you touched:
-   - `src/data/**`, `scripts/prepare_data.py` → **`review-preprocessing`**
-   - `src/training/**`, `src/models/**`, `scripts/train_{teacher,student}.py` → **`review-training`**
-   - `slurm/**`, `slurm/README.md`, `docs/SLURM.md` → **`review-slurm`**
+2. **Review** with the **`code-change`** skill, which routes by what you touched to the matching checklist in its `reference/`:
+   - `src/data/**`, `scripts/prepare_data.py` → `reference/review-preprocessing.md`
+   - `src/training/**`, `src/models/**`, `scripts/train_{teacher,student}.py` → `reference/review-training.md`
+   - `slurm/**`, `slurm/README.md`, `docs/SLURM.md` → `reference/review-slurm.md`
 3. **Propagate to Slurm (if any).** If the change alters how a job is invoked, what it consumes, or what it produces, update the matching `slurm/*.slurm` script **and** its docs (`slurm/README.md`, `docs/SLURM.md`) in the same task. A code change that silently desyncs from its slurm wrapper is a defect.
-4. **Verify.** Run **`validate-pipeline`** (static checks — the only verification possible on the Mac). Real correctness (pytest / `poc-smoke-test`) is a cluster step; state explicitly that it's deferred to the cluster rather than claiming it passed.
+4. **Verify.** Run the **`code-change`** skill's **validate-pipeline** checks (`reference/validate-pipeline.md` — static checks, the only verification possible on the Mac). Real correctness (pytest / the `reference/poc-smoke-test.md` smoke test) is a cluster step; state explicitly that it's deferred to the cluster rather than claiming it passed.
 5. **Document.** Keep the docs and knowledge current: `CLAUDE.md` "Recurring gotchas" for anything non-obvious, the relevant `docs/*.md`, and auto-memory (`MEMORY.md` + the matching memory file). The end state of every task is up-to-date docs, not a TODO to update them later.
 
 ## Commands
@@ -185,7 +185,7 @@ bash slurm/submit.sh slurm/22_aggregate_folds.slurm \
 
 ## Recurring gotchas
 
-These have all bitten this repo at least once. Run the `validate-pipeline` skill after touching `src/`, `configs/`, or `slurm/` to catch them before submitting cluster jobs. **Full detail for every item below lives in [docs/GOTCHAS.md](docs/GOTCHAS.md)** — this is just the index; read the matching section there before acting on one.
+These have all bitten this repo at least once. Run the `code-change` skill's `validate-pipeline` checks after touching `src/`, `configs/`, or `slurm/` to catch them before submitting cluster jobs. **Full detail for every item below lives in [docs/GOTCHAS.md](docs/GOTCHAS.md)** — this is just the index; read the matching section there before acting on one.
 
 **Hard rules (never violate):**
 - **No `slurm/*.slurm` may kill/preempt/reset another user's job** — if resources are full, queue (`PD`) and wait. No `scancel`/`kill`/`pkill`, `--reset-gpu`, `fuser -k`, `--preempt`, `--nice`.

@@ -195,5 +195,5 @@ python scripts/aggregate_folds.py --run-dir experiments/runs/kd_efficientnetv2_m
 python scripts/compare_kd_results.py   # RKD vs logit-KD vs baseline
 ```
 
-**Verify trước full run:** skill `poc-smoke-test` (hoặc POC 2-epoch) cho `repvit_m1_0` (và `panderm` nếu port
+**Verify trước full run:** skill `code-change`'s `poc-smoke-test` (hoặc POC 2-epoch) cho `repvit_m1_0` (và `panderm` nếu port
 xong); trên server `python -c "import timm; print(timm.list_models('repvit*'))"` xác nhận tag.

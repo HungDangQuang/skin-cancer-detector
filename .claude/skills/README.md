@@ -4,62 +4,39 @@ Quick reference for the project's Claude Code skills — what each one does and 
 to reach for it. Each skill lives in `.claude/skills/<name>/SKILL.md`; this file is
 just the map. Invoke with `/<name>` or let Claude auto-route from the description.
 
-Skills are grouped by the moment in the workflow you'd use them.
+The directory was consolidated from 15 fragmented skills into **6 clear entry-points**
+(2026-08-02). The detailed, area-specific checklists were **not** thrown away — they live
+verbatim under each skill's `reference/` and the SKILL.md routes to the right one.
 
-## 0. End-to-end (the master workflow)
+## The 6 skills
 
-| Skill | Use it when… | Focus |
+| Skill | Use it when you want to… | Routes to (`reference/`) |
 |---|---|---|
-| [dev-cycle](dev-cycle/SKILL.md) | "run the full cycle / do the whole process / ship this" | Orchestrates the 5 phases below: review → commit+push (no approval, feature branch) → emit slurm cmd + log job to `tasks/daily/` → results vs SOTA → update `docs/DE_CUONG.md`. It **calls** the area skills; it doesn't replace them. |
+| [code-change](code-change/SKILL.md) | **add / remove / edit code** and carry it through review → validate → run on the cluster | review-preprocessing · review-training · review-slurm · add-model · validate-pipeline · submit-slurm · poc-smoke-test · kd-experiment · dev-cycle |
+| [eval-results](eval-results/SKILL.md) | **read & judge results**, conclude whether the solution is effective | analyze-evaluation · compare-kd · assess-training · diagnose-training |
+| [update-report](update-report/SKILL.md) | **write / refresh the report `.md`** (reports/, proposal, daily log) once results exist | — (Google Drive deferred) |
+| [draw-diagram](draw-diagram/SKILL.md) | **draw a pipeline / architecture figure** in the house soft-card SVG style | — (was `diagram-style`) |
+| [answer-qa](answer-qa/SKILL.md) | **answer a thesis question AND store it** as `QA/NNN-*.md` | — |
+| [tutor-knowledge](tutor-knowledge/SKILL.md) | **learn / review / get quizzed** on project concepts (`/tutor`) | delegates to the `knowledge-tutor` agent |
 
-## 1. Edit → review (the mandatory modification workflow)
+## Routing cheatsheet (pick by intent)
 
-Run the matching review skill **right after** editing source, then `validate-pipeline`.
-See `CLAUDE.md` "Modification workflow".
+- **"I need to change code / run it"** → `code-change`. It reads the path you edited and opens
+  the matching `reference/` checklist (preprocessing / training / slurm), runs the
+  validate-pipeline static checks, then submits via `slurm/submit.sh`. The PostToolUse hook
+  reminds you automatically after each edit.
+- **"Is this good? Did KD help? Why did it fail?"** → `eval-results`. Pick the rubric by the
+  artifact you have: eval JSON → analyze-evaluation; all runs → compare-kd; good log →
+  assess-training; broken run → diagnose-training.
+- **"Write this up."** → `update-report` for the `.md` deliverables; `answer-qa` if it's a
+  thesis question you want stored under `QA/`.
+- **"Draw the pipeline / a figure."** → `draw-diagram` (SVG, not a matplotlib number-plot).
+- **"Explain / quiz me on concept X."** → `tutor-knowledge` (spawns the `knowledge-tutor` agent).
 
-| Skill | Use it when you touched… | Focus |
-|---|---|---|
-| [review-preprocessing](review-preprocessing/SKILL.md) | `src/data/**`, `scripts/prepare_data.py` | Splits, augmentation, sampler, dataset processing vs the known-correct contract |
-| [review-training](review-training/SKILL.md) | `src/training/**`, `src/models/**`, `scripts/train_{teacher,student}.py` | Trainer/KDTrainer contract, loss, optimizer/scheduler, KD loss |
-| [review-slurm](review-slurm/SKILL.md) | `slurm/*.slurm`, `_lib.sh`, `submit.sh`, slurm docs | Shared-cluster no-kill rule + known cluster failure modes |
-| [validate-pipeline](validate-pipeline/SKILL.md) | any of `src/`, `configs/`, `slurm/` | Static checks (Python imports, Hydra compose, slurm lint) — **always last, before submitting** |
+## Notes
 
-## 2. Run on the cluster
-
-| Skill | Use it when… | Focus |
-|---|---|---|
-| [submit-slurm](submit-slurm/SKILL.md) | submitting a job, or authoring a new `*.slurm` script | Wraps `slurm/submit.sh`; enforces queue-don't-evict |
-| [poc-smoke-test](poc-smoke-test/SKILL.md) | quick end-to-end check before long training | Synthetic data POC pipeline (no ISIC download) |
-
-## 3. Judge results & run experiments
-
-The "is this good?" family — pick by **what artifact you have** and **how many runs**.
-
-| Skill | Input | Use it when… |
-|---|---|---|
-| [analyze-evaluation](analyze-evaluation/SKILL.md) | one (or few) `reports/results/*.json` | Verdict on a checkpoint / one KD-vs-baseline / cross-student comparison |
-| [compare-kd](compare-kd/SKILL.md) | **all** of `experiments/runs/` | "Did KD help across the board?", rank every teacher-student pair |
-| [kd-experiment](kd-experiment/SKILL.md) | one student arch (to run) | Set up & run a controlled KD-vs-baseline pair for that student |
-| [assess-training](assess-training/SKILL.md) | a **successful** training log | Score a finished run (good/moderate/poor) + how to improve next |
-| [diagnose-training](diagnose-training/SKILL.md) | a **failed / misbehaving** run | Triage a crash, NaN, or a run that never started learning |
-
-## 4. Extend the project
-
-| Skill | Use it when… | Focus |
-|---|---|---|
-| [add-model](add-model/SKILL.md) | adding a new architecture | Register in `MODEL_REGISTRY` + matching config |
-
-## 5. Thesis documentation
-
-| Skill | Use it when… | Focus |
-|---|---|---|
-| [answer-qa](answer-qa/SKILL.md) | a methodology/results question you want **saved** | Answer grounded in code/results, store as `QA/NNN-*.md` |
-| [diagram-style](diagram-style/SKILL.md) | drawing a pipeline/architecture **figure** for the report or slides | House "soft-card" SVG style — pastel containers, white cards, gray arrows; canonical example in `report_phase_1/figures/` |
-
----
-
-### Routing cheatsheet (avoid the common mix-ups)
-
-- **"Is this good?"** → eval JSON: `analyze-evaluation` · successful log: `assess-training` · crashed/weird run: `diagnose-training`.
-- **KD effect** → one student you still need to run: `kd-experiment` · all existing runs: `compare-kd`.
-- **After editing code** → area review skill, then `validate-pipeline`. The cluster is the only place real correctness (pytest, training) is verified.
+- **Agents vs skills:** `eval-results` overlaps the `result-analyst` agent (parallel triage of
+  many runs) and `tutor-knowledge` fronts the `knowledge-tutor` agent — use the agent when you
+  need a read-only sweep fanned out; use the skill for the interactive, single-thread path.
+- **Google Drive** sync for reports is intentionally deferred — the connected MCP has
+  `create_file` but no update/overwrite, and no target folder is agreed yet.

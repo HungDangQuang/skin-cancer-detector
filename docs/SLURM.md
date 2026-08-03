@@ -228,7 +228,7 @@ bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2  
 ### 3.6 Data-strategy ablations (prove PAD mixing + the sampler help)
 Single-variable ablations so the data strategy is *measured*, not assumed. Each
 is a 5-fold array; aggregate with `22_aggregate_folds.slurm` and compare with the
-`analyze-evaluation` skill. The new `test_metrics.json` carries `auprc` +
+`eval-results` skill (reference/analyze-evaluation.md). The new `test_metrics.json` carries `auprc` +
 `sens_at_90/95spec`; `predictions.csv` carries a `source` column for ISIC-vs-PAD
 per-domain breakdowns.
 
