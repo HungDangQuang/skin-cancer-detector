@@ -45,10 +45,20 @@ Raw data does **not** ship with the repo. Put it under `data/raw/` before
   <https://data.mendeley.com/datasets/zr7vgbcyr2/1> then stage with
   `bash scripts/setup_pad_ufes_20.sh <zr7vgbcyr2-1.zip>` → produces
   `data/raw/pad_ufes_20/{images/,metadata.csv}`. If absent, prepare runs ISIC-only.
-- **HAM10000 / Fitzpatrick17k** — evaluation only, never training.
+- **HAM10000** (cross-domain evaluation only, never training):
+  Harvard Dataverse → `data/raw/ham10000/HAM10000_metadata.csv` + the extracted
+  image zips (`images/` or `HAM10000_images_part_1/2`).
+- **Fitzpatrick17k** (fairness evaluation only, never training): the release ships
+  **URLs, not images** — put `fitzpatrick17k.csv` in `data/raw/fitzpatrick17k/`
+  and `run/prepare_external.sh` fetches the pictures.
 
 ```bash
 bash run/prepare_data.sh              # → data/processed/… + data/splits/isic2024/fold_{0..4}/ + test_split.csv
+
+# External EVAL-ONLY sets (CPU-only; writes one test CSV + variants per dataset,
+# then a leakage check vs the internal splits — exits 2 on any overlap):
+bash run/prepare_external.sh DATASET=ham10000
+bash run/prepare_external.sh DATASET=fitzpatrick17k DOWNLOAD_LIMIT=50   # trial run first
 ```
 
 ## Train

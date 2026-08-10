@@ -137,7 +137,7 @@ Primary metric: **pAUC@TPR≥80%** (ISIC 2024 official metric), normalized to [0
 
 **Calibration** (distinct from ranking): `brier`/`ece` in `test_metrics.json` are the RAW miscalibration — the undersampled ~16.7% training prior inflates `sigmoid(logit)` vs the true ~0.39% prevalence. `scripts/compute_calibration.py --run-dir <run>` corrects the *displayed* probabilities offline (prior-shift closed-form by default; Platt/isotonic with `--method`, fit on the `val_predictions.csv` the training scripts now emit) and writes `calibration_metrics.json` + `reliability_curve.png`. Ranking metrics (pAUC/AUPRC/AUC) are invariant to any monotone re-scaling, so this changes **no** Chapter-4 number — it only makes shown "% risk" honest.
 
-External test sets (HAM10000, Fitzpatrick17k) are **never used for training** — only for post-hoc cross-domain and fairness evaluation.
+External test sets (HAM10000, Fitzpatrick17k) are **never used for training** — only for post-hoc cross-domain and fairness evaluation. They are prepared by a **separate** script, `scripts/prepare_external_data.py` (`bash run/prepare_external.sh DATASET=…`) — *not* `prepare_data.py`, which owns the training path — and they produce **one `test_split.csv` per dataset plus sensitivity variants**, no folds. Because they are test sets, cleaning is **two-tier**: only integrity failures are dropped, while `is_uninformative`/duplicate merely *flag* (`docs/PREPROCESSING.md §1.1`). Fitzpatrick17k ships **URLs, not images** — fetch with `scripts/download_fitzpatrick17k.py` first. Preparation ends in a leakage check (`reports/external_overlap_check_<ds>.md`) that **exits 2** on any overlap with the internal splits.
 
 ### Experiment design
 
@@ -201,6 +201,7 @@ These have all bitten this repo at least once. Run the `code-change` skill's `va
 - **`cfg.data.label_col` is the raw name (`target`)** — the processed dataframe uses `label`; pass `label_col="label"` to `generate_group_kfold_splits()`.
 - **`patient_id` must be namespaced** (`pad_{id}`) when concatenating datasets, or groups collide and leak across folds.
 - **Augmentation is config-driven** — edit `configs/augmentation/{light,heavy}.yaml`, not `transforms.py`; MixUp/CutMix/CutOut are forbidden in code.
+- **External test sets filter in TWO tiers** — on HAM10000/Fitzpatrick17k, only integrity failures may be dropped; `is_uninformative`/duplicates just flag. Dropping changes the benchmark, and `is_uninformative`'s ISIC-tuned `std<8` can fire on flat clinical photos — which is not independent of skin tone. Don't "fix" this by reusing the ISIC/PAD drop logic (`docs/PREPROCESSING.md §1.1`).
 - **`load_config()` composes Hydra `defaults:`** for the root config — standalone scripts break without it.
 - **NumPy 2.0 removed `np.trapz`** — use `np.trapezoid`.
 - **New trainer subclass must append `val_pauc`** per epoch, or `plot_training_curves` shape-mismatches.
