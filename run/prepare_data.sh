@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
 # Preprocess ISIC 2024 (+ optional PAD-UFES-20) and generate 5-fold CV splits.
-# Non-Slurm analogue of slurm/10_prepare_data.slurm — CPU-only, no GPU needed.
 #
 # Prereq: raw data under data/raw/ (see run/README.md § Data). At minimum:
 #   data/raw/isic2024/train-image.hdf5

@@ -107,6 +107,6 @@ The intended pipeline — any change must preserve every step:
 ## Don't
 - Don't try to import the modules on the Mac to "confirm" — it won't (no deps).
   Reason from the code + the contract above, then defer real verification to a
-  cluster `bash slurm/submit.sh slurm/10_prepare_data.slurm` run.
+  cluster `bash run/prepare_data.sh` run.
 - Don't approve a split change without re-checking the `patient_id` grouping —
   it's the highest-cost, lowest-visibility bug in this layer.

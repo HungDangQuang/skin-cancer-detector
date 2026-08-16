@@ -3,9 +3,9 @@ Export a trained student checkpoint to ExecuTorch (.pte) for Android on-device.
 
 ISOLATED from the training stack: this is the only script that imports
 `executorch`, and it runs in a dedicated venv (${DATASTORE_USER_DIR}/venv-export,
-created by slurm/setup_export_env.sh) so the ExecuTorch torch build can never
+created by run/setup_export_env.sh) so the ExecuTorch torch build can never
 perturb the torch>=2.2 the training/eval jobs depend on. Submit via
-slurm/25_export_executorch.slurm.
+run/export_executorch.sh.
 
 Why ExecuTorch and not TFLite: the goal is to run the PyTorch student model
 *as-is* on device without converting into another framework. ExecuTorch is the
@@ -51,8 +51,8 @@ def _import_executorch(backend: str):
         raise SystemExit(
             f"ExecuTorch / torch.export unavailable ({exc}).\n"
             "This script must run in the ISOLATED export venv. On the login node:\n"
-            "    bash slurm/setup_export_env.sh\n"
-            "then submit via slurm/25_export_executorch.slurm (do NOT use the "
+            "    bash run/setup_export_env.sh\n"
+            "then submit via run/export_executorch.sh (do NOT use the "
             "training venv)."
         )
     partitioners = []
@@ -65,7 +65,7 @@ def _import_executorch(backend: str):
         except ImportError as exc:
             raise SystemExit(
                 f"XNNPACK partitioner unavailable ({exc}). Re-run "
-                "slurm/setup_export_env.sh, or pass --backend none for a "
+                "run/setup_export_env.sh, or pass --backend none for a "
                 "portable-ops fallback."
             )
     return export, to_edge_transform_and_lower, partitioners

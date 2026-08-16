@@ -31,8 +31,8 @@ random_seed: 42
 test_holdout_splits: 6
 
 # Which fold to train on. Override via Hydra (e.g. data.fold=2) or from a
-# Slurm array via `data.fold=${SLURM_ARRAY_TASK_ID}`. The full 5-fold sweep
-# is run as a Slurm array; per-fold results land under run_dir/fold_${fold}/.
+# the FOLDS loop inside run/train_{teacher,student}.sh. One launch = all 5 folds
+# sequentially; per-fold results land under run_dir/fold_/.
 fold: 0
 
 # Dynamic undersampling: 1 malignant : 5 benign per epoch (resampled each epoch)

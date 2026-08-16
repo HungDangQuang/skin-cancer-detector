@@ -17,7 +17,7 @@ Reads a finished training-run log, derives a verdict on the result, and produces
 ## When NOT to use
 
 - The job failed, crashed, or `val_pauc` is stuck at 0/random across all epochs → use `diagnose-training`.
-- The user is asking about a checkpoint's performance on the *test* set → run `slurm/20_evaluate.slurm` first, then assess the resulting JSON, not the training log.
+- The user is asking about a checkpoint's performance on the *test* set → run `run/evaluate.sh` first, then assess the resulting JSON, not the training log.
 - Cross-run comparison (KD vs baseline, model A vs B) → use `kd-experiment`.
 
 ## How to use
@@ -35,14 +35,12 @@ Always say in your report which tier of data you're judging from, because the co
 ### 1. Locate the log
 
 ```bash
-# By job id (most reliable):
-ls logs/ | grep -E "_${JOBID}\."
-# Returns one of:
-#   logs/<jobname>_<JOBID>.out          ← SBATCH stdout
-#   logs/<jobname>_<JOBID>_runtime.log  ← fallback tee log (always exists)
+# Newest transcript for a given script:
+ls -t logs/train_student_*.log | head -1
+# Every run/*.sh tees to logs/<name>_<timestamp>.log via start_log.
 ```
 
-If the SBATCH `.out` is empty (Slurm 23 silently drops output when `logs/` doesn't exist at parse time), fall back to the `_runtime.log` — it is always written via `tee` inside `slurm/_lib.sh`.
+If the transcript is empty, the process died before `start_log`'s `tee` opened — re-run with `bash -x run/<script>.sh …` and check `dmesg -T | tail` for an OOM kill.
 
 ### 2. Extract per-epoch metrics
 
@@ -94,7 +92,7 @@ For KD runs, also check:
 - `hard_loss` ≪ `soft_loss` is normal when `alpha=0.3` (hard weight 0.3 vs soft 0.7) — that's the configured weighting in `configs/training/distillation.yaml`, not a bug.
 
 Aggregate verdict:
-- **Good** — promote to test evaluation (`slurm/20_evaluate.slurm`). Don't keep tuning.
+- **Good** — promote to test evaluation (`run/evaluate.sh`). Don't keep tuning.
 - **Moderate** — try one targeted change from §4 and re-train.
 - **Poor** — multiple axes failing; usually a setup issue. Re-check `experiments/<run>/config.yaml` first, then consult `diagnose-training`.
 

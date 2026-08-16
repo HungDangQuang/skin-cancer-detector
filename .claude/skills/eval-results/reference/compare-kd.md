@@ -24,7 +24,7 @@ experiments/runs/
 ```
 
 These live on the cluster. If they're not on the laptop, the user must rsync first
-(`rsync -avz slurm.uit.edu.vn:/datastore/keg/hungdang/skin-cancer-detector/experiments/runs/ ./experiments/runs/`).
+(`rsync -avz islabworker2@islab-server2:/mnt/sharednas/binhnt/hungdang/skin-cancer-detector/experiments/runs/ ./experiments/runs/`).
 If `experiments/runs/` is empty/missing, say so and stop — don't invent numbers.
 
 ## How to run

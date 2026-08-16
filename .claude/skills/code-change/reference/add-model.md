@@ -110,7 +110,7 @@ print('OK', model.num_parameters(), 'params')
 
 ```bash
 make poc-teacher                     # if you added a teacher
-bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=<my_arch_key>
+bash run/poc.sh STAGE=student STUDENT=<my_arch_key>
 ```
 Confirm it produces a checkpoint and `val_pauc` is non-zero.
 

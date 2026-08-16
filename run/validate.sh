@@ -1,23 +1,29 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ============================================================================
-# Static pipeline validation — runs validate-pipeline §1 (imports) and §2
-# (Hydra dry-load) inside the real cluster venv. CPU-ONLY (no GPU/MPS).
-# Submit:  bash slurm/submit.sh slurm/00_validate.slurm
-# Output:  logs/validate_<jobid>.{out,err}
+# Static pipeline validation inside the REAL server venv — §1 import sanity and
+# §2 Hydra dry-load for every registered model. CPU-only, ~1 min.
+#
+# This is the runtime half of the validate-pipeline checks: the Mac can only do
+# AST/compose-level checks, this actually imports torch/timm and builds every
+# model in MODEL_REGISTRY, so a broken registry/config merge fails here in
+# seconds instead of 6 hours into a training run.
+#
+# Usage:
+#   bash run/validate.sh
+#   bash run/validate.sh GPU=cpu     # (default anyway — no GPU is touched)
+#
+# Exit 0 = pipeline composes and every model builds.
 # ============================================================================
-#SBATCH --job-name=validate
-#SBATCH --output=logs/validate_%j.out
-#SBATCH --error=logs/validate_%j.err
-#SBATCH --nodes=1
-#SBATCH --ntasks=1
-#SBATCH --cpus-per-task=2
-#SBATCH --mem=2G
-#SBATCH --time=00:05:00
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+for arg in "$@"; do export "${arg?}"; done
 
-source "${SLURM_SUBMIT_DIR:-$(pwd)}/slurm/_lib.sh"
-load_python_env
+start_log "validate"
+activate_venv
+# CPU-only: model construction never needs CUDA, and forcing CPU keeps this
+# runnable while a training job owns the GPU.
+export CUDA_VISIBLE_DEVICES=""
 
-echo "[job] §1 import sanity"
+echo "[run] §1 import sanity"
 python -c "
 import src.data
 import src.models
@@ -25,11 +31,10 @@ import src.training
 import src.evaluation
 import src.utils
 from src.models.registry import MODEL_REGISTRY, build_model_from_name
-from src.training import Trainer, KDTrainer, BinaryDistillationLoss
 print('imports ok |', len(MODEL_REGISTRY), 'models registered')
 "
 
-echo "[job] §2 Hydra dry-load (reproduces the scripts/evaluate.py path for every registered model)"
+echo "[run] §2 Hydra dry-load (reproduces the scripts/evaluate.py path for every registered model)"
 python -c "
 from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
@@ -56,4 +61,4 @@ for root in ['config', 'config_poc']:
         print(f'{root:12s} ok | built {name}')
 "
 
-echo "[job] DONE"
+echo "[run] DONE"

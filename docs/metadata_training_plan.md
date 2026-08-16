@@ -75,12 +75,12 @@ Phạm vi user chốt: **D trước, rồi A** (bỏ B, C).
     privileged nhận `(images,meta,mask)` (kể cả nhánh RKD `forward_features`), **student luôn image-only**. Plain
     KD/baseline (meta=None) gọi y hệt code cũ → back-compat byte-for-byte.
   - Configs: `configs/teacher/{efficientnetv2_m,convnextv2_base}_privileged.yaml` (thêm `tab_hidden/tab_out`),
-    `configs/training/distillation_privileged.yaml` (= distillation_rkd, RKD là cơ chế leak). Slurm `PRIVILEGED=1` +
+    `configs/training/distillation_privileged.yaml` (= distillation_rkd, RKD là cơ chế leak). Runner `PRIVILEGED=1` +
     `META_COLS=` trên `10/11/12`; `prepare_data.py --metadata-cols`. Guard: train scripts raise nếu teacher privileged
     mà `metadata_as_input=false`.
   - **Chạy A:** prepare `META_COLS=tbp_lv_...` → `11 TEACHER=..._privileged PRIVILEGED=1` → `12 STUDENT=... TEACHER=..._privileged
     TRAINING=distillation_privileged PRIVILEGED=1`. Run-dir `kd_<teacher>_privileged_to_<student>` so với `kd_<teacher>_to_<student>` = ablation.
-  - **Verified static:** review-preprocessing/training/slurm + compileall + slurm-lint. **Chờ cluster:** Hydra dry-load
+  - **Verified static:** review-preprocessing/training/runner + compileall + runner-lint. **Chờ server:** Hydra dry-load
     (§2, cần hydra/omegaconf) + poc-smoke-test (mask PAD, scaler train-fold, 4-tuple collate không NaN-vỡ).
 
 ---
@@ -161,8 +161,8 @@ không phải code loss mới.
      **chỉ cho teacher privileged**; `student.forward_features(images)` **giữ thuần ảnh**.
    - `_val_epoch` ([:246-251](../src/training/kd_trainer.py)): teacher cần meta để cho logit nhất quán → truyền vào teacher, student vẫn `student(images)`.
 8. **configs/training**: variant `distillation_privileged.yaml` (kế thừa `distillation_rkd.yaml`, thêm cờ chọn teacher privileged).
-9. **slurm** ([slurm/11_train_teacher.slurm](../slurm/11_train_teacher.slurm), [slurm/12_train_student.slurm](../slurm/12_train_student.slurm)):
-   thêm biến `PRIVILEGED=1` truyền qua `${VAR:-default}`; cập nhật [slurm/README.md](../slurm/README.md) + [docs/SLURM.md](SLURM.md).
+9. **runner** ([run/train_teacher.sh](../run/train_teacher.sh), [run/train_student.sh](../run/train_student.sh)):
+   thêm biến `PRIVILEGED=1` truyền qua `${VAR:-default}`; cập nhật [run/README.md](../run/README.md) + [run/README.md](../run/README.md).
 
 ### Guards bắt buộc
 - **Loại `iddx_*` / `mel_*`** khỏi mọi `metadata_cols` (leakage — §0).
@@ -295,8 +295,8 @@ Cho **mỗi** hướng nếu code hoá:
 2. **Review** bằng skill đúng area:
    - `src/data/**`, `scripts/prepare_data.py` → **`review-preprocessing`**
    - `src/training/**`, `src/models/**`, `scripts/train_{teacher,student}.py` → **`review-training`**
-   - `slurm/**` + docs → **`review-slurm`**
-3. **Propagate to Slurm** — cập nhật `11/12_*.slurm` + `slurm/README.md` + `docs/SLURM.md` cùng lúc.
+   - `run/**` + docs → **`review-runner`**
+3. **Propagate to the runner** — cập nhật `run/train_{teacher,student}.sh` + `run/README.md` cùng lúc.
 4. **Verify** — chạy **`validate-pipeline`** (static, Mac); rồi **`poc-smoke-test`** trên cluster
    (đảm bảo path metadata không NaN-vỡ, mask PAD đúng, scaler chỉ fit train-fold). **Không** verify trên Mac.
 5. **Document** — cập nhật `CLAUDE.md` "Recurring gotchas" (nếu có bẫy mới, vd NaN mask), docs area, và auto-memory.

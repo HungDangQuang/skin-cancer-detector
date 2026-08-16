@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================================
 # Train ONE teacher across all 5 CV folds, sequentially, in one process.
-# Non-Slurm analogue of slurm/11_train_teacher.slurm.
 #
-# Args are KEY=VALUE (same style as the slurm submit wrapper) OR env vars:
+# Args are KEY=VALUE positionals OR env vars:
 #   TEACHER    teacher backbone (default efficientnetv2_m)
 #              choices: efficientnetv2_m | convnextv2_base | maxvit_base | panderm
 #              (panderm needs the PanDerm checkpoint — pass it via EXTRA, see below)

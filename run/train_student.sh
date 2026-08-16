@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # ============================================================================
 # Train ONE student across all 5 CV folds, sequentially, in one process.
-# Non-Slurm analogue of slurm/12_train_student.slurm.
 #
 # The KD student distills from experiments/runs/teacher/${TEACHER}/fold_${FOLD}/,
 # so that TEACHER must already be trained (run/train_teacher.sh with the same TEACHER).
 #
-# Args are KEY=VALUE (slurm-wrapper style) OR env vars:
+# Args are KEY=VALUE positionals OR env vars:
 #   STUDENT    student backbone (default mobilenetv4_conv_medium)
 #              choices: mobilenetv4_conv_medium | fastvit_sa12 | efficientformerv2_s2 | repvit_m1_0
 #   TEACHER    teacher to distill from (default efficientnetv2_m)

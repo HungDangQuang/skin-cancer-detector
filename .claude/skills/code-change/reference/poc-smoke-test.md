@@ -18,7 +18,7 @@ Runs the whole training pipeline (data → teacher → KD student) on synthetic 
 
 - Use the POC `pauc_at_tpr80` to make scientific claims — synthetic data with 30 malignant samples gives noisy metrics. The signal is "did training run without errors?", not "did it learn?".
 - Run `make poc-teacher` before `make prepare-poc`. The teacher needs the synthetic CSVs to exist.
-- Submit POC jobs through raw `sbatch`. Use `bash slurm/submit.sh ...` so logs land correctly.
+- Call `scripts/prepare_poc_data.py` / `scripts/train_*.py` directly on the server. Use `bash run/poc.sh …` so the venv, GPU selection and `logs/` transcript are set up for you.
 
 ## Local execution (Mac/Linux without GPU)
 
@@ -47,18 +47,18 @@ For CPU-only laptops, override device:
 python scripts/train_teacher.py --config-name config_poc device=cpu
 ```
 
-## Cluster execution (UIT Slurm)
+## Server execution
 
 ```bash
-bash slurm/submit.sh slurm/01_prepare_poc.slurm
-# wait → tail -f logs/prepare_poc_<jobid>.out
+bash run/poc.sh STAGE=prepare
+# → tail -f logs/poc_<timestamp>.log
 
-bash slurm/submit.sh slurm/02_poc_teacher.slurm
+bash run/poc.sh STAGE=teacher
 # wait → check experiments/poc/teacher/.../best_model.pth
 
-bash slurm/submit.sh slurm/03_poc_student.slurm
+bash run/poc.sh STAGE=student
 # Or with a different student:
-bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=fastvit_sa12
+bash run/poc.sh STAGE=student STUDENT=fastvit_sa12
 ```
 
 ## Success criteria

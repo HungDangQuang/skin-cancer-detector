@@ -9,7 +9,7 @@ Systematic diagnosis of a training run: check whether the loss is dropping, the 
 
 ## When to use
 
-- User shares a `logs/<job>_<jobid>.out` or `experiments/<run>/training_curves.png` and asks what's wrong.
+- User shares a `logs/<name>_<timestamp>.log` or `experiments/<run>/training_curves.png` and asks what's wrong.
 - A POC or full training run completed but `val_pauc` is stuck at 0 or near random.
 - KD soft loss is suspiciously high relative to hard loss (or vice versa).
 - A re-run produces different results than expected.
@@ -18,14 +18,13 @@ Systematic diagnosis of a training run: check whether the loss is dropping, the 
 
 ### 1. The fallback runtime log
 ```bash
-cat logs/<jobname>_<jobid>_runtime.log
+cat logs/<name>_<timestamp>.log
 ```
-This is the most reliable log — written by `slurm/_lib.sh` via `tee`. Even if SBATCH redirect failed, this exists. The diagnostic header at the top tells you: jobid, hostname, working dir, GPU acquired.
+This is the only log — every `run/*.sh` tees to it via `start_log` in `run/common.sh`, so it survives a dropped SSH session. The header at the top tells you: script name, hostname, working dir, date, and the GPU that was selected.
 
-### 2. The SBATCH stdout/stderr
+### 2. A backgrounded launcher's log
 ```bash
-tail -200 logs/<jobname>_<jobid>.out
-tail -50  logs/<jobname>_<jobid>.err
+tail -200 logs/kd_<teacher>_to_<student>_<timestamp>.out   # run/train_kd_parallel.sh
 ```
 
 ### 3. The training curves PNG
@@ -37,9 +36,10 @@ cat experiments/<run>/config.yaml
 ```
 Confirm the hyperparams that actually ran (Hydra resolves overrides at runtime).
 
-### 5. The Slurm postmortem
+### 5. Was it killed by the OS?
 ```bash
-sacct -j <jobid> --format=JobID,JobName,State,Elapsed,MaxRSS,ExitCode,WorkDir
+dmesg -T 2>/dev/null | tail -40    # look for "Out of memory: Killed process"
+nvidia-smi                          # is another process still holding the VRAM?
 ```
 
 ## Common failure modes
@@ -60,15 +60,13 @@ sacct -j <jobid> --format=JobID,JobName,State,Elapsed,MaxRSS,ExitCode,WorkDir
 | `omegaconf.errors.ConfigKeyError: Missing key data` from a standalone script | Plain `OmegaConf.load("configs/config.yaml")` doesn't compose Hydra's `defaults:` list | Use `src/utils/config.py::load_config` (auto-detects Hydra root configs) or switch the script to `@hydra.main` |
 | `import` errors at start (e.g. `cannot import name X from src.<pkg>`) | `__init__.py` re-exports a symbol whose name doesn't match `class X` / `def X` in the submodule | `grep -n "^class \|^def " src/<pkg>/<mod>.py` and align the `__init__.py` re-export |
 
-### Slurm / cluster
+### Server / environment
 
 | Symptom | Likely cause | Where to confirm / fix |
 |---|---|---|
-| Log shows endless `gpu_check.sh exited 10 — falling through to nvidia-smi` followed by requeue | You set `USE_CLUSTER_GPU_CHECK=1` and re-engaged the buggy helper (it does `scontrol requeue` internally) | Re-submit without that env var. The default path bypasses `gpu_check.sh` entirely — see CLAUDE.md "`/usr/local/bin/gpu_check.sh` is bypassed by default" |
-| `runtime.log` stops mid-`acquire_gpu` with no error | Job was SIGTERM'd by Slurm because something *outside* our script (almost always `gpu_check.sh`'s internal `scontrol requeue`) told Slurm to restart the allocation | Same fix — stop calling `gpu_check.sh`. Check whether `USE_CLUSTER_GPU_CHECK=1` is set |
-| `OSError: [Errno 28] No space left on device` during preprocessing | `/datastore/keg/hungdang` quota exceeded — typically the unzipped `train-image/` JPG folder duplicates what's already in `train-image.hdf5` | `df -h /datastore/keg/hungdang`; delete the redundant zip and the `train-image/` folder; HDF5 is the only file the preprocessor reads |
-| Runtime log empty AND SBATCH `.out` empty | `logs/` didn't exist at sbatch parse time, or job got OOM-killed before our `tee` opened | Always submit via `bash slurm/submit.sh ...` (does `mkdir -p logs` first). Check `sacct -j <jobid>` for OOMKilled state |
-| `import` errors at start | venv outdated or core dep missing | Re-run `bash slurm/setup_env.sh` on login node (or `rm -rf /datastore/keg/hungdang/venv` first if the install was interrupted) |
+| `OSError: [Errno 28] No space left on device` during preprocessing | the project volume is full — typically the unzipped `train-image/` JPG folder duplicates what's already in `train-image.hdf5` | `df -h .` (and `df -h /` — the server root has hit 100% before, hence the per-session `TMPDIR="$(pwd)/.tmp"`); delete the redundant zip and the `train-image/` folder; HDF5 is the only file the preprocessor reads |
+| Log file exists but is empty | The process died before `start_log`'s `tee` opened, or the shell aborted on an unbound variable under `set -u` | Re-run the script with `bash -x run/<script>.sh …` to see where it exits; check `dmesg -T | tail` for an OOM kill |
+| `import` errors at start | venv outdated or core dep missing | Re-run `bash run/setup_env.sh` (or delete `./.venv-linux` first if the install was interrupted) |
 | `UserWarning: The NVIDIA driver on your system is too old (found version 12080)` + falls back to CPU | torch wheel built against a newer CUDA than driver supports | `pip install --force-reinstall torch torchvision --index-url https://download.pytorch.org/whl/cu121` (cu121 works for driver 12.8) |
 
 ## Quick checks

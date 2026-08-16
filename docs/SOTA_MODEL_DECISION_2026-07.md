@@ -125,13 +125,13 @@ Ký hiệu ô = `folds_done/5`. Student: **MNV4**=mobilenetv4_conv_medium · **F
 
 | Thay đổi | Đụng architecture? | Việc cần |
 |---|---|---|
-| `repvit_m1_0` (student) | ❌ Không | ✅ **ĐÃ LÀM**: 1 dòng registry + config + test + docs. Slurm/run 0 đổi (env-var). |
+| `repvit_m1_0` (student) | ❌ Không | ✅ **ĐÃ LÀM**: 1 dòng registry + config + test + docs. `run/` 0 đổi (env-var). |
 | Loại `maxvit_base` khỏi run-plan | ❌ Không | Chỉ ngừng submit; ghi doc. |
 | Chạy RKD | ❌ Không | Đã wired opt-in; đổi `training=distillation_rkd`. |
 | `panderm` (teacher) | ⚠️ **CÓ** | Class registry mới + loader BEiT-ViT + weight GDrive (§5). Hạng mục duy nhất đụng thật. |
 
-Slurm/run ([slurm/11_train_teacher.slurm](../slurm/11_train_teacher.slurm),
-[slurm/12_train_student.slurm](../slurm/12_train_student.slurm), [run/](../run/)) truyền
+Runner ([run/train_teacher.sh](../run/train_teacher.sh),
+[run/train_student.sh](../run/train_student.sh), [run/](../run/)) truyền
 `TEACHER`/`STUDENT`/`TRAINING` qua env var → **0 thay đổi** cho mọi model timm mới.
 
 ---
@@ -166,7 +166,7 @@ khi đầu tư train PanDerm.
 ## 9. Lệnh chạy (Task C — chạy trên server/cluster, KHÔNG trên Mac)
 
 > Quy ước run-dir tự đặt tên `kd_<teacher>_to_<student>[__suffix]/fold_*`. Dùng `run_suffix=rkd` để tách RKD
-> khỏi logit-KD. Trên cluster đổi `bash run/…` → `bash slurm/submit.sh slurm/12_train_student.slurm …`.
+> khỏi logit-KD. Trên cluster đổi `bash run/…` → `bash run/train_student.sh …`.
 
 ```bash
 # --- Hoàn tất logit-KD còn thiếu ---

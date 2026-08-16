@@ -24,7 +24,7 @@ number all headline-metric choices (AUPRC over AUC-ROC) are justified against.
 `bash scripts/setup_pad_ufes_20.sh <bundle.zip>`, which extracts the nested
 `imgs_part_*.zip` and writes `data/raw/pad_ufes_20/{metadata.csv, images/}`.
 PAD is **optional**: `prepare_data.py` concatenates it only if that dir exists,
-else it runs ISIC-only. See [SLURM.md §3.1](SLURM.md) for the cluster steps.
+else it runs ISIC-only. See [run/README.md](../run/README.md) for the cluster steps.
 
 ---
 
@@ -167,7 +167,7 @@ orthogonal**, and as specified they risk over-correcting.
 `undersampling_ratio × focal_α` (e.g. ratios {1:3, 1:5, raw} × α {0.25, 0.5})
 on a fixed fold and report a small table. This both fixes the over-correction
 risk and turns an assumption into a result. **Now wired** as
-`slurm/13_ablation_sampler.slurm` (`SAMP=off|3|5|10`, toggles
+`run/ablation_sampler.sh` (`SAMP=off|3|5|10`, toggles
 `data.use_weighted_sampler`/`data.undersample_ratio`) — see §7.
 
 ---
@@ -242,7 +242,7 @@ To align the proposal §2.2/§3.5 with the corrected spec, the proposal should:
 - [x] `transforms.py`: widen rotation to full 0–360° (`rotate_limit=180`); add low-p CLAHE (`p=0.2`, before Normalize); aug kept class-symmetric. *(done 2026-06-04)*
 - [x] `preprocessing.py`: min-size filter (`min_size=32`, fresh-decode only); exact-duplicate dedup (md5 of resized pixels, first kept); widened `except` to include `Image.DecompressionBombError`; PAD `patient_id` namespaced (`pad_…`) against cross-dataset GroupKFold collision. *(done 2026-06-04)*
 - [x] Loss/config: `focal_alpha` (`training.loss.alpha`) and `undersample_ratio` (`data.undersample_ratio`) were **already** config-driven — sweepable via Hydra overrides, no change needed.
-- [x] Add the `ratio × α` ablation to the experiment plan — `slurm/13_ablation_sampler.slurm` (§7). *(wired 2026-06-21)*
+- [x] Add the `ratio × α` ablation to the experiment plan — `run/ablation_sampler.sh` (§7). *(wired 2026-06-21)*
 - [x] `transforms.py`: make augmentation **config-driven** (read `configs/augmentation/{light,heavy}.yaml`); `light` == prior hard-coded behavior, `heavy` == stronger safe variant; MixUp/CutMix/CutOut enforced-forbidden via `raise`. *(done 2026-06-21, §4.1)*
 - [x] Models: add `drop_path_rate` (stochastic depth) knob, default 0.0/off, via `create_timm_backbone`. *(done 2026-06-21, §4.2)*
 - [x] fix the `test_split.csv` independence issue — independent patient-disjoint holdout carved before CV (`test_holdout_splits`, default 6). *(done 2026-06-06)*
@@ -269,8 +269,8 @@ single-variable, 5-fold, and land in isolated run-dirs via `run_suffix`.
 
 | Ablation | Script | Varies | Held fixed | Read the verdict from |
 |---|---|---|---|---|
-| **Sampler** | `13_ablation_sampler.slurm` | `data.use_weighted_sampler` / `data.undersample_ratio` (`SAMP=off\|3\|5\|10`) | KD, **teacher reused**, seed, folds, loss | pAUC / sens / AUPRC vs the main ratio-5 run |
-| **PAD mixing** | `14_ablation_pad.slurm` | `data.train_sources` (`ARM=isic_only\|isic_pad`) — filters **TRAIN+VAL only** | **baseline (no KD)**, identical combined test | per-domain rows (PAD-source) of the combined test |
+| **Sampler** | `run/ablation_sampler.sh` | `data.use_weighted_sampler` / `data.undersample_ratio` (`SAMP=off\|3\|5\|10`) | KD, **teacher reused**, seed, folds, loss | pAUC / sens / AUPRC vs the main ratio-5 run |
+| **PAD mixing** | `run/ablation_pad.sh` | `data.train_sources` (`ARM=isic_only\|isic_pad`) — filters **TRAIN+VAL only** | **baseline (no KD)**, identical combined test | per-domain rows (PAD-source) of the combined test |
 
 Two design rules that make the comparisons honest:
 - **PAD ablation runs baseline, not KD.** A KD teacher trained on ISIC+PAD would

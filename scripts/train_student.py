@@ -44,7 +44,7 @@ def main(cfg: DictConfig) -> None:
     student_name = cfg.student.name
     # Optional tag to fork an ablation into its own run-dir subtree (e.g.
     # "__samp_off", "__ratio3") so it never overwrites the main 30-run results.
-    # Set via Hydra CLI: run_suffix=__samp_off (forwarded by the ablation slurm).
+    # Set via Hydra CLI: run_suffix=__samp_off (forwarded by run/ablation_sampler.sh / run/ablation_pad.sh).
     run_suffix = str(cfg.get("run_suffix", "") or "")
 
     # Hydra emits cfg in struct mode; merging in a new top-level "model" key

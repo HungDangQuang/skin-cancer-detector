@@ -22,7 +22,7 @@ pretrained: false
 # Abs path to the downloaded PanDerm checkpoint ON THE SERVER, or null to skip the
 # foundation load. null is correct ONLY for the KD/eval build (best_model.pth is
 # loaded over the model afterwards). For the teacher-TRAINING run this MUST be set —
-# pass it as a Hydra override via the run/slurm EXTRA var (a bare dotted positional
+# pass it as a Hydra override via the run/*.sh EXTRA var (a bare dotted positional
 # would break the KEY=VALUE arg parser):
 #   bash run/train_teacher.sh TEACHER=panderm \
 #        EXTRA="teacher.weights_path=/abs/path/panderm_bb_data6_checkpoint-499.pth"

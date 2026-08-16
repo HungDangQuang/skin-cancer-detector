@@ -8,7 +8,7 @@ description: Review training-step code (src/training/, scripts/train_teacher.py,
 Reviews the **training layer** — `Trainer`, `KDTrainer`, losses, the model
 head/forward contract, and the two training scripts — against the invariants the
 rest of the repo (and the 30-run experiment design) depends on. Catches wiring
-bugs that crash a Slurm job halfway through or, worse, train silently on the
+bugs that crash a training job halfway through or, worse, train silently on the
 wrong objective.
 
 Scope: `src/training/` (`trainer.py`, `kd_trainer.py`, `losses.py`,
@@ -112,7 +112,7 @@ Scope: `src/training/` (`trainer.py`, `kd_trainer.py`, `losses.py`,
 ### E. Registry / import graph (cluster ImportError class)
 - [ ] New model class added to `MODEL_REGISTRY` AND re-exported names in
   `src/<pkg>/__init__.py` match the real `class`/`def` (a mismatch breaks the
-  whole import graph from a Slurm job).
+  whole import graph at job start).
 - [ ] Head input dim uses `infer_backbone_out_dim(backbone)`, NOT
   `backbone.num_features` (MobileNetV3 reports 960 but forwards 1280).
 - [ ] `np.trapezoid` (not removed `np.trapz`) in any new metric/integration code.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ============================================================================
 # Train several KD student runs CONCURRENTLY on ONE GPU, packing as many as the
-# VRAM allows WITHOUT OOM. Non-Slurm; for a single dedicated box (e.g. 24GB 3090).
+# VRAM allows WITHOUT OOM. For a single dedicated box (e.g. 24GB 3090).
 #
 # One unit of work = one `run/train_student.sh STUDENT=<s> TEACHER=<t>` call,
 # which trains all 5 folds sequentially in one process (~6-7 GB with a

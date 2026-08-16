@@ -28,29 +28,29 @@ The teacher must be trained first. Check:
 ```bash
 ls experiments/runs/teacher/efficientnetv2_m/checkpoints/best_model.pth
 ```
-If missing, train it first via `submit-slurm` skill (`slurm/11_train_teacher.slurm`), passing `TEACHER=<name>`.
+If missing, train it first via `run/README.md` script index (`run/train_teacher.sh`), passing `TEACHER=<name>`.
 
 ### Step 2 — Submit the KD run
 
 ```bash
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=<arch> TEACHER=<teacher> TRAINING=distillation
+bash run/train_student.sh STUDENT=<arch> TEACHER=<teacher> TRAINING=distillation
 ```
 Output dir: `experiments/runs/kd_<teacher>_to_<arch>/` (default teacher `efficientnetv2_m`)
 
 ### Step 3 — Submit the baseline run
 
 ```bash
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=<arch> TRAINING=baseline
+bash run/train_student.sh STUDENT=<arch> TRAINING=baseline
 ```
 Output dir: `experiments/runs/baseline_<arch>/` (per `train_student.py` naming — verify with `ls experiments/runs/`)
 
 ### Step 4 — Evaluate both checkpoints on the test split
 
 ```bash
-bash slurm/submit.sh slurm/20_evaluate.slurm \
+bash run/evaluate.sh \
     MODEL=<arch> CKPT=<kd_checkpoint_path> OUT=reports/results/<arch>_kd.json
 
-bash slurm/submit.sh slurm/20_evaluate.slurm \
+bash run/evaluate.sh \
     MODEL=<arch> CKPT=<baseline_checkpoint_path> OUT=reports/results/<arch>_baseline.json
 ```
 

@@ -1,14 +1,14 @@
 ---
 name: analyze-evaluation
-description: Analyze evaluation JSON files produced by `slurm/20_evaluate.slurm` (Section 5 of slurm/README.md) and rendered to a verdict. Two modes — single-result verdict, multi-result comparison (KD vs baseline / cross-student / teacher vs student). Use when the user shares a `reports/results/*.json` path, says "is this checkpoint good", "did KD help", "compare students", or downloads eval JSONs from the cluster. NOT for triaging a failed training run (use `diagnose-training`) and NOT for judging a still-running training log (use `assess-training`).
+description: Analyze evaluation JSON files produced by `run/evaluate.sh` (Section 5 of run/README.md) and rendered to a verdict. Two modes — single-result verdict, multi-result comparison (KD vs baseline / cross-student / teacher vs student). Use when the user shares a `reports/results/*.json` path, says "is this checkpoint good", "did KD help", "compare students", or downloads eval JSONs from the cluster. NOT for triaging a failed training run (use `diagnose-training`) and NOT for judging a still-running training log (use `assess-training`).
 ---
 
 # analyze-evaluation
 
-Reads the JSON files that `slurm/20_evaluate.slurm` writes to `reports/results/` and renders a verdict. The user's workflow is:
+Reads the JSON files that `run/evaluate.sh` writes to `reports/results/` and renders a verdict. The user's workflow is:
 
 1. Train a checkpoint (auto-eval already wrote `experiments/runs/<run>/fold_N/test_metrics.json` on the cluster).
-2. Optionally re-evaluate explicitly via `bash slurm/submit.sh slurm/20_evaluate.slurm MODEL=... CKPT=... OUT=reports/results/<name>.json`.
+2. Optionally re-evaluate explicitly via `bash run/evaluate.sh MODEL=... CKPT=... OUT=reports/results/<name>.json`.
 3. `rsync` the JSON(s) back to the laptop.
 4. This skill reads them and produces the verdict.
 
@@ -16,12 +16,12 @@ Reads the JSON files that `slurm/20_evaluate.slurm` writes to `reports/results/`
 
 - User shares a path under `reports/results/` (or `experiments/runs/.../test_metrics.json`).
 - User asks "is this checkpoint good", "did KD help", "compare students", "which model wins".
-- User just finished a `20_evaluate.slurm` job and downloaded the JSON.
+- User just finished a `run/evaluate.sh` job and downloaded the JSON.
 
 ## When NOT to use
 
 - Training crashed / NaN'd / never started learning → `diagnose-training`.
-- Training is still running, or finished but the user only has the SBATCH `.out` log (no JSON yet) → `assess-training`.
+- Training is still running, or finished but the user only has the `logs/*.log` transcript (no JSON yet) → `assess-training`.
 - User wants to *set up* the KD-vs-baseline comparison (submit jobs, design the experiment) → `kd-experiment`. This skill reads the result *afterwards*.
 - The JSON isn't local yet — print the rsync command (see §1) and stop. Do not invent numbers.
 
@@ -36,7 +36,7 @@ reports/results/
   kd_mobilevit.json
   baseline_b0.json          ← (once baseline arm is fixed — see Caveats)
 ```
-Each JSON is a flat dict from [src/evaluation/evaluator.py:65](../../../src/evaluation/evaluator.py#L65) with keys: `pauc_at_tpr80`, `auc_roc`, `threshold`, `sensitivity`, `specificity`, `precision`, `recall`, `f1_score`, `accuracy`, `tp`, `fp`, `tn`, `fn`. **No fold scoping** — `20_evaluate.slurm` always evaluates a single checkpoint (fold 0 by default; see [scripts/evaluate.py:32](../../../scripts/evaluate.py#L32)).
+Each JSON is a flat dict from [src/evaluation/evaluator.py:65](../../../src/evaluation/evaluator.py#L65) with keys: `pauc_at_tpr80`, `auc_roc`, `threshold`, `sensitivity`, `specificity`, `precision`, `recall`, `f1_score`, `accuracy`, `tp`, `fp`, `tn`, `fn`. **No fold scoping** — `run/evaluate.sh` always evaluates a single checkpoint (fold 0 by default; see [scripts/evaluate.py:32](../../../scripts/evaluate.py#L32)).
 
 **Fallback path — auto-eval at the end of training:**
 ```
@@ -50,13 +50,13 @@ Same schema, fold-scoped. If the user happens to have these (e.g. they rsync'd t
 If the path the user names doesn't exist locally, stop and print:
 ```bash
 # From the laptop. Pull just the eval JSON(s) — small, no checkpoints, no logs:
-rsync -avh keg@slurm.uit.edu.vn:/datastore/keg/hungdang/skin-cancer-detector/reports/results/ \
+rsync -avh islabworker2@islab-server2:/mnt/sharednas/binhnt/hungdang/skin-cancer-detector/reports/results/ \
     reports/results/
 
 # Or for auto-eval/aggregated artifacts under experiments/:
 rsync -av --include='*/' --include='test_metrics.json' --include='aggregated.*' \
     --include='config.yaml' --exclude='*' \
-    keg@slurm.uit.edu.vn:/datastore/keg/hungdang/skin-cancer-detector/experiments/runs/<run_name>/ \
+    islabworker2@islab-server2:/mnt/sharednas/binhnt/hungdang/skin-cancer-detector/experiments/runs/<run_name>/ \
     experiments/runs/<run_name>/
 ```
 
@@ -73,7 +73,7 @@ rsync -av --include='*/' --include='test_metrics.json' --include='aggregated.*' 
 | One JSON path | **Mode A — single-result verdict** |
 | Two or more JSON paths (or a directory of JSONs) | **Mode B — multi-result comparison** |
 | A `<run_dir>` containing `aggregated.json` | **Mode A** but report mean ± std and call it the thesis-grade tier |
-| A `<run_dir>` with `fold_*/test_metrics.json` but no `aggregated.json` | Recommend `bash slurm/submit.sh slurm/22_aggregate_folds.slurm RUN_DIR=<run_dir>` first, OR aggregate inline (read all folds, compute mean/std) and label the report "ad-hoc aggregation" |
+| A `<run_dir>` with `fold_*/test_metrics.json` but no `aggregated.json` | Recommend `bash run/aggregate.sh RUN_DIR=<run_dir>` first, OR aggregate inline (read all folds, compute mean/std) and label the report "ad-hoc aggregation" |
 
 For Mode B, ask the user to **label** each file if the names don't clearly say what they are (`teacher.json`, `kd_b0.json`, `baseline_b0.json` are self-evident; `metrics_final.json` is not). The labels drive the comparison rows in the report.
 
@@ -118,7 +118,7 @@ Aggregate verdict:
 - **Moderate** — usable, but identify the weakest axis and recommend the lever (see §3a).
 - **Poor** — re-check `experiments/<run>/config.yaml` first (the run's authoritative config), then consult `diagnose-training` if the training itself looks wrong.
 
-**A single result is high-variance.** A different seed/fold can move sens by 0.05+. Close every Mode A verdict with: "this is one checkpoint; run the 5-fold sweep + `22_aggregate_folds.slurm` before quoting in the thesis."
+**A single result is high-variance.** A different seed/fold can move sens by 0.05+. Close every Mode A verdict with: "this is one checkpoint; run the 5-fold sweep + `run/aggregate.sh` before quoting in the thesis."
 
 #### 3a. Suggesting levers (Mode A)
 
@@ -139,7 +139,7 @@ Inputs: 2+ JSONs the user wants compared. Cover three sub-cases:
 | **Teacher vs student** | `teacher.json` + `kd_<student>.json` |
 
 **Gating check first.**
-- If a baseline file is requested but doesn't exist, don't invent numbers — tell the user to produce it: `bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=... TRAINING=baseline` (the baseline arm works via the `use_kd` flag, fixed 2026-06-04; run-dir `baseline_<student>/`). See [project_baseline_kd_coupling.md](../../../memory/project_baseline_kd_coupling.md).
+- If a baseline file is requested but doesn't exist, don't invent numbers — tell the user to produce it: `bash run/train_student.sh STUDENT=... TRAINING=baseline` (the baseline arm works via the `use_kd` flag, fixed 2026-06-04; run-dir `baseline_<student>/`). See [project_baseline_kd_coupling.md](../../../memory/project_baseline_kd_coupling.md).
 - If the inputs are clearly different splits / data / augmentation (read each run's saved `config.yaml` if present), flag it and refuse to call a winner — the comparison is confounded.
 
 **Build a unified table.** Always include every numeric field in the source JSON — never drop a column because the rubric doesn't use it.
@@ -234,7 +234,7 @@ Class-prevalence floor:
 3. <optional third>
 
 Next steps:
-- <"Run 5-fold sweep" / "Aggregate the existing folds via 22_aggregate_folds.slurm" / "Patch evaluator to save predictions" / "Fix baseline arm before re-attempting comparison">
+- <"Run 5-fold sweep" / "Aggregate the existing folds via run/aggregate.sh" / "Patch evaluator to save predictions" / "Fix baseline arm before re-attempting comparison">
 
 ## Caveats applied
 - <pauc bug? single-checkpoint variance? missing baseline? confounded augmentation? unknown class prevalence?>
@@ -245,7 +245,7 @@ Next steps:
 - **`pauc_at_tpr80` is the real ISIC 2024 metric (fixed 2026-06-04)**, range ≈ [0.02, 0.20] — quotable as an absolute number. Only JSONs produced *before* 2026-06-04 are on the old stretched [0.9, 5.0] scale. See [project_pauc_metric_bug.md](../../../memory/project_pauc_metric_bug.md).
 - **Predictions ARE saved (since 2026-06-21).** `Evaluator.save_predictions` writes `predictions.csv` (`y_true,y_prob,y_pred[,source]`) next to each `test_metrics.json` — recompute AUPRC / PR-curve / per-domain / bootstrap CIs from it. The scalar `test_metrics.json` already carries `auprc`, `prevalence`, `sens_at_90spec`, `sens_at_95spec`.
 - **Baseline (no-KD) runs work (fixed 2026-06-04).** Mode B's KD-vs-baseline cell has real baseline numbers via the `use_kd` flag (`training=baseline` → plain `Trainer`, run-dir `baseline_<student>/`). See [project_baseline_kd_coupling.md](../../../memory/project_baseline_kd_coupling.md).
-- **`20_evaluate.slurm` always evaluates fold 0.** It calls `scripts/evaluate.py` without forwarding `--fold`, so the default `--fold 0` applies regardless of what was trained. For a true 5-fold report, either rely on the training-time auto-eval JSONs at `experiments/runs/<run>/fold_*/test_metrics.json`, or extend `20_evaluate.slurm` to accept a `FOLD=` env var. Flag this when the user thinks they're getting a different fold.
+- **`run/evaluate.sh` always evaluates fold 0.** It calls `scripts/evaluate.py` without forwarding `--fold`, so the default `--fold 0` applies regardless of what was trained. For a true 5-fold report, either rely on the training-time auto-eval JSONs at `experiments/runs/<run>/fold_*/test_metrics.json`, or extend `run/evaluate.sh` to accept a `FOLD=` env var. Flag this when the user thinks they're getting a different fold.
 - **Single-checkpoint variance is large.** Same architecture × different seed can move sens by 0.05+. Always recommend the 5-fold sweep before quoting numbers in the thesis.
 - **`accuracy` is misleading at ISIC class imbalance.** Majority-class baseline ≈ 0.995. Never rank or verdict on raw accuracy — always anchor against the floor.
 - **Don't quote `val_pauc`** — that's the training-log metric, biased by early stopping. This skill reads the *test* JSON. If only val numbers are available, use `assess-training` instead.

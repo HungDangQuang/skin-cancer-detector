@@ -12,7 +12,7 @@ verbatim under each skill's `reference/` and the SKILL.md routes to the right on
 
 | Skill | Use it when you want to… | Routes to (`reference/`) |
 |---|---|---|
-| [code-change](code-change/SKILL.md) | **add / remove / edit code** and carry it through review → validate → run on the cluster | review-preprocessing · review-training · review-slurm · add-model · validate-pipeline · submit-slurm · poc-smoke-test · kd-experiment · dev-cycle |
+| [code-change](code-change/SKILL.md) | **add / remove / edit code** and carry it through review → validate → run on the GPU server | review-preprocessing · review-training · review-runner · add-model · validate-pipeline · poc-smoke-test · kd-experiment · dev-cycle |
 | [eval-results](eval-results/SKILL.md) | **read & judge results**, conclude whether the solution is effective | analyze-evaluation · compare-kd · assess-training · diagnose-training |
 | [update-report](update-report/SKILL.md) | **write / refresh the report `.md`** (reports/, proposal, daily log) once results exist | — (Google Drive deferred) |
 | [draw-diagram](draw-diagram/SKILL.md) | **draw a pipeline / architecture figure** in the house soft-card SVG style | — (was `diagram-style`) |
@@ -22,8 +22,8 @@ verbatim under each skill's `reference/` and the SKILL.md routes to the right on
 ## Routing cheatsheet (pick by intent)
 
 - **"I need to change code / run it"** → `code-change`. It reads the path you edited and opens
-  the matching `reference/` checklist (preprocessing / training / slurm), runs the
-  validate-pipeline static checks, then submits via `slurm/submit.sh`. The PostToolUse hook
+  the matching `reference/` checklist (preprocessing / training / runner), runs the
+  validate-pipeline static checks, then launches via `bash run/<script>.sh`. The PostToolUse hook
   reminds you automatically after each edit.
 - **"Is this good? Did KD help? Why did it fail?"** → `eval-results`. Pick the rubric by the
   artifact you have: eval JSON → analyze-evaluation; all runs → compare-kd; good log →

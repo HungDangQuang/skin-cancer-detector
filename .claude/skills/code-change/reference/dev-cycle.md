@@ -1,6 +1,6 @@
 ---
 name: dev-cycle
-description: Run the project's end-to-end change→cluster→thesis cycle as one process. (1) Review the edits against this project's rules, (2) commit + push them to the current feature branch WITHOUT asking approval, (3) emit the slurm submit command and log the job to tasks/daily/<date>.md for result tracking, (4) when results return, report objective metrics compared against SOTA/papers, (5) update docs/DE_CUONG.md (the proposal). Use when the user says "run the full cycle", "do the whole process end to end", "ship this change", or after a code change they want carried through to submission, evaluation, and the proposal. NOT a substitute for the area review skills — it CALLS them.
+description: Run the project's end-to-end change→server→thesis cycle as one process. (1) Review the edits against this project's rules, (2) commit + push them to the current feature branch WITHOUT asking approval, (3) emit the run/ launch command and log the job to tasks/daily/<date>.md for result tracking, (4) when results return, report objective metrics compared against SOTA/papers, (5) update docs/DE_CUONG.md (the proposal). Use when the user says "run the full cycle", "do the whole process end to end", "ship this change", or after a code change they want carried through to submission, evaluation, and the proposal. NOT a substitute for the area review skills — it CALLS them.
 ---
 
 # dev-cycle
@@ -16,11 +16,11 @@ at that phase and tell the user exactly what you're waiting for.
 - SOTA comparison uses **`docs/SOTA_BENCHMARKS.md` + WebSearch** to fill gaps.
 
 **Always-on guardrails (never violated, even here):**
-- Mac-only: never run training/eval/pip locally — that's the cluster's job (the
+- Mac-only: never run training/eval/pip locally — that's the GPU server's job (the
   `local-python-guard` hook blocks it anyway).
 - No hallucination: cite file paths / source URLs for every number; say "unknown" or
   "not yet computed" instead of guessing.
-- Shared-cluster rules are absolute (the slurm guards + CLAUDE.md CRITICAL section).
+- Project-scoped server rules are absolute (no sudo/system-python, deps only in ./.venv-linux).
 
 ---
 
@@ -30,11 +30,11 @@ at that phase and tell the user exactly what you're waiting for.
 2. Run the **area review skill(s)** routed by path (same map the PostToolUse hook uses):
    - `src/data/**`, `scripts/prepare_data.py` → `review-preprocessing`
    - `src/training/**`, `src/models/**`, `scripts/train_*.py` → `review-training`
-   - `slurm/**`, `slurm/README.md`, `docs/SLURM.md` → `review-slurm`
-3. Run **`validate-pipeline`** (static checks: imports, Hydra compose, slurm lint §3a–§3h).
-4. Cross-check the principles the user cares about: CLAUDE.md CRITICAL slurm section,
-   `docs/GOTCHAS.md`, and the feedback rules (no local python, no kill/preempt,
-   `--gres=mps`, `/datastore/keg/...`, struct mode, augmentation-is-config-driven, …).
+   - `run/**`, `run/README.md` → `review-runner`
+3. Run **`validate-pipeline`** (static checks: imports, Hydra compose, runner lint §3a–§3h).
+4. Cross-check the principles the user cares about: the CLAUDE.md server rules,
+   `docs/GOTCHAS.md`, and the feedback rules (no local python, project-scoped only,
+   run-dir isolation, struct mode, augmentation-is-config-driven, …).
 5. **Gate:** if anything violates a rule or a review finds a blocker → STOP, fix it,
    re-review. Do **not** proceed to Phase 2 until review + validate-pipeline are clean.
    Report the review outcome plainly (what passed, what was fixed).
@@ -47,12 +47,12 @@ at that phase and tell the user exactly what you're waiting for.
 3. `git push` to `origin/<current-branch>`. No PR (user's choice). Never `--force`.
 4. Report the commit hash + branch + that it's pushed.
 
-## Phase 3 — Slurm command + job tracking
+## Phase 3 — Launch command + job tracking
 
-You cannot run cluster jobs — emit the command and track it.
+You cannot run server jobs from the Mac — emit the command and track it.
 
-1. Give the exact `bash slurm/submit.sh slurm/<script>.slurm VAR=value ...` command(s)
-   for this change (pick the right script via the `submit-slurm` skill's table). Quote
+1. Give the exact `bash run/<script>.sh VAR=value ...` command(s)
+   for this change (pick the right script via the `run/README.md` script index). Quote
    `EXTRA="..."` as one arg when passing Hydra overrides.
 2. **Log it to the daily ledger** `tasks/daily/<YYYY-MM-DD>.md` (create from
    `tasks/daily/_TEMPLATE.md` if today's file doesn't exist). Add a row under

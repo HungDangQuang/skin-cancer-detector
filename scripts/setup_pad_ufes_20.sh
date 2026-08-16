@@ -27,7 +27,7 @@
 #   bash scripts/setup_pad_ufes_20.sh path/to/extracted_dir           # already unzipped
 #
 # When it prints OK, run the preprocessing job:
-#   bash slurm/submit.sh slurm/10_prepare_data.slurm
+#   bash run/prepare_data.sh
 # ============================================================================
 set -euo pipefail
 
@@ -104,4 +104,4 @@ if [ "${RM_ZIP}" = "--rm-zip" ] && [ -f "${SRC}" ]; then
     echo "[stage] removed source zip ${SRC}"
 fi
 
-echo "[stage] OK. Next: bash slurm/submit.sh slurm/10_prepare_data.slurm"
+echo "[stage] OK. Next: bash run/prepare_data.sh"
