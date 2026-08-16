@@ -13,7 +13,12 @@ the same one you edit locally.
 | Logs | `logs/<name>_<timestamp>.log` (every script tees, survives SSH drops) |
 
 All scripts source `run/common.sh`, which provides `set -euo pipefail`, repo-root
-resolution, `activate_venv`, `select_gpu` and `start_log`.
+resolution, `activate_venv`, `select_gpu` and `start_log`. Three exceptions, all
+deliberate: `setup_env.sh` / `setup_export_env.sh` / `setup_new_server.sh` must
+run *before* a venv exists, `train_kd_parallel.sh` drops `-e` so one failed
+student can't abort the batch, and the read-only monitors `progress.sh` /
+`progress_all.sh` are standalone so they can be piped into a server over
+`ssh 'bash -s'` (see §7).
 
 > This is a **single-tenant** box: one training process at a time per GPU unless
 > you pin different `GPU=` ids. Keep everything inside the project folder — no
@@ -32,6 +37,8 @@ resolution, `activate_venv`, `select_gpu` and `start_log`.
 | `train_teacher.sh` | One teacher, all 5 folds sequentially |
 | `train_student.sh` | One student (KD or baseline), all 5 folds |
 | `train_kd_parallel.sh` | VRAM-gated parallel KD launcher (several students at once) |
+| `progress.sh` | **Read-only** status of the training jobs on the current box (fold, %, ETA, RAM/VRAM) |
+| `progress_all.sh` | Same report for **every** server at once, run from the Mac |
 | `ablation_sampler.sh` | Data-strategy ablation A — undersampling ratio |
 | `ablation_pad.sh` | Data-strategy ablation B — PAD mixing (ISIC-only vs ISIC+PAD) |
 | `aggregate.sh` | fold_*/test_metrics.json → mean ± std (`aggregated.{json,md}`) |
@@ -162,6 +169,56 @@ bash run/export_executorch.sh MODEL=… CKPT=…            # → exports/execut
 > ⚠ The CPU latency here is a **proxy, not a phone number**. Only params, FLOPs
 > and file size transfer across devices — the latency *ranking* can flip on a
 > real phone, especially for the transformer students. See `docs/MOBILE.md`.
+
+## 7. Monitor running jobs (`progress.sh` / `progress_all.sh`)
+
+There is no scheduler here — a run is just a process — so this is how you ask
+"where is it up to?" without attaching to `tmux` or grepping a 5 MB log.
+
+In Claude Code the shortcut is the project slash command **`/progress`**
+(`.claude/commands/progress.md`) — it runs `progress_all.sh` and summarises the
+result; `/progress vast` limits it to one host.
+
+```bash
+# On a server:
+bash run/progress.sh                  # one-shot report
+bash run/progress.sh WATCH=15         # live, refresh every 15s (Ctrl-C to stop)
+
+# From the Mac, for every training box at once:
+bash run/progress_all.sh
+bash run/progress_all.sh WATCH=30
+bash run/progress_all.sh HOSTS="vast"                 # just one
+bash run/progress_all.sh HOSTS="vast vastnew mybox"   # add a box (ssh alias)
+bash run/progress_all.sh HOSTS="mybox:/home/me/skin-cancer-detector"  # non-default repo path
+```
+
+Per running `scripts/train_{student,teacher}.py` process it prints: teacher /
+student / training mode (KD, KD+RKD, baseline, privileged), the current fold and
+its position in that launch's `FOLDS` list, `epoch N/M` with a **fold %** and a
+**job %** bar, an ETA, RAM (trainer + dataloader workers) and VRAM, the last
+epoch's `train_loss` / `val_loss` / `val_pauc`, and the live tqdm phase. It ends
+with a run-dir table of how many folds already produced `test_metrics.json`.
+
+Defaults: `HOSTS="vast vastnew"`, `REMOTE_DIR=/workspace/skin-cancer-detector`
+(the vast.ai layout), `STALE_MIN=10` (log untouched that long ⇒ `STALLED`),
+`RUNS=0` to drop the run-dir table.
+
+Notes / limits:
+- **Read-only by design.** It never writes, launches or kills anything; it only
+  reads `ps`, `nvidia-smi`, `logs/` and `experiments/runs/`. Killing a job is
+  still a manual, deliberate `kill <pid>` — and only for PIDs *you* started.
+- `progress_all.sh` pipes `progress.sh` into each host over stdin, so the
+  servers never need a `git pull` to get the newest monitor. That is why these
+  two scripts don't source `common.sh` (piped over ssh there is no script path
+  to resolve, and a `WATCH` loop must not write a log file per refresh).
+- The **ETA assumes all `epochs`** actually run; early stopping (patience 10)
+  usually ends a fold sooner, so read it as an upper bound.
+- Fold % is time-based inside the current epoch (train and val phases differ
+  wildly in length — val is ~10× the train phase here, so a batch-count average
+  would lie).
+- On a container whose PID namespace differs from what `nvidia-smi` reports
+  (one of the two vast boxes), per-process VRAM shows `n/a*` and the script says
+  so — use the GPU total in the header.
 
 ## Long runs survive SSH drops
 

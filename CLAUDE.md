@@ -88,6 +88,13 @@ bash run/train_teacher.sh TEACHER=efficientnetv2_m                # all 5 folds,
 bash run/train_student.sh STUDENT=mobilenetv4_conv_medium GPU=1
 ```
 
+To see where a running job is up to (fold, epoch, % done, ETA, RAM/VRAM) without attaching to `tmux`:
+```bash
+bash run/progress.sh          # on a server (WATCH=15 for a live view)
+bash run/progress_all.sh      # from the Mac — every training box at once (HOSTS="vast vastnew")
+```
+Both are read-only; `progress_all.sh` pipes `progress.sh` into each host over `ssh 'bash -s'`, so the servers need no `git pull`.
+
 Every `run/*.sh` sources `run/common.sh`, which provides `set -euo pipefail`, repo-root resolution, `activate_venv` (`./.venv-linux`), `select_gpu` (`GPU=auto|<id>|cpu` → `CUDA_VISIBLE_DEVICES`; `auto` picks the freest card) and `start_log` (tees everything to `logs/<name>_<timestamp>.log`, so a dropped SSH session doesn't lose the run). Launch long runs under `tmux`/`nohup`. See [run/README.md](run/README.md) for the full script index and guide.
 
 ## Architecture
