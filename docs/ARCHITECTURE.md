@@ -72,7 +72,7 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | `src/evaluation/` | `metrics.py` | `compute_metrics()` → `pauc_at_tpr80`, `auc_roc`, `auprc`(+`prevalence`), sensitivity/specificity, `sens_at_{90,95}spec`, TP/FP/TN/FN, `brier`/`ece` (calibration RAW) |
 | | `evaluator.py` | `Evaluator.evaluate()`, `save_predictions()` (ghi `predictions.csv`; train scripts cũng ghi `val_predictions.csv` = fit-set cho calibration) |
 | | `confusion_matrix.py` / `grad_cam.py` | trực quan hoá |
-| `src/inference/` | `predictor.py` / `ensemble.py` | inference đơn / ensemble |
+| `src/inference/` | `predictor.py` / `ensemble.py` | inference đơn / ensemble. **(PLANNED)** `ood_gate.py` — cổng Mahalanobis từ chối ảnh không hợp lệ, post-hoc/opt-in, xem [docs/ood_gate_plan.md](ood_gate_plan.md) |
 | `src/utils/` | `config.py` | `load_config()` — **compose Hydra `defaults:`** (script standalone cần cái này) |
 | | `checkpoint.py` / `seed.py` / `logger.py` / `visualization.py` | tiện ích |
 
@@ -93,7 +93,7 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | | `efficientformerv2_s2` | `TimmBackboneModel` |
 | | `repvit_m1_0` (RepViT-M1.0, reparam-CNN) | `TimmBackboneModel` |
 
-**Thêm arch mới:** đăng ký key → `TimmBackboneModel` (hoặc class mới nếu cần logic riêng) + tạo config `configs/{student,teacher}/<name>.yaml`. Dùng skill `add-model`.
+**Thêm arch mới:** đăng ký key → `TimmBackboneModel` (hoặc class mới nếu cần logic riêng) + tạo config `configs/{student,teacher}/<name>.yaml`. Dùng skill `code-change` (reference/add-model.md).
 
 ---
 
@@ -142,7 +142,7 @@ Calibration (offline, tùy chọn): `scripts/compute_calibration.py --run-dir <r
 
 ## 6. Đánh giá & benchmark
 
-- **Accuracy** (device-independent): `test_metrics.json` → aggregate → so KD vs baseline (skill `compare-kd`, `scripts/compare_kd_results.py`).
+- **Accuracy** (device-independent): `test_metrics.json` → aggregate → so KD vs baseline (skill `eval-results` → reference/compare-kd.md, `scripts/compare_kd_results.py`).
 - **Hiệu năng tĩnh** (so chéo thiết bị được): params / FLOPs / model size — `scripts/benchmark.py`.
 - **Latency** (device-specific): cluster CPU latency chỉ là **proxy**, KHÔNG phải số điện thoại; ranking có thể lật trên mobile (nhất là student transformer). On-device thật: export ExecuTorch `.pte` (`scripts/export_executorch.py`) → `scripts/benchmark_mobile.py` (Pixel 6a).
 - **Cross-domain / fairness:** HAM10000 (cross-domain), Fitzpatrick17k (fairness) — **chỉ post-hoc, không bao giờ train**.
