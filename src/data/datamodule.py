@@ -127,6 +127,30 @@ class SkinLesionDataModule:
         if self._train_sampler is not None:
             self._train_sampler.set_epoch(epoch)
 
+    def _loader_perf_kwargs(self) -> dict:
+        """Throughput-only DataLoader options — they change no tensor the model
+        sees, so a run with them is directly comparable to one without.
+
+        `persistent_workers` stops the pool being torn down and re-forked every
+        epoch (the val loop alone re-forked it 50 times), and `prefetch_factor`
+        keeps batches queued ahead of the GPU. Both are illegal when
+        num_workers=0, hence the guard.
+        """
+        if int(self.cfg.num_workers) <= 0:
+            return {}
+        return {
+            "persistent_workers": bool(self.cfg.get("persistent_workers", True)),
+            "prefetch_factor": int(self.cfg.get("prefetch_factor", 4)),
+        }
+
+    def _eval_batch_size(self) -> int:
+        """Batch size for val/test. Defaults to the train batch size (so nothing
+        changes unless asked), but eval runs under no_grad with no activations
+        kept, so a much larger batch fits and cuts per-batch overhead. Purely a
+        speed knob: eval-mode BatchNorm uses running stats, so the per-sample
+        outputs are unaffected by how they are grouped."""
+        return int(self.train_cfg.get("eval_batch_size", 0) or self.train_cfg.batch_size)
+
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
             self._train_dataset,
@@ -135,24 +159,27 @@ class SkinLesionDataModule:
             shuffle=(self._train_sampler is None),
             num_workers=self.cfg.num_workers,
             pin_memory=True,
+            **self._loader_perf_kwargs(),
         )
 
     def val_dataloader(self) -> DataLoader:
         return DataLoader(
             self._val_dataset,
-            batch_size=self.train_cfg.batch_size,
+            batch_size=self._eval_batch_size(),
             shuffle=False,
             num_workers=self.cfg.num_workers,
             pin_memory=True,
+            **self._loader_perf_kwargs(),
         )
 
     def test_dataloader(self) -> DataLoader:
         return DataLoader(
             self._test_dataset,
-            batch_size=self.train_cfg.batch_size,
+            batch_size=self._eval_batch_size(),
             shuffle=False,
             num_workers=self.cfg.num_workers,
             pin_memory=True,
+            **self._loader_perf_kwargs(),
         )
 
     def _fit_meta_scaler(self) -> None:

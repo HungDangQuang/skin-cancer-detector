@@ -95,6 +95,9 @@ bash run/progress_all.sh      # from the Mac — every training box at once (HOS
 ```
 Both are read-only; `progress_all.sh` pipes `progress.sh` into each host over `ssh 'bash -s'`, so the servers need no `git pull`.
 
+To decide **how many jobs fit on one card**, `bash run/gpu_probe.sh PID=auto` samples `nvidia-smi` for the life of that job into `reports/gpu_probe_*.csv` and prints p50/p90/p95/max utilization + peak VRAM (also read-only, own-user PIDs only). `progress.sh` gives a snapshot ("is it alive"); the probe gives the distribution ("does a 2nd job fit"). Read it as: **VRAM decides IF a second job fits, utilization decides IF IT HELPS** — a p50 near 100% means the card is saturated and concurrency only adds OOM risk. See [run/README.md §7b](run/README.md).
+
+
 Every `run/*.sh` sources `run/common.sh`, which provides `set -euo pipefail`, repo-root resolution, `activate_venv` (`./.venv-linux`), `select_gpu` (`GPU=auto|<id>|cpu` → `CUDA_VISIBLE_DEVICES`; `auto` picks the freest card) and `start_log` (tees everything to `logs/<name>_<timestamp>.log`, so a dropped SSH session doesn't lose the run). Launch long runs under `tmux`/`nohup`. See [run/README.md](run/README.md) for the full script index and guide.
 
 ## Architecture
@@ -224,6 +227,9 @@ These have all bitten this repo at least once. Run the `code-change` skill's `va
 - **`run/train_kd_parallel.sh` is VRAM-gated** — launches only when running-jobs < `MAX_JOBS` **and** free VRAM ≥ `MIN_FREE_MB`. Measured 2026-08-13: one KD job already saturates the GPU, so more concurrency adds no speedup, only OOM risk (`MAX_JOBS=2` cap).
 - **Data-strategy ablations** — `run_suffix` isolates student run-dirs (`output_dir` for teachers), `data.train_sources` filters train+val only (test stays whole), the PAD ablation must run baseline (no KD).
 - **`maxvit_base` cuDNN backward error** + the `cudnn_deterministic` lever — likely VRAM; retry with lower batch + `cudnn_deterministic=false`.
+
+- **Validation was ~90% of every KD epoch** (measured 2026-09-03: train 3m21s vs epoch 32m19s) because `_val_epoch` re-ran the *frozen* teacher over all 62k val rows every epoch — ~94% of the val FLOPs for a maxvit teacher. The val pipeline is deterministic and `shuffle=False`, so those logits are constant (verified `max|Δ|=0` over 3 passes): `training.cache_val_teacher_logits` (default on) computes them once and replays them, **exactly**. Companion speed knobs: `training.eval_batch_size`, `persistent_workers`/`prefetch_factor`, and raising `num_workers` at launch on a many-core box.
+- **`cudnn_deterministic: true` is NOT bit-exact.** Re-running one fold with the identical seed moved AUPRC by **0.0053** — treat ~0.005 AUPRC as the single-fold rerun noise floor and never read a smaller per-fold difference as signal. Evidence: `experiments/_reproducibility/README.md`.
 
 **Resolved (historical):**
 - `pauc_at_tpr()` — FIXED 2026-06-04, now the real ISIC 2024 metric (~[0.02, 0.20]).

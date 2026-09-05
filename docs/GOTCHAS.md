@@ -109,7 +109,7 @@ Per-domain (ISIC vs PAD) verdicts read the `source` column in `predictions.csv` 
 ### `maxvit_base` cuDNN backward error + the `cudnn_deterministic` lever (added 2026-06-23)
 
 POC smoke-test of the 3 SOTA teachers (jobs 32296/32297/32298): `convnextv2_base` and `efficientnetv2_m` PASS; **`maxvit_base` FAILS at `loss.backward()` with `RuntimeError: cuDNN error: CUDNN_STATUS_INTERNAL_ERROR`** (forward completes — not a tag/shape bug; timm tags + head dims of all 3 are confirmed correct). Two likely causes, in order: (1) **VRAM exhaustion** — maxvit_base (~119M + windowed/grid attention) has the largest backward activation footprint, and cuDNN masks workspace-alloc OOM as INTERNAL_ERROR; it failed even at POC batch 16, so batch 64 is worse. (2) deterministic-cuDNN incompatibility. Fixes available (combine both when retrying maxvit):
-- **`cudnn_deterministic`** (root `config.yaml`/`config_poc.yaml`, default `true` = the bit-exact 30-run baseline behavior). `set_seed(seed, deterministic=...)` now honors it: `false` → `cudnn.deterministic=False` + `cudnn.benchmark=True` (lets cuDNN pick a working algo). Both training scripts pass `cfg.get("cudnn_deterministic", True)`. Override per-run: `cudnn_deterministic=false`. Only the convnextv2/efficientnetv2_m/maxvit teachers need consider this; the baseline 30 runs keep the default `true`.
+- **`cudnn_deterministic`** (root `config.yaml`/`config_poc.yaml`, default `true` = the 30-run baseline behavior; NOT bit-exact — see below). `set_seed(seed, deterministic=...)` now honors it: `false` → `cudnn.deterministic=False` + `cudnn.benchmark=True` (lets cuDNN pick a working algo). Both training scripts pass `cfg.get("cudnn_deterministic", True)`. Override per-run: `cudnn_deterministic=false`. Only the convnextv2/efficientnetv2_m/maxvit teachers need consider this; the baseline 30 runs keep the default `true`.
 - For the VRAM cause: lower `training.batch_size` and raise `acquire_gpu` for maxvit only (it's resolution-locked to 224, so batch is the only memory lever). If it still OOMs at small batch, maxvit_base is impractical on this MPS setup — drop it and keep convnextv2_base/efficientnetv2_m as the SOTA teachers.
 - Both levers reach the training scripts via the `EXTRA=` passthrough on `11/12/02/03` (space-separated Hydra overrides, forwarded verbatim and word-split at the call site — quote it as one shell arg). Retry: `bash run/poc.sh STAGE=teacher TEACHER=maxvit_base EXTRA="cudnn_deterministic=false training.batch_size=8"` (POC), then `run/train_teacher.sh TEACHER=maxvit_base EXTRA="cudnn_deterministic=false training.batch_size=16"` (real).
 
@@ -128,3 +128,39 @@ Previously `KDTrainer.__init__` read `cfg.training.distillation` unconditionally
 ### PAD-UFES-20 `img_id` already includes the file extension — FIXED 2026-06-07
 
 PAD's `metadata.csv` stores `img_id` **with** the extension (e.g. `PAT_8_15_820.png`), and the image files on disk are named identically. The old `process_pad_ufes_20()` did `images_dir / f"{img_id}.png"` → looked for `PAT_8_15_820.png.png`, matched nothing, and `continue`d on **every** row → empty `records` → `KeyError: 'label'` on the summary line (job 28239, the first time PAD ever ran — the repo had been ISIC-only). Fixed: look up `images_dir / img_id` as-is first (then `stem+.png/.jpg` fallbacks for a bare-id mirror), derive processed names from `Path(img_id).stem` (so no `pad_….png.jpg`), and **raise a clear `RuntimeError`** ("0 of N rows produced an image…") instead of a cryptic `KeyError` when nothing matches. Lesson for any new auxiliary dataset: never assume the metadata id is extension-free — probe `head -3 metadata.csv` + `ls images/` first.
+
+### Training throughput: validation was ~90% of every KD epoch (added 2026-09-03)
+
+Measured on `vastnew` (RTX 3090), `kd_maxvit_base_to_fastvit_sa12` fold 0: the
+**train** phase is 91 batches in **3 min 21 s**, but the whole epoch took
+**32 min 19 s**. The other ~29 minutes were validation, and inside it the
+*teacher* dominated — `maxvit_base` is **47.8 GFLOPs** against
+`fastvit_sa12`'s **3.0** (`reports/benchmark/*.json`), i.e. **~94%** of the val
+forward. `KDTrainer._val_epoch` was re-running that teacher forward over all
+62,041 val rows once per epoch, 50 times.
+
+**It never had to.** The val pipeline is `Resize + Normalize + ToTensorV2`
+(`configs/augmentation/*.yaml` `val:` has no random op), `val_dataloader()` is
+`shuffle=False`, `set_epoch()` only touches the *train* sampler, and the teacher
+is frozen. So the teacher's val logits are constant across epochs. Verified
+empirically, three passes over the val loader: `max|delta| = 0.000e+00`,
+`torch.equal == True`.
+
+Levers now available (all default-on where exact, all off where they change math):
+
+| knob | where | effect |
+|---|---|---|
+| `training.cache_val_teacher_logits` | KD configs, default `true` | compute the teacher's val logits once, replay them. **Exact** — `val_loss`, early stopping and checkpoint selection are unchanged. |
+| `training.eval_batch_size` | all training configs, default `0` = same as `batch_size` | bigger val/test batch. Eval-mode BatchNorm uses running stats, so per-sample outputs don't change. |
+| `persistent_workers`, `prefetch_factor` | root `config.yaml`, default `true` / `4` | stop re-forking the worker pool every epoch; queue batches ahead. Ignored when `num_workers=0`. |
+| `num_workers` | root `config.yaml`, default `4` | **raise it at launch on a big box** (`EXTRA="num_workers=16"`). The vast box has 64 cores and a 3.1 GB dataset that fits entirely in page cache; 4 workers were starving the GPU. |
+
+Two traps hit while adding these:
+- **Hydra struct mode**: the code reads the new keys with `.get(key, default)`, so a
+  run *works* without declaring them — but `training.cache_val_teacher_logits=false`
+  on the CLI dies with `Key ... is not in struct`. A knob you intend to override
+  must be declared in the config file, `configs/training/poc.yaml` included.
+- **Don't A/B this by re-running and diffing losses.** Two runs of the identical
+  config diverge at epoch 1 anyway (see the noise floor in
+  `experiments/_reproducibility/README.md`), so the comparison proves nothing.
+  Test the *premise* (are the teacher's logits constant?) instead.

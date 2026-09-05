@@ -38,6 +38,7 @@ student can't abort the batch, and the read-only monitors `progress.sh` /
 | `train_student.sh` | One student (KD or baseline), all 5 folds |
 | `train_kd_parallel.sh` | VRAM-gated parallel KD launcher (several students at once) |
 | `progress.sh` | **Read-only** status of the training jobs on the current box (fold, %, ETA, RAM/VRAM) |
+| `gpu_probe.sh` | **Read-only** GPU utilization / VRAM time-series into a CSV + p50/p90/p95/max summary — the measurement behind `MAX_JOBS` |
 | `progress_all.sh` | Same report for **every** server at once, run from the Mac |
 | `ablation_sampler.sh` | Data-strategy ablation A — undersampling ratio |
 | `ablation_pad.sh` | Data-strategy ablation B — PAD mixing (ISIC-only vs ISIC+PAD) |
@@ -122,6 +123,23 @@ bash run/aggregate.sh RUN_DIR=experiments/runs/kd_efficientnetv2_m_to_mobilenetv
 Common knobs (all `KEY=VALUE`): `FOLDS="0 1 2"`, `GPU=1` (pin a specific GPU),
 `GPU=auto` (default — picks the freest GPU), `GPU=cpu`, `AUG=heavy`,
 `DROP_PATH=0.1`, `EXTRA="cudnn_deterministic=false training.batch_size=16"`.
+
+### 3b. Throughput knobs — use these on every long run
+
+They cost nothing in result quality: the teacher-logit cache is *exact*, and the
+rest only move data around. See `docs/GOTCHAS.md` "Training throughput".
+
+```bash
+bash run/train_student.sh STUDENT=fastvit_sa12 TEACHER=maxvit_base GPU=0 \
+  EXTRA="num_workers=16 training.eval_batch_size=128 training.callbacks.checkpoint.save_last=false"
+```
+
+| knob | why |
+|---|---|
+| `num_workers=16` | the config default is a portable `4`; a 64-core box starves the GPU at that. Match it to the box, not the repo. |
+| `training.eval_batch_size=128` | val/test run under `no_grad`, so a bigger batch fits and cuts per-batch overhead. `0` = same as `batch_size`. |
+| `training.callbacks.checkpoint.save_last=false` | keep only `best_model.pth`. A `maxvit_base` fold is 1.4 GB, so this halves the checkpoint footprint — worth it when disk is tight. Costs you the ability to resume a job that dies mid-run. |
+| `training.cache_val_teacher_logits` | already `true` by default for KD; only set it `false` to debug. |
 
 ## 4. Data-strategy ablations
 
@@ -219,6 +237,48 @@ Notes / limits:
 - On a container whose PID namespace differs from what `nvidia-smi` reports
   (one of the two vast boxes), per-process VRAM shows `n/a*` and the script says
   so — use the GPU total in the header.
+
+### 7b. How many jobs fit at once (`gpu_probe.sh`)
+
+`progress.sh` prints one nvidia-smi **snapshot** for a status display. Choosing
+`MAX_JOBS` for `train_kd_parallel.sh` needs the *distribution* over a whole
+fold: a job can average 45% utilization and still spike to 100%, and it is the
+**peak** VRAM — not the mean — that decides whether a second job OOMs.
+
+```bash
+# window 1: start the job (note the save_last=false knob — see §3)
+bash run/train_student.sh STUDENT=fastvit_sa12 TEACHER=maxvit_base FOLDS=0 GPU=0 \
+     EXTRA="training.callbacks.checkpoint.save_last=false"
+
+# window 2: watch it until it exits
+bash run/gpu_probe.sh PID=auto INTERVAL=5 TAG=kd_fastvit_fold0
+```
+
+Args: `PID=<n>|auto`, `DURATION=<s>` (0 = unlimited), `INTERVAL=<s>` (default 5),
+`GPU=<idx>|all` (**records** that index — it does *not* pin
+`CUDA_VISIBLE_DEVICES`), `OUT=`, `TAG=`.
+
+`PID=auto` picks the **trainer**, not a DataLoader worker. This matters: workers
+are forks with a byte-identical cmdline, so a plain `pgrep -n -f` returns a
+*worker*, and PyTorch recycles workers between epochs
+(`persistent_workers=False`) — the probe would then stop after one epoch
+reporting "watched job exited". `auto` therefore keeps only processes whose
+parent is not itself a match. It also refuses a PID owned by another user.
+
+Output:
+```
+reports/gpu_probe_<TAG>_<ts>.csv           ts,elapsed_s,index,util_pct,mem_used_mb,mem_total_mb,temp_c,power_w
+reports/gpu_probe_<TAG>_<ts>_summary.txt   per-GPU p50/p90/p95/max + VRAM-fit estimate
+logs/gpu_probe_<ts>.log
+```
+
+Reading the summary: **VRAM decides *if* a second job fits, utilization decides
+if it *helps*.** A p50 already near 100% means the card is saturated, so a second
+job buys no throughput and only adds OOM risk — which is exactly how the
+`MAX_JOBS=2` cap in `train_kd_parallel.sh` was arrived at on the previous box.
+
+Read-only: it never launches, signals or kills anything (`kill -0` is an
+existence test), and writes only under `reports/` and `logs/`.
 
 ## Long runs survive SSH drops
 

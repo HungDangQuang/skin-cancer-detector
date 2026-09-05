@@ -55,6 +55,13 @@ class KDTrainer:
         # A privileged (LUPI) teacher takes (images, meta, mask); a plain teacher
         # takes (images). The student is ALWAYS image-only. See direction A.
         self.teacher_accepts_meta = getattr(teacher, "accepts_metadata", False)
+        # Per-batch teacher logits on the VAL set, filled on the first val epoch
+        # and replayed afterwards. See _val_epoch for why this is exact.
+        # Disable with training.cache_val_teacher_logits=false.
+        self.cache_val_teacher = bool(
+            cfg.training.get("cache_val_teacher_logits", True)
+        )
+        self._val_teacher_cache = None
         self._setup_training()
 
     def _teacher_forward(self, images, meta, mask):
@@ -264,12 +271,40 @@ class KDTrainer:
         total_loss, total = 0.0, 0
         all_labels, all_probs = [], []
 
-        for batch in tqdm(loader, desc="Val", leave=False):
+        # The teacher is frozen, the val pipeline is deterministic (Resize +
+        # Normalize only — configs/augmentation/*.yaml `val:` has no random op)
+        # and val_dataloader() is shuffle=False, so the teacher produces the SAME
+        # logits on the SAME rows in every epoch. Computing them once and
+        # replaying them is mathematically exact — val_loss, early stopping and
+        # checkpoint selection are unchanged — and it removes the dominant cost
+        # of validation: maxvit_base is 47.8 GFLOPs against fastvit_sa12's 3.0,
+        # i.e. ~94% of the val forward was being recomputed 50 times.
+        cache = self._val_teacher_cache
+        building = self.cache_val_teacher and cache is None
+        if building:
+            cache = []
+
+        for i, batch in enumerate(tqdm(loader, desc="Val", leave=False)):
             images, meta, mask, labels = unpack_batch(batch)
             images = images.to(self.device)
             if meta is not None:
                 meta, mask = meta.to(self.device), mask.to(self.device)
-            teacher_logits = self._teacher_forward(images, meta, mask)
+
+            teacher_logits = None
+            if cache is not None and not building and i < len(cache):
+                cached = cache[i]
+                # Self-heal rather than trust the index: a changed loader (last
+                # partial batch, a re-setup datamodule) must recompute, not
+                # silently pair row i with another row's teacher logit.
+                if cached.shape[0] == images.shape[0]:
+                    teacher_logits = cached
+            if teacher_logits is None:
+                teacher_logits = self._teacher_forward(images, meta, mask)
+                if building:
+                    cache.append(teacher_logits)
+                elif cache is not None and i < len(cache):
+                    cache[i] = teacher_logits
+
             student_logits = self.student(images)
 
             loss, _ = self.criterion(student_logits, teacher_logits, labels.to(self.device))
@@ -277,6 +312,15 @@ class KDTrainer:
             total += images.size(0)
             all_probs.extend(torch.sigmoid(student_logits).cpu().numpy())
             all_labels.extend(labels.numpy())
+
+        if building:
+            # ~250 KB for a 62k-row val set (one float per row), so this stays on
+            # the GPU and costs nothing against the 24 GB card.
+            self._val_teacher_cache = cache
+            logger.info(
+                f"Cached teacher val logits for {len(cache)} batches — later epochs "
+                f"skip the teacher forward on the val set (exact, val_loss unchanged)."
+            )
 
         metrics = compute_metrics(all_labels, np.array(all_probs))
         metrics["loss"] = total_loss / total
