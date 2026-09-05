@@ -1,3 +1,11 @@
+> ⛔ **SUPERSEDED — 2026-08-26. KHÔNG trích số từ file này.**
+>
+> Bản thay thế duy nhất: [`reports/BAO_CAO_TONG_HOP.md`](../reports/BAO_CAO_TONG_HOP.md).
+>
+> Lý do: thuộc thế hệ tiền xử lý CŨ — ví dụ ghi teacher `maxvit_base` AUPRC 0,6878 / pAUC 0,1869 trong khi số hiện tại là 0,6566 / 0,1830; hai bộ số không so được với nhau. Còn chứa họ model đã xoá khỏi registry 15/07/2026.
+
+---
+
 # Benchmark & Kết quả tổng hợp (tài liệu luận văn)
 
 *Cập nhật: 2026-07-04. Nguồn số liệu: `experiments/runs/**/test_metrics.json`,
@@ -264,9 +272,38 @@ bash run/benchmark.sh MODEL=mobilevit_s \
 bash run/train_student.sh STUDENT=efficientformerv2_s2 TEACHER=convnextv2_base
 ```
 
-### GAP-6 ⚪ — On-device cho model khác + parity check
-- Nếu muốn số on-device của efficientnet_b0 / mobilevit_s: export `.pte` (`bash run/export_executorch.sh`) → đo trên phone.
-- **Parity check** (`max|Δlogit|<1e-3`) chưa xác nhận — bắt buộc trước khi tin số on-device.
+### GAP-6 🟢 — Parity check PC ↔ `.pte`: **ĐÃ XÁC NHẬN (2026-08-23)**
+
+Parity **layer 1** (lowering đồ thị: `torch.export` → edge → XNNPACK) đã đạt trên
+`mobilenetv4_conv_medium`, checkpoint `kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_4`
+(fold app spec chọn ship):
+
+| Chỉ số | Giá trị |
+|---|---|
+| `max\|Δlogit\|` | **5.53e-06** (ngưỡng 1e-3 → dư 180×) |
+| mean `\|Δlogit\|` | 1.12e-06 |
+| `max\|Δprob\|` | 4.76e-07 |
+| Mẫu vượt ngưỡng | 0 / 100 |
+| `.pte` | 32.11 MB, ExecuTorch **1.4.1** (torch 2.13.0) |
+
+```bash
+bash run/setup_export_env.sh                                    # 1 lần → ./.venv-export
+CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_4/checkpoints/best_model.pth
+bash run/make_benchmark_set.sh N=100 MODEL=mobilenetv4_conv_medium CKPT="$CKPT"
+bash run/export_executorch.sh       MODEL=mobilenetv4_conv_medium CKPT="$CKPT"
+bash run/check_pte_parity.sh        MODEL=mobilenetv4_conv_medium   # exit 1 nếu FAIL
+# → reports/mobile_benchmark/parity_mobilenetv4_conv_medium.json
+```
+
+⚠️ **CKPT phải giống hệt nhau ở cả hai bước** `make_benchmark_set` và
+`export_executorch`, nếu không phép so sánh là giữa **hai model khác nhau** và
+sẽ "fail parity" vì lý do sai.
+
+⚠️ Đây mới là **layer 1**. **Layer 2** — app Android tự decode + resize + normalize
+có tái tạo đúng tensor đó không — vẫn **chưa** kiểm; đó là trap bilinear-vs-LANCZOS
+trong `ANDROID_APP_SPEC.md`, kiểm bằng `images/*` đối chiếu `inputs/*.bin`.
+
+⚠️ AAR ExecuTorch của app phải khớp **1.4.1** (version trong `./.venv-export`).
 
 ---
 
@@ -280,7 +317,8 @@ bash run/train_student.sh STUDENT=efficientformerv2_s2 TEACHER=convnextv2_base
 | Benchmark on-device 3 ứng viên mobile | ✅ Có (Pixel 6a) |
 | Fold đủ 5 cho maxvit-KD + efficientformerv2_s2 | ❌ GAP-1b |
 | FLOPs cho model nhẹ | ❌ GAP-3 |
-| Peak RAM / end-to-end mobile + parity check | ❌ GAP-4 |
+| Parity PC ↔ `.pte` (layer 1, lowering đồ thị) | ✅ Có (2026-08-23, max\|Δlogit\| 5.53e-06) |
+| Peak RAM / end-to-end mobile + parity layer 2 (tiền xử lý trong app) | ❌ GAP-4 — cần máy Android thật |
 
 **Đủ để làm đề cương/proposal ngay** — luận điểm KD đã có bằng chứng đầy đủ (case chính
 mobilenetv4←convnextv2, +0.052 AUPRC). Còn lại là hoàn thiện: GAP-1b (chạy nốt fold dở dang)

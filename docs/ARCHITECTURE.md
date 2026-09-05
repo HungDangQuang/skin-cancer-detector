@@ -136,7 +136,8 @@ experiments/runs/
   <...>__<run_suffix>/    ← ablation (samp_off, ratio3, mselogit, rkd, …)
 ```
 Sau aggregate: `aggregated.{json,md}` = **mean ± std** — con số để báo cáo (1 fold đơn lẻ variance rất rộng).
-Calibration (offline, tùy chọn): `scripts/compute_calibration.py --run-dir <run>` → `calibration_metrics.json` (ECE/Brier raw vs corrected) + `reliability_curve.png`.
+Calibration (offline, tùy chọn): `scripts/compute_calibration.py --run-dir <run>` → `calibration_metrics.json` (ECE/Brier raw vs corrected) + `reliability_curve.png`. Thêm `--subgroup <col> --out-json <path>` để tách ECE/Brier theo nhóm (hướng D) mà không đè file của subgroup trước.
+Metadata cho run ĐÃ train xong (hướng D): `bash run/attach_metadata.sh` chỉ **thêm cột** vào split CSV + `predictions.csv` sẵn có (không GPU, không train lại). Đừng re-run `prepare` để làm việc này — thiếu `data/raw/pad_ufes_20/` là splits bị chia lại (xem `docs/GOTCHAS.md`).
 
 ---
 
@@ -148,6 +149,7 @@ Calibration (offline, tùy chọn): `scripts/compute_calibration.py --run-dir <r
 - **Cross-domain / fairness:** HAM10000 (cross-domain), Fitzpatrick17k (fairness) — **chỉ post-hoc, không bao giờ train**.
 - **Calibration** (offline, KHÔNG đổi số ranking): `scripts/compute_calibration.py` sửa xác suất hiển thị (prior-shift / Platt / isotonic) + reliability curve + ECE/Brier. Prevalence undersample ~16,7% → `sigmoid` bị thổi phồng so với ~0,39% thật; pAUC/AUPRC miễn nhiễm.
 - Tổng hợp kết quả luận văn: [docs/BENCHMARK_AND_RESULTS.md](BENCHMARK_AND_RESULTS.md).
+- **App Android (sản phẩm)**: đặc tả đầy đủ màn hình + behavior + hợp đồng model để đưa `.pte` vào một app production — [docs/ANDROID_APP_SPEC.md](ANDROID_APP_SPEC.md). Chưa có code app trong repo này.
 
 ---
 

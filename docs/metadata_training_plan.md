@@ -57,8 +57,16 @@ Phạm vi user chốt: **D trước, rồi A** (bỏ B, C).
     (`test_metrics.json` không đổi; val_predictions vẫn image-only). Wired ở train_teacher/train_student/evaluate.
   - `scripts/compute_calibration.py --subgroup <col> [--min-subgroup-n]` — ECE/Brier raw-vs-cal theo nhóm, cùng
     một hiệu chỉnh global (không fit calibrator per-group vì quá ít dương ở 0.39%).
-  - **Chạy D trên checkpoint cũ:** re-run `prepare` với `metadata_cols: [anatom_site_general, sex]` (split
-    seed-deterministic → hàng y hệt, chỉ +cột → checkpoint cũ vẫn hợp lệ) rồi re-eval (chỉ inference).
+  - **Chạy D trên checkpoint cũ — ĐÃ CHẠY 2026-08-24 trên `vastnew` bằng `run/attach_metadata.sh`.**
+    Đường thiết kế ban đầu (re-run `prepare` với `metadata_cols: [...]` rồi re-eval) **KHÔNG dùng được** ở
+    đây: `process_isic2024` mở `train-image.hdf5` vô điều kiện, và quan trọng hơn — nếu thiếu
+    `data/raw/pad_ufes_20/` thì `prepare_data.py` **âm thầm bỏ toàn bộ hàng PAD** (nhánh "PAD-UFES-20 not
+    found") → splits mới KHÁC splits mà 95 fold-run đã train/test. Thay vào đó `scripts/attach_metadata.py`
+    chỉ **thêm cột** vào split CSV + `predictions.csv`/`val_predictions.csv` sẵn có (back-fill theo vị trí,
+    hợp lệ vì `test_dataloader()` là `shuffle=False` và `train_sources` chỉ lọc train+val). Không kiểm chứng
+    bằng niềm tin: mỗi file phải khớp row count, khớp chuỗi `y_true` với cột `label`, và khớp chuỗi `source`
+    — sai một guard là bỏ qua file đó và exit ≠ 0. Kết quả: **11 split + 95 test + 95 val, 0 failure**,
+    ~99,4% hàng khớp (phần còn lại là PAD → NaN, đúng như thiết kế). Không tốn GPU-giờ nào.
 - **Hướng A — ĐÃ CODE (chờ verify cluster).** Gate kép: `data.metadata_cols` (cột nào) **+** `data.metadata_as_input`
   (đưa vào batch hay không). D chỉ set `metadata_cols` (side-channel, model image-only); A set **cả hai** → dataset
   trả 4-tuple. Đã ship:

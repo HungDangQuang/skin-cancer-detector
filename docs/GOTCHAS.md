@@ -88,6 +88,81 @@ If `src/<pkg>/__init__.py` re-exports a symbol, the name has to match the actual
 
 `Trainer.history` declares `train_loss`/`val_loss`/`train_pauc`/`val_pauc` but historically only appended to `train_loss` and `val_loss`, leaving `val_pauc` as an empty list. `plot_training_curves` then got `epochs=(N,)` and `val_paucs=()` → matplotlib shape mismatch. Always append `val_pauc` per epoch in any new trainer subclass; `KDTrainer` already does this at `kd_trainer.py:104`.
 
+### Bootstrap CIs: never pool the 5 folds' `predictions.csv` (added 2026-08-23)
+
+The 5 folds are **5 different models scored on the same test rows**, not 5 disjoint samples. Concatenating `fold_*/predictions.csv` therefore replicates every test row 5×, and a bootstrap over that pool reports an interval ~√5 too narrow — a fabricated result, not a conservative one. `scripts/bootstrap_ci.py` instead draws **one** row-index set per replicate, scores **every** fold on those same rows, and averages → a replicate of exactly the "mean ± std over 5 folds" quantity the tables already quote. It asserts the folds share identical labels *and row order* before starting, and refuses to run rather than guess.
+
+Two more things that are easy to get wrong here:
+
+- **Pair the KD delta.** KD and baseline are scored on identical rows, so resample them with the *same* index draw and bootstrap `Δ` directly. An unpaired interval discards that correlation and badly overstates uncertainty: on HAM10000 the per-run AUPRC intervals for `kd_convnextv2_base_to_mobilenetv4` (0.4198 [0.3959, 0.4440]) and its baseline (0.3754 [0.3578, 0.3996]) **overlap**, yet the paired delta is +0.0445 [+0.0353, +0.0527] — unambiguously non-zero. Same for a fairness gap: bootstrap `light − dark` itself, don't eyeball two intervals.
+- **A single-class resample is undefined, not zero.** `pauc_at_tpr()` and `sensitivity_at_specificity()` both *return 0.0* when only one class is present — a sentinel, not a measurement. Averaging those into the replicate vector drags the interval down. Map them to `NaN` and drop them from the percentiles (`bootstrap_ci.py::_metric` does, and reports `n_dropped`). This bites hardest exactly where CIs matter most: small subgroups like Fitzpatrick's 137-image dark-tone group.
+
+### `.pte` parity: the checkpoint must be identical on both sides (added 2026-08-23)
+
+`run/check_pte_parity.sh` compares the ExecuTorch program against `data/benchmark_set/ref_<model>.csv`. That reference is written by `run/make_benchmark_set.sh MODEL=… CKPT=…`, and the `.pte` by `run/export_executorch.sh MODEL=… CKPT=…` — **pass the same `CKPT` to both**. Different folds of the same architecture are different models, so a mismatch fails parity for a reason that has nothing to do with the lowering, and the failure message will point you at the exporter. Confirmed working 2026-08-23: `mobilenetv4_conv_medium` fold_4 gives `max|Δlogit|` 5.53e-06 against a 1e-3 tolerance.
+
+This only covers **layer 1** (`torch.export` → edge → XNNPACK). Layer 2 — whether the Android app's own decode/resize/normalize reproduces `inputs/*.bin` — is a separate in-app check, and the bilinear-vs-LANCZOS resize trap lives there (`docs/ANDROID_APP_SPEC.md`). Passing layer 1 is what makes an app-side discrepancy *diagnosable*: the model is exonerated, so the bug is in the app.
+
+### A `.pte` can export "successfully" and still compute garbage (added 2026-08-24)
+
+Exporting `efficientformerv2_s2` with the default `BACKEND=xnnpack` **succeeded** — no error, no warning, a plausible 47 MB `.pte` — and the program then returned logits around **−2.24e10** where PyTorch gives −3.15 (`max|Δprob|` 0.956, 100/100 samples over tolerance). XNNPACK mis-partitioned the architecture and nothing on the export path noticed. Re-exported with `BACKEND=none` (portable ops), the same checkpoint passes at `max|Δlogit|` 3.41e-05.
+
+Two consequences:
+
+- **A successful export is not evidence of a correct model.** Only `check_pte_parity.sh` distinguishes the two, which is why it is a *gate*, not a report. Treat "export exited 0" as meaning nothing until parity passes. `run/export_all_students.sh` therefore falls back to `BACKEND=none` on a **parity** failure, not just on an export failure.
+- **The portable-ops backend is dramatically slower.** The same 100-image parity sweep took ~11 s on the XNNPACK builds and ~12.5 min on the portable-ops `efficientformerv2_s2` — roughly 70×. That is a CPU-on-server number, not a phone number, but a student that can only be lowered without XNNPACK carries a real deployment cost, and the on-device latency claim for it must be measured, never inherited from the other students.
+
+Measured 2026-08-24 on `vastnew`, executorch 1.4.1. The other three students (`mobilenetv4_conv_medium`, `fastvit_sa12`, `repvit_m1_0`) all pass on XNNPACK.
+
+### Re-running `prepare` to add metadata columns silently drops PAD → different splits (added 2026-08-24)
+
+The documented way to enable direction D on finished checkpoints was "re-run `prepare` with `data.metadata_cols=[…]`, splits are seed-deterministic so only columns change". That reasoning holds **only if the inputs are identical**, and on a box that has `data/processed/` but not `data/raw/`, they are not:
+
+- `scripts/prepare_data.py` guards PAD with `if pad_raw.exists():` — no `data/raw/pad_ufes_20/` means the "PAD-UFES-20 not found — using ISIC 2024 only" branch runs, every PAD row disappears from the dataframe, and `StratifiedGroupKFold` re-partitions **a different population**. The new `test_split.csv` would not be the test set the 95 finished fold-runs were scored on, and nothing would warn you — the job exits 0.
+- `process_isic2024` also opens `train-image.hdf5` unconditionally (existence check + `h5py.File`), so 1.3 GB of images must be present even though every already-resized JPG is skipped.
+
+Use `run/attach_metadata.sh` instead: it only **appends columns** to the existing split CSVs and prediction CSVs, so membership cannot change, and it needs `train-metadata.csv` alone (246 MB, no images, no PAD raw, no GPU). Positional back-fill is legitimate because `predictions.csv` is written row-aligned to `test_dataloader()` (`shuffle=False`) and `train_sources` filters train+val only — but the script *verifies* it per file (row count, `y_true` vs the split's `label` sequence, `source` sequence) and skips + exits non-zero rather than trusting it. Every file touched is copied to `reports/_metadata_backup/<timestamp>/` first.
+
+Note the asymmetry this creates: a run trained with `data.train_sources=[isic2024]` has a **filtered** val set, so its `val_predictions.csv` will (correctly) fail the row-count guard against the unfiltered `val_split.csv`. That is the guard working, not a bug — those runs live in `experiments/runs_isic_only/` and are not part of the default `RUNS_DIR`.
+
+---
+
+### A framing/crop variant of an external set needs its own `data/processed/` tree
+
+`_clean_external_image` (`src/data/preprocessing.py`) opens with a fast-path:
+
+```python
+if dst.exists():
+    return Image.open(dst).convert("RGB"), None
+```
+
+That is what makes re-running `prepare_external.sh` cheap — but it keys on the
+**destination path only**. It has no idea what `image_size`, `min_size` or
+`center_crop_frac` produced the file already sitting there. Point two different
+`center_crop_frac` values at one `processed_dir` and the second one reloads the
+first one's pixels, writes a split CSV that *looks* like a crop variant, and
+exits 0. You then get a full 19-run × 5-fold sweep whose `crop70` numbers are
+byte-identical to `headline` — and the natural reading of that ("cropping makes
+no difference") is exactly the wrong conclusion.
+
+`prepare_external_data.py` therefore derives the directory from the variant key
+(`data/processed/fitzpatrick17k_crop70/`) rather than letting a caller pass one.
+If you add a variant that changes **pixels** in any other way, do the same.
+
+Two companion checks in the same code path:
+
+- **Row count must match the headline.** `min_size` is checked on the RAW frame
+  *before* the crop, so cropping cannot drop rows the headline kept — that
+  ordering is what keeps the framing delta paired. Prepare still warns on a
+  count mismatch, which then means a missing/unreadable source file, not a
+  selective crop.
+- **`is_uninformative` (tier 2) fires more often on crops** — a close-up of
+  uniform skin is flatter than a whole-limb photo. It still only flags, never
+  drops (`docs/PREPROCESSING.md §1.1`), but compare `quality_flags` counts
+  across variants before attributing a metric change to framing.
+
+Full design + how to read each outcome: `docs/PREPROCESSING.md §1.2`.
+
 ---
 
 ## Operational / postmortems

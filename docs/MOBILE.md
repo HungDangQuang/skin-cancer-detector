@@ -95,6 +95,18 @@ transformer (mobilevit/fastvit/efficientformerv2) mà `torch.jit.script` fail.
 
 ## 4. Benchmark trên Android (on-device)
 
+> **Sắp thực thi bước này?** [docs/MOBILE_BENCHMARK_TASK.md](MOBILE_BENCHMARK_TASK.md)
+> là task spec tự-chứa (tiếng Anh, viết 2026-08-24): chỉ đích danh 4 file `.pte`
+> cần đo, quy trình đo chi tiết, kết quả mong đợi + tiêu chí chấp nhận, và các bẫy
+> đã biết — trong đó có việc **3/4 file `ref_*.csv` hiện KHÔNG khớp** với `.pte`
+> định đo, và **số EfficientFormerV2 trên Pixel 6a nhiều khả năng đã vô hiệu**.
+> Mục §4.1–4.7 dưới đây là quy trình gốc; task spec là bản thi hành cụ thể hoá nó.
+
+> **Muốn dựng hẳn app sản phẩm (không chỉ đo benchmark)?** Đặc tả đầy đủ — 14 màn hình,
+> behavior, hợp đồng model (`model_config.json`, ngưỡng, calibration), thư viện Kotlin/Compose,
+> và một **màn hình Developer** hiện thực hoá đúng §4.1–§4.7 dưới đây — nằm ở
+> [docs/ANDROID_APP_SPEC.md](ANDROID_APP_SPEC.md).
+
 ### 4.1 Dependency
 - Thêm **ExecuTorch Android AAR** (có **XNNPACK** — phải khớp vì `.pte` lower bằng XNNPACK).
 - ⚠️ **Khớp version ExecuTorch** giữa lúc export (python venv-export) và AAR runtime — format `.pte` có versioning.
@@ -130,6 +142,20 @@ Vì input `.bin` **giống hệt** PC, lớp này cô lập lỗi *model/convert
 // đọc ref_<model>.csv theo id
 val diff = kotlin.math.abs(onDeviceLogit - refLogit)   // yêu cầu < 1e-3
 ```
+
+**Đã kiểm sẵn trên PC (2026-08-23) — làm trước khi động tới điện thoại.**
+`run/check_pte_parity.sh` chạy chính `.pte` đó qua ExecuTorch runtime trên server
+và đối chiếu `ref_<model>.csv`, nên nếu app lệch mà bước này PASS thì lỗi nằm ở
+**app**, không phải ở model/convert — thu hẹp phạm vi debug rất nhiều:
+
+```bash
+bash run/check_pte_parity.sh MODEL=mobilenetv4_conv_medium   # exit 1 nếu FAIL
+# → reports/mobile_benchmark/parity_<model>.json
+```
+
+Kết quả `mobilenetv4_conv_medium` (fold_4): `max|Δlogit|` = **5.53e-06**,
+`max|Δprob|` = 4.76e-07, 0/100 mẫu vượt ngưỡng, ExecuTorch **1.4.1** →
+AAR trong app phải khớp version này.
 
 ### 4.6 (c) Parity layer 2 — sanity tiền xử lý (tolerance lỏng)
 App đọc `images/<file>` → tự resize 224 + `/255` + chuẩn hóa ImageNet (theo
