@@ -60,6 +60,16 @@ wandb/
 *.pth
 *.pt
 *.onnx
+# ExecuTorch programs pulled from the training box (run/export_all_students.sh).
+# NB: report_phase_1/.../efficientformerv2_s2.pte was committed before this rule
+# and stays tracked — .gitignore does not retroactively untrack a file.
+*.pte
+exports/
+
+# Fixed benchmark input set (run/make_benchmark_set.sh) — 100 images + their
+# fully-preprocessed .bin tensors, ~116 MB per copy. Regenerate, don't commit.
+data/benchmark_set/
+data/benchmark_set_ef/
 
 # Run transcripts (logs/<name>_<timestamp>.log)
 logs/

@@ -19,11 +19,14 @@ Prereq — the metadata CSV (from the Fitzpatrick17k release):
     data/raw/fitzpatrick17k/fitzpatrick17k.csv
     columns: md5hash, url, fitzpatrick_scale, three_partition_label,
              nine_partition_label, label
+Pass --fetch-metadata to pull it from the authors' repo when it is not there yet.
 
 Usage:
     # ALWAYS do a small trial first — it reports the md5 match rate, which tells
-    # you whether the release's hash column means what this script assumes:
-    python scripts/download_fitzpatrick17k.py --limit 50
+    # you whether the release's hash column means what this script assumes.
+    # --sample takes a RANDOM (seeded) slice, so the trial covers every host;
+    # --limit takes the first N rows, which are all one host and tell you little:
+    python scripts/download_fitzpatrick17k.py --fetch-metadata --sample 60
 
     # Then the full run (resumable — re-running skips what is already on disk):
     python scripts/download_fitzpatrick17k.py
@@ -58,6 +61,11 @@ from tqdm import tqdm
 
 # Some atlas hosts reject the default urllib agent outright.
 _USER_AGENT = "Mozilla/5.0 (compatible; skin-cancer-detector research fetcher)"
+
+# The release metadata CSV, from the authors' own repository (Groh et al., 2021).
+# Only the CSV lives there — the images are the third-party links inside it.
+_METADATA_URL = "https://raw.githubusercontent.com/mattgroh/fitzpatrick17k/main/fitzpatrick17k.csv"
+_METADATA_REQUIRED_COLS = ("md5hash", "url", "fitzpatrick_scale", "three_partition_label")
 
 # Early-abort guard: if the first _PROBE_N verified downloads mostly FAIL the md5
 # check, the release's hash column does not mean "md5 of the image bytes" and a
@@ -114,6 +122,39 @@ def _fetch(url: str, timeout: float, retries: int, backoff: float) -> tuple[byte
     return None, last
 
 
+def fetch_metadata_csv(dest: Path, url: str, timeout: float) -> None:
+    """Download the release metadata CSV and verify it has the columns we rely on.
+
+    Written only after the column check passes, so an error page or a moved file
+    can never end up on disk pretending to be the release CSV.
+    """
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    print(f"[fitz] fetching metadata CSV: {url}")
+    body, reason = _fetch(url, timeout=timeout, retries=2, backoff=1.0)
+    if body is None:
+        # _fetch rejects non-image content types; the CSV is text/plain, so read it here.
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                body = resp.read()
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            sys.exit(f"ERROR: could not download the metadata CSV ({reason or e}): {url}")
+
+    try:
+        df = pd.read_csv(io.BytesIO(body))
+    except Exception as e:  # pandas raises several parser errors depending on payload
+        sys.exit(f"ERROR: the metadata download is not a readable CSV ({type(e).__name__}: {e})")
+    missing = [c for c in _METADATA_REQUIRED_COLS if c not in df.columns]
+    if missing:
+        sys.exit(
+            f"ERROR: metadata CSV from {url} is missing {missing}; columns are "
+            f"{sorted(df.columns)}. The release format changed — place the correct "
+            f"CSV at {dest} by hand."
+        )
+    dest.write_bytes(body)
+    print(f"[fitz] metadata CSV: {len(df)} rows -> {dest}")
+
+
 def _validate(body: bytes, expected_md5: str, md5_check: str) -> tuple[str, str]:
     """Return (status, reason) after decode + md5 verification of the payload."""
     try:
@@ -139,7 +180,16 @@ def main() -> None:
     ap.add_argument("--metadata", type=Path, default=None,
                     help="metadata CSV (default: <raw-dir>/fitzpatrick17k.csv)")
     ap.add_argument("--limit", type=int, default=0,
-                    help="stop after N rows — use for the trial run (0 = all)")
+                    help="stop after the FIRST N rows (0 = all); prefer --sample for a trial")
+    ap.add_argument("--sample", type=int, default=0,
+                    help="trial run over a random seeded sample of N rows (0 = off). The CSV "
+                         "is host-ordered, so --limit's first N rows all hit one atlas and "
+                         "hide a host-wide outage; --sample spreads across hosts")
+    ap.add_argument("--sample-seed", type=int, default=42)
+    ap.add_argument("--fetch-metadata", action="store_true",
+                    help="download the release metadata CSV first if it is not on disk")
+    ap.add_argument("--metadata-url", default=_METADATA_URL,
+                    help="where --fetch-metadata pulls the release CSV from")
     ap.add_argument("--workers", type=int, default=8,
                     help="parallel downloads (default 8; keep modest, these are third-party hosts)")
     ap.add_argument("--timeout", type=float, default=20.0)
@@ -155,11 +205,14 @@ def main() -> None:
     raw_dir = args.raw_dir
     metadata_csv = args.metadata or (raw_dir / "fitzpatrick17k.csv")
     if not metadata_csv.is_file():
-        sys.exit(
-            f"ERROR: Fitzpatrick17k metadata CSV not found: {metadata_csv}\n"
-            f"       Download the release CSV (columns md5hash,url,fitzpatrick_scale,\n"
-            f"       three_partition_label,...) and place it there first."
-        )
+        if not args.fetch_metadata:
+            sys.exit(
+                f"ERROR: Fitzpatrick17k metadata CSV not found: {metadata_csv}\n"
+                f"       Re-run with --fetch-metadata, or download the release CSV\n"
+                f"       (columns md5hash,url,fitzpatrick_scale,three_partition_label,...)\n"
+                f"       and place it there first."
+            )
+        fetch_metadata_csv(metadata_csv, args.metadata_url, args.timeout)
 
     df = pd.read_csv(metadata_csv)
     for col in ("md5hash", "url"):
@@ -167,6 +220,8 @@ def main() -> None:
             sys.exit(f"ERROR: metadata CSV is missing required column '{col}' ({metadata_csv})")
     if args.limit:
         df = df.head(args.limit)
+    if args.sample and args.sample < len(df):
+        df = df.sample(n=args.sample, random_state=args.sample_seed)
 
     images_dir = raw_dir / "images"
     images_dir.mkdir(parents=True, exist_ok=True)
@@ -174,31 +229,44 @@ def main() -> None:
 
     def work(row: dict) -> dict:
         md5hash = str(row["md5hash"])
-        url = str(row["url"])
+        url = str(row["url"]).strip()
         dst = images_dir / f"{md5hash}.jpg"
 
         if dst.exists() and not args.overwrite:
             return {"md5hash": md5hash, "url": url, "status": "cached", "reason": "already_on_disk"}
         if probe.aborted:
             return {"md5hash": md5hash, "url": url, "status": "skipped", "reason": "probe_aborted"}
+        # The release carries a few dozen rows with a blank url (pandas reads
+        # them as NaN -> the string "nan"). Left unguarded, urllib raises
+        # ValueError inside the worker and pool.map re-raises it in the main
+        # thread, killing a 16k-row download over ~40 unusable rows.
+        if not url.lower().startswith(("http://", "https://")):
+            return {"md5hash": md5hash, "url": url, "status": "failed", "reason": "missing_url"}
 
-        body, reason = _fetch(url, args.timeout, args.retries, args.backoff)
-        if body is None:
-            return {"md5hash": md5hash, "url": url, "status": "failed", "reason": reason}
+        try:
+            body, reason = _fetch(url, args.timeout, args.retries, args.backoff)
+            if body is None:
+                return {"md5hash": md5hash, "url": url, "status": "failed", "reason": reason}
 
-        status, reason = _validate(body, md5hash, args.md5_check)
-        if args.md5_check != "off":
-            probe.record(reason.startswith("md5_match"))
-        if status != "ok":
-            return {"md5hash": md5hash, "url": url, "status": status, "reason": reason}
+            status, reason = _validate(body, md5hash, args.md5_check)
+            if args.md5_check != "off":
+                probe.record(reason.startswith("md5_match"))
+            if status != "ok":
+                return {"md5hash": md5hash, "url": url, "status": status, "reason": reason}
 
-        dst.write_bytes(body)
+            dst.write_bytes(body)
+        except Exception as e:  # one malformed row must never abort the whole fetch
+            return {"md5hash": md5hash, "url": url, "status": "failed",
+                    "reason": f"worker_error: {type(e).__name__}: {e}"}
         return {"md5hash": md5hash, "url": url, "status": "ok", "reason": reason}
 
     rows = df.to_dict("records")
     results: list[dict] = []
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        for res in tqdm(pool.map(work, rows), total=len(rows), desc="Downloading Fitzpatrick17k"):
+        # disable=None -> silent under the runner's tee (a 16k-row bar would
+        # otherwise be most of the log file); interactive runs still show it.
+        for res in tqdm(pool.map(work, rows), total=len(rows),
+                        desc="Downloading Fitzpatrick17k", disable=None):
             results.append(res)
             if probe.should_abort():
                 print(
@@ -223,6 +291,19 @@ def main() -> None:
 
     n_total = len(results)
     n_ok = len(ok_hashes)
+
+    # Per-host success rate. The release links two atlases, and they fail as a
+    # BLOCK (one going offline takes ~76% or ~24% of the set with it), so the
+    # overall rate alone hides which part of the fairness set survived.
+    log_df = pd.DataFrame(results)
+    log_df["host"] = log_df["url"].astype(str).str.extract(r"https?://([^/]+)", expand=False)
+    print("\n  per-host outcome (a whole host at 0% = that atlas is offline/moved):")
+    for host, grp in log_df.groupby("host", dropna=False):
+        ok = int(grp["status"].isin(["ok", "cached"]).sum())
+        top_reason = grp.loc[~grp["status"].isin(["ok", "cached"]), "reason"]
+        reason = f" | top failure: {top_reason.mode().iat[0]}" if len(top_reason) else ""
+        print(f"    {str(host):<32} {ok:>6}/{len(grp):<6} ({ok / len(grp):.1%}){reason}")
+
     print(
         f"\nFitzpatrick17k download — attempted: {n_total} | valid images: {n_ok} "
         f"({n_ok / n_total:.1%}) | failed: {n_total - n_ok}\n"

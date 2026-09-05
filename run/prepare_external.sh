@@ -25,6 +25,9 @@
 #   WORKERS         parallel downloads                 (default 8)
 #   SKIP_DOWNLOAD   1 = images already fetched         (default 0)
 #   SKIP_MD5_OVERLAP 1 = skip the pixel-level leakage layer (faster)
+#   CROP_FRACS      Fitzpatrick17k framing variants: comma-separated centre-crop
+#                   fractions (e.g. "0.7,0.5"), or "none" to skip them.
+#                   Default = the config's crop_variants: block (crop70 + crop50).
 #
 # Exit 2 from the prepare step = the overlap check found external images inside
 # the internal splits. Do NOT evaluate until that is resolved.
@@ -40,6 +43,7 @@ MD5_CHECK="${MD5_CHECK:-strict}"
 WORKERS="${WORKERS:-8}"
 SKIP_DOWNLOAD="${SKIP_DOWNLOAD:-0}"
 SKIP_MD5_OVERLAP="${SKIP_MD5_OVERLAP:-0}"
+CROP_FRACS="${CROP_FRACS:-}"
 
 # CPU-only work — never touch a GPU here.
 export CUDA_VISIBLE_DEVICES=""
@@ -47,6 +51,12 @@ export CUDA_VISIBLE_DEVICES=""
 OVERLAP_FLAG=""
 if [ "${SKIP_MD5_OVERLAP}" = "1" ]; then
     OVERLAP_FLAG="--skip-md5-overlap"
+fi
+
+# Empty = let configs/data/fitzpatrick17k.yaml decide (crop70 + crop50).
+CROP_FLAG=""
+if [ -n "${CROP_FRACS}" ]; then
+    CROP_FLAG="--center-crop-fracs ${CROP_FRACS}"
 fi
 
 prepare_ham() {
@@ -75,7 +85,8 @@ prepare_fitz() {
             --workers "${WORKERS}" --md5-check "${MD5_CHECK}" ${LIMIT_FLAG}
     fi
     echo "[run] Preparing Fitzpatrick17k (fairness evaluation set)"
-    python scripts/prepare_external_data.py --dataset fitzpatrick17k ${OVERLAP_FLAG}
+    # shellcheck disable=SC2086
+    python scripts/prepare_external_data.py --dataset fitzpatrick17k ${OVERLAP_FLAG} ${CROP_FLAG}
 }
 
 case "${DATASET}" in

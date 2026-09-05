@@ -1,6 +1,6 @@
 ---
 description: Tiến độ training trên các server (fold, % , ETA, RAM/VRAM) — mặc định tất cả server
-argument-hint: "[host ...]   ví dụ: vast  |  vast vastnew  |  (bỏ trống = tất cả)"
+argument-hint: "[host ...]   ví dụ: vastnew  |  (bỏ trống = tất cả server)"
 allowed-tools: Bash(bash run/progress_all.sh:*)
 ---
 

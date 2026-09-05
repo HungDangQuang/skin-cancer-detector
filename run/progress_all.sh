@@ -8,23 +8,23 @@
 # `git pull` to get the newest monitor, and nothing is written on them.
 #
 # Usage:
-#   bash run/progress_all.sh                       # both vast.ai boxes
+#   bash run/progress_all.sh                       # the training box (vastnew)
 #   bash run/progress_all.sh WATCH=30              # refresh every 30s
-#   bash run/progress_all.sh HOSTS="vast"          # just one
-#   bash run/progress_all.sh HOSTS="vast vastnew islab"   # add a box
+#   bash run/progress_all.sh HOSTS="vastnew"       # explicit single host
+#   bash run/progress_all.sh HOSTS="vastnew islab" # add a box
 #   bash run/progress_all.sh RUNS=0                # skip the run-dir summary
 #
 # Args (KEY=VALUE, or env vars):
 #   HOSTS       space-separated ssh targets, each optionally "host:/repo/path"
-#               (default "vast vastnew" — the aliases in ~/.ssh/config)
+#               (default "vastnew" — the alias in ~/.ssh/config)
 #   REMOTE_DIR  repo path used for hosts that don't carry their own ":path"
 #               (default /workspace/skin-cancer-detector — the vast.ai layout)
 #   WATCH       seconds between refreshes (default 0 = one-shot)
 #   RUNS        1|0, forwarded to progress.sh (run-dir fold summary)
 #   SSH_OPTS    extra ssh options (default "-o BatchMode=yes -o ConnectTimeout=10")
 #
-# Adding a third box = add its alias to ~/.ssh/config and to HOSTS. Nothing in
-# this script is vast-specific except the default HOSTS/REMOTE_DIR values.
+# Adding another box = add its alias to ~/.ssh/config and to HOSTS. Nothing in
+# this script is host-specific except the default HOSTS/REMOTE_DIR values.
 #
 # Like run/progress.sh this is a READ-ONLY reporter and deliberately does NOT
 # source run/common.sh: it runs on the Mac, where there is no ./.venv-linux and
@@ -44,7 +44,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOCAL_SCRIPT="${SCRIPT_DIR}/progress.sh"
 [ -f "${LOCAL_SCRIPT}" ] || { echo "ERROR: ${LOCAL_SCRIPT} not found" >&2; exit 2; }
 
-HOSTS="${HOSTS:-vast vastnew}"
+HOSTS="${HOSTS:-vastnew}"
 REMOTE_DIR="${REMOTE_DIR:-/workspace/skin-cancer-detector}"
 WATCH="${WATCH:-0}"
 RUNS="${RUNS:-1}"

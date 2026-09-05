@@ -16,7 +16,7 @@
 #   bash run/progress.sh WATCH=15        # refresh every 15s (Ctrl-C to stop)
 #   bash run/progress.sh RUNS=0          # skip the run-dir summary
 #
-# From the Mac, for BOTH vast.ai boxes at once:  bash run/progress_all.sh
+# From the Mac, for every training box at once:  bash run/progress_all.sh
 #
 # --- deliberate deviations from the run/*.sh house style --------------------
 # This script does NOT source run/common.sh and does NOT call start_log,
@@ -219,7 +219,7 @@ parse_log() {
 # start_log does `exec > >(tee -a logs/<name>_<ts>.log)`, so the tee is a child
 # of the run/train_*.sh shell. It is NOT always the trainer's direct parent:
 # depending on the bash build, the script shell forks an extra copy of itself
-# (seen on one vast box: python's parent = 2274, tee's parent = 2282, both
+# (observed in practice: python's parent = 2274, tee's parent = 2282, both
 # `run/train_student.sh`). So both the tee and the trainer are walked UP to the
 # outermost `run/train_{student,teacher}.sh` ancestor — that root is the job,
 # and it is what pairs them. PGID is useless here: every job launched by
@@ -278,7 +278,7 @@ print_jobs() {
     mains="$(printf '%s\n' "${train_lines}" \
              | awk -v pids="${all_pids}" 'BEGIN{n=split(pids,a," "); for(i=1;i<=n;i++) s[a[i]]=1} !($2 in s)')"
 
-    # pid -> VRAM (MiB). Some containers (one of the two vast boxes) run in their
+    # pid -> VRAM (MiB). Some containers (seen on vast.ai) run in their
     # own PID namespace while nvidia-smi reports the HOST pids — then nothing
     # matches and per-process VRAM is simply unavailable; say so instead of "-".
     local gpu_map

@@ -32,6 +32,9 @@ Variants written:
                     test_split_no_akiec.csv  akiec dropped (label-convention check)
     fitzpatrick17k  test_split.csv           benign vs malignant only (headline)
                     test_split_with_nonneo.csv  non-neoplastic merged into benign
+                    test_split_crop<N>.csv   headline rows, centre <N>% of each raw
+                                             image kept before the squash (framing
+                                             experiment — see docs/PREPROCESSING.md §1.2)
 
 Exit code 2 = the overlap check found external images inside the internal
 splits. Do NOT run the cross-domain evaluation in that case: an overlapping
@@ -253,24 +256,51 @@ def prepare_ham10000(cfg, args) -> pd.DataFrame:
     return df
 
 
+def _tone_groups(cfg, df: pd.DataFrame) -> pd.DataFrame:
+    """Attach `tone_group` from the config's `skin_type_groups` (never hard-coded)."""
+    groups = {g: list(v) for g, v in cfg.get("skin_type_groups", {}).items()}
+    scale_to_group = {int(s): g for g, vals in groups.items() for s in vals}
+    df["tone_group"] = df["fitzpatrick_scale"].map(scale_to_group).fillna("unknown")
+    return df
+
+
+def _resolve_crop_variants(cfg, override: str | None) -> dict[str, float]:
+    """{variant_key: fraction} from the config's `crop_variants:` block.
+
+    `--center-crop-fracs none` disables them; a comma-separated list of
+    fractions ("0.7,0.5") overrides the config and derives the keys.
+    """
+    if override is not None:
+        text = override.strip().lower()
+        if text in ("", "none", "off"):
+            return {}
+        out: dict[str, float] = {}
+        for token in text.split(","):
+            token = token.strip()
+            if not token:
+                continue
+            frac = float(token)
+            if not 0.0 < frac < 1.0:
+                sys.exit(f"ERROR: --center-crop-fracs values must be in (0, 1), got {frac}")
+            out[f"crop{round(frac * 100)}"] = frac
+        return out
+    return {str(k): float(v) for k, v in cfg.get("crop_variants", {}).items()}
+
+
 def prepare_fitzpatrick17k(cfg, args) -> pd.DataFrame:
     label_mapping = (
         {str(k): int(v) for k, v in cfg.label_mapping.items()}
         if "label_mapping" in cfg else None
     )
-    df = process_fitzpatrick17k(
+    tone_col = args.tone_col or cfg.get("tone_col", "fitzpatrick_scale")
+    image_size = cfg.get("image_size", 224)
+    df = _tone_groups(cfg, process_fitzpatrick17k(
         raw_dir=cfg.raw_dir,
         processed_dir=cfg.processed_dir,
-        image_size=cfg.get("image_size", 224),
-        tone_col=args.tone_col or cfg.get("tone_col", "fitzpatrick_scale"),
+        image_size=image_size,
+        tone_col=tone_col,
         label_mapping=label_mapping,
-    )
-
-    # Map the Fitzpatrick scale to the report's tone groups (config-driven, so the
-    # grouping used in the fairness table is never hard-coded here).
-    groups = {g: list(v) for g, v in cfg.get("skin_type_groups", {}).items()}
-    scale_to_group = {int(s): g for g, vals in groups.items() for s in vals}
-    df["tone_group"] = df["fitzpatrick_scale"].map(scale_to_group).fillna("unknown")
+    ))
 
     splits_dir = Path(cfg.splits_dir)
     extra = ["fitzpatrick_scale", "tone_group", "three_partition_label", "quality_flags"]
@@ -282,6 +312,36 @@ def prepare_fitzpatrick17k(cfg, args) -> pd.DataFrame:
     print("\nFitzpatrick17k splits written:")
     print(_summarize("test_split.csv (headline)", headline))
     print(_summarize("test_split_with_nonneo.csv", df))
+
+    # --- Framing variants (docs/PREPROCESSING.md §1.2) --------------------
+    # Same rows, same labels, same squash — only the field of view changes, so
+    # `crop<N>` vs `headline` isolates "does cropping to the lesion help?", the
+    # question an on-device crop pipeline actually poses. Each fraction gets its
+    # OWN processed dir: sharing one would hit _clean_external_image's
+    # dst.exists() fast-path and silently re-serve the uncropped pixels.
+    for key, frac in _resolve_crop_variants(cfg, args.center_crop_fracs).items():
+        crop_processed = Path(f"{cfg.processed_dir}_{key}")
+        print(f"\n[crop variant] {key}: centre {frac:.0%} of each raw image -> {crop_processed}")
+        crop_df = _tone_groups(cfg, process_fitzpatrick17k(
+            raw_dir=cfg.raw_dir,
+            processed_dir=crop_processed,
+            image_size=image_size,
+            tone_col=tone_col,
+            label_mapping=label_mapping,
+            center_crop_frac=frac,
+        ))
+        crop_headline = crop_df[crop_df["three_partition_label"] != "non-neoplastic"]
+        _write_split(crop_headline, splits_dir / f"test_split_{key}.csv", extra)
+        print(_summarize(f"test_split_{key}.csv", crop_headline))
+        # min_size is judged on the raw frame BEFORE the crop, so this should be
+        # unreachable — which is exactly why it is worth printing. A mismatch
+        # here means a source file went missing/unreadable between passes, and
+        # the framing delta would no longer be paired.
+        if len(crop_headline) != len(headline):
+            print(f"  ⚠️  WARNING: {key} has {len(crop_headline)} rows vs headline "
+                  f"{len(headline)} — the framing comparison is NOT paired. "
+                  f"Check {crop_processed}/excluded_images.csv before reporting.")
+
     print("\n  tone_group x label (headline variant) — check the dark group has enough")
     print("  malignant cases BEFORE evaluating; a near-empty cell means the fairness")
     print("  gap for that group is not measurable, only quotable with a wide CI:")
@@ -301,6 +361,10 @@ def main() -> None:
     ap.add_argument("--tone-col", default=None,
                     help="Fitzpatrick17k skin-tone column to group by; overrides the "
                          "config's tone_col (some releases also ship 'fitzpatrick_centaur')")
+    ap.add_argument("--center-crop-fracs", default=None,
+                    help="Fitzpatrick17k only: comma-separated centre-crop fractions for the "
+                         "framing variants, e.g. '0.7,0.5'; 'none' disables them. "
+                         "Default: the config's `crop_variants:` block.")
     ap.add_argument("--skip-md5-overlap", action="store_true",
                     help="skip the pixel-level overlap layer (faster; keeps the id layer)")
     ap.add_argument("--overlap-report", type=Path, default=None,

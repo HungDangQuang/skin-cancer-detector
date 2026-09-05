@@ -71,7 +71,13 @@
       "mcp__claude_ai_Google_Drive__create_file",
       "Edit(/.claude/skills/code-change/**)",
       "Read(//Users/hungdang/Documents/android-projects/SkinDetector/**)",
-      "Bash(mkdir -p docs app/src/main/java/com/nemis/skindetector/ml)"
+      "Bash(mkdir -p docs app/src/main/java/com/nemis/skindetector/ml)",
+      "Bash(ssh -o ConnectTimeout=40 vastnew 'sleep 240; cd /workspace/skin-cancer-detector && ls data/raw/fitzpatrick17k/images | wc -l; ls reports/external/ham10000/headline | wc -l; tmux ls 2>/dev/null | grep -E \"^\\(dl_fitz|eval_ham\\)\" | wc -l')",
+      "Bash(ssh -o ConnectTimeout=40 vastnew 'cd /workspace/skin-cancer-detector && ls data/raw/fitzpatrick17k/images | wc -l; ls reports/external/ham10000/headline | wc -l; tmux ls 2>/dev/null | grep -E \"^\\(dl_fitz|eval_ham\\)\" | wc -l')",
+      "Bash(python3 -)",
+      "Bash(grep -A6 -iE \"^Host vastnew\" ~/.ssh/config 2>/dev/null | head -40)",
+      "Read(//Users/hungdang/.ssh/**)",
+      "Bash(git restore *)"
     ],
     "deny": [
       "Bash(rm -rf:*)",

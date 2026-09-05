@@ -82,13 +82,14 @@ Greps every `run/*.sh` for known fragile patterns. Each finding is a real failur
 echo "--- a) run/*.sh that don't source common.sh (lose strict mode + logging) ---"
 # Exempt: common.sh itself, the standalone setup scripts (they must run BEFORE a
 # venv exists), train_kd_parallel.sh (deliberately `set -uo pipefail` without
-# -e, so one failed student can't abort the whole batch), and the read-only
-# monitors progress.sh / progress_all.sh (progress_all pipes progress.sh into
-# each server over `ssh 'bash -s'`, where there is no script path to source from;
-# they must also not activate the venv or write a log per refresh).
+# -e, so one failed student can't abort the whole batch), and the Mac-side
+# helpers progress.sh / progress_all.sh / pull_results.sh (progress_all and
+# pull_results pipe an inline script into each server over `ssh 'bash -s'`,
+# where there is no script path to source from; they run on the Mac, which has
+# no ./.venv-linux and no GPU, and must not write a log per invocation).
 for f in run/*.sh; do
     case "$f" in
-        run/common.sh|run/setup_env.sh|run/setup_export_env.sh|run/setup_new_server.sh|run/train_kd_parallel.sh|run/progress.sh|run/progress_all.sh) continue ;;
+        run/common.sh|run/setup_env.sh|run/setup_export_env.sh|run/setup_new_server.sh|run/train_kd_parallel.sh|run/progress.sh|run/progress_all.sh|run/pull_results.sh) continue ;;
     esac
     grep -q 'common\.sh' "$f" || echo "  $f does not source run/common.sh"
 done
@@ -163,7 +164,7 @@ echo "  (done)"
 
 echo "--- h) Required args not validated before a long run ---"
 # MODEL/CKPT/RUN_DIR style args must use ${VAR:?...} so the job dies in 1s, not 1h.
-for f in run/evaluate.sh run/benchmark.sh run/export_model.sh run/export_executorch.sh run/aggregate.sh; do
+for f in run/evaluate.sh run/benchmark.sh run/export_model.sh run/export_executorch.sh run/check_pte_parity.sh run/aggregate.sh; do
     [ -f "$f" ] || continue
     grep -qE '\$\{[A-Z_]+:\?' "$f" || echo "  $f never uses \${VAR:?...} for its required args"
 done

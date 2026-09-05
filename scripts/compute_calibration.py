@@ -179,6 +179,13 @@ def main() -> None:
                          "prepare-time so the column exists in predictions.csv (direction D).")
     ap.add_argument("--min-subgroup-n", type=int, default=20,
                     help="skip subgroups with fewer than this many pooled samples (default 20)")
+    # Output paths are overridable so one run-dir can hold several --subgroup
+    # breakdowns side by side (the fixed default name would overwrite the
+    # previous subgroup's JSON).
+    ap.add_argument("--out-json", type=Path, default=None,
+                    help="default: <run-dir>/calibration_metrics.json")
+    ap.add_argument("--out-png", type=Path, default=None,
+                    help="default: <run-dir>/reliability_curve.png")
     args = ap.parse_args()
 
     run_dir: Path = args.run_dir
@@ -303,13 +310,14 @@ def main() -> None:
                 print(f"[calibration]   {g:>20} n={m['n']:<6} prev={m['prevalence']:.4f} "
                       f"ECE {m['ece_raw']:.4f}->{m['ece_cal']:.4f}")
 
-    json_path = run_dir / "calibration_metrics.json"
+    json_path = args.out_json or (run_dir / "calibration_metrics.json")
+    json_path.parent.mkdir(parents=True, exist_ok=True)
     json_path.write_text(json.dumps(out, indent=2))
     print(f"[calibration] wrote {json_path} ({len(per_fold)} folds, method={args.method})")
     print(f"[calibration] ECE  raw {agg_mean['ece_raw']:.4f} -> cal {agg_mean['ece_cal']:.4f} | "
           f"Brier raw {agg_mean['brier_raw']:.4f} -> cal {agg_mean['brier_cal']:.4f}")
 
-    png_path = run_dir / "reliability_curve.png"
+    png_path = args.out_png or (run_dir / "reliability_curve.png")
     _reliability_curve(y_true_all, raw_all, cal_all, png_path, args.method)
     print(f"[calibration] wrote {png_path}")
 

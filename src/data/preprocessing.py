@@ -408,19 +408,34 @@ def _clean_external_image(
     dst: Path,
     image_size: int = 224,
     min_size: int = 32,
+    center_crop_frac: float = 1.0,
 ) -> tuple[Image.Image | None, str | None]:
-    """Load → resize → save one external-test image (tier-1 integrity only).
+    """Load → (optional centre crop) → resize → save one external-test image.
 
-    Returns ``(img, None)`` on success and ``(None, reason)`` when the image
-    fails integrity and the caller must drop the row. Tier-2 quality flags are
-    NOT decided here — the caller runs ``is_uninformative`` / the md5 check and
-    keeps the row either way.
+    Tier-1 integrity only. Returns ``(img, None)`` on success and
+    ``(None, reason)`` when the image fails integrity and the caller must drop
+    the row. Tier-2 quality flags are NOT decided here — the caller runs
+    ``is_uninformative`` / the md5 check and keeps the row either way.
 
     The resize squashes to a square exactly like ``process_isic2024`` /
     ``process_pad_ufes_20`` do, so external images reach the model with the SAME
     geometry the training images had. An aspect-preserving crop here would stack
-    a preprocessing confound on top of the domain shift being measured.
+    a preprocessing confound on top of the domain shift being measured — which
+    is why ``center_crop_frac=1.0`` (no crop) is the default and the HEADLINE
+    variant.
+
+    ``center_crop_frac < 1.0`` deliberately introduces exactly one extra
+    variable, for the framing experiment described in `docs/PREPROCESSING.md
+    §1.2`: it keeps the central ``frac`` of BOTH sides, so the aspect ratio is
+    unchanged and the squash that follows is identical to the headline path.
+    The only thing that moves is the field of view — which is what an on-device
+    "crop the lesion before inference" pipeline would change. Callers MUST give
+    each fraction its own ``dst`` tree: the ``dst.exists()`` fast-path below
+    cannot tell a 70%-crop file from an uncropped one, so sharing a directory
+    would silently evaluate the headline pixels under a crop variant's name.
     """
+    if not 0.0 < center_crop_frac <= 1.0:
+        raise ValueError(f"center_crop_frac must be in (0, 1], got {center_crop_frac}")
     try:
         if dst.exists():
             # Fast-path: a previous run already resized this image. Reload it so
@@ -430,8 +445,21 @@ def _clean_external_image(
         if not src.exists():
             return None, "missing_file"
         img = Image.open(src).convert("RGB")
+        # min_size is judged on the RAW frame, deliberately BEFORE any crop: a
+        # crop variant must drop exactly the same rows as the headline, or the
+        # framing comparison stops being paired. The cost is that a marginal
+        # image can end up very small after a 50% crop; that shows up as blur in
+        # the metric, which is the honest outcome, not as a silent row drop.
         if min(img.size) < min_size:
             return None, f"too_small: {img.size}"
+        if center_crop_frac < 1.0:
+            # Crop on the RAW pixels, before the squash — cropping the already
+            # resized 224 square would throw away detail the crop is meant to
+            # zoom into.
+            w, h = img.size
+            cw, ch = max(1, round(w * center_crop_frac)), max(1, round(h * center_crop_frac))
+            left, top = (w - cw) // 2, (h - ch) // 2
+            img = img.crop((left, top, left + cw, top + ch))
         img = img.resize((image_size, image_size), Image.LANCZOS)
         dst.parent.mkdir(parents=True, exist_ok=True)
         img.save(dst)
@@ -610,6 +638,7 @@ def process_fitzpatrick17k(
     min_size: int = 32,
     tone_col: str = "fitzpatrick_scale",
     label_mapping: dict[str, int] | None = None,
+    center_crop_frac: float = 1.0,
 ) -> pd.DataFrame:
     """
     Process Fitzpatrick17k for FAIRNESS evaluation (never training).
@@ -626,6 +655,11 @@ def process_fitzpatrick17k(
     ``three_partition_label`` is CARRIED THROUGH rather than filtered, so the
     caller can emit both label conventions (drop `non-neoplastic` vs merge it
     into benign) from a single pass.
+
+    ``center_crop_frac`` (default 1.0 = the headline, uncropped variant) keeps
+    the central fraction of each raw image before the squash, for the framing
+    experiment in `docs/PREPROCESSING.md §1.2`. Every fraction needs its OWN
+    ``processed_dir`` — see ``_clean_external_image``.
 
     Returns columns: image_id, patient_id, image_path, label, class_name, source,
     fitzpatrick_scale, three_partition_label, quality_flags.
@@ -691,6 +725,7 @@ def process_fitzpatrick17k(
             dst=dst,
             image_size=image_size,
             min_size=min_size,
+            center_crop_frac=center_crop_frac,
         )
         if img is None:
             excluded.append({"image_id": image_id, "reason": drop_reason})
