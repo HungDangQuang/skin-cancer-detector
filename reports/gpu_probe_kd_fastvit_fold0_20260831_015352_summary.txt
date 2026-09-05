@@ -1,0 +1,16 @@
+================================================================
+gpu_probe summary  [kd_fastvit_fold0]
+samples: 19167   interval: 5s   span: 97166s
+csv:     reports/gpu_probe_kd_fastvit_fold0_20260831_015352.csv
+================================================================
+
+GPU 0   (24576 MiB total)
+  utilization %   p50=100  p90=100  p95=100  max=100
+  VRAM used MiB   p50=7368  p95=7368  max=7368
+  fits by VRAM    ~3 job(s) of this size (0.9 x 24576 / 7368)
+  read as: VRAM decides IF a 2nd job fits; utilization decides if it
+           HELPS. p50 near 100 means the card is already saturated —
+           a 2nd job then buys no throughput, only OOM risk.
+
+Next: set MAX_JOBS in run/train_kd_parallel.sh from the smaller of the
+      two — the VRAM fit, and how far p50 utilization is below 100.

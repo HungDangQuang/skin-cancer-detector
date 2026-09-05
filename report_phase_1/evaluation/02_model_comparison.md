@@ -1,72 +1,107 @@
-# So sánh model — model nào tốt hơn (Phase 1)
-
-Tất cả số là **mean qua các fold** trên **tập test độc lập** (patient-disjoint). Cột **n**
-= số fold có kết quả; **n<5 = chưa đủ 5-fold → độ tin thấp hơn, đọc thận trọng**.
-
-Cách đọc: xếp hạng chính theo **pAUC@80** (metric ISIC) và **AUPRC** (headline ở prevalence 0.4%).
+> ⛔ **SUPERSEDED — 2026-08-26. KHÔNG trích số từ file này.**
+>
+> Bản thay thế duy nhất: [`reports/BAO_CAO_TONG_HOP.md`](../../reports/BAO_CAO_TONG_HOP.md).
+>
+> Lý do: cùng phạm vi "chỉ 1 teacher" (22/08); §0 của chính file này ghi "chưa trả lời được Q2" — nay đã trả lời.
 
 ---
 
-## 1. Bảng xếp hạng đầy đủ (sắp theo pAUC@80 giảm dần)
+# So sánh model — model nào tốt hơn (Phase 1)
 
-| # | Model | Vai trò | n | pAUC@80 | AUPRC | AUC | Sens | Sens@95Spec |
+Tất cả số là **mean ± std qua 5 fold** trên **tập test độc lập** (patient-disjoint), trích từ
+`experiments/runs/<run>/aggregated.json`. Cập nhật **2026-08-22**.
+
+Cách đọc: xếp hạng theo **AUPRC** (headline ở prevalence 0,39%) và **pAUC@80** (metric ISIC 2024).
+
+---
+
+## 0. ⚠️ Phạm vi — đọc trước
+
+Chỉ tính các run huấn luyện **từ 15/7/2026**. Đã **LOẠI**:
+
+- **KD `convnextv2_base→*` và `maxvit_base→*`** — bản tháng 6, distill từ teacher *cũ*. Các run-dir
+  này hiện đang bị train lại và **trộn fold cũ với fold mới** (ví dụ
+  `kd_convnextv2_base_to_fastvit_sa12`: fold_0 mtime 2026-08-13 nhưng fold_1..4 vẫn 2026-06-29/30)
+  → `aggregated.json` của chúng **không đáng tin**, không được trích.
+- **Tier baseline cũ** (`efficientnet_b4`, `efficientnet_b0`, `mobilenetv3_large`, `mobilevit_s`) —
+  4 kiến trúc đã bị xoá khỏi `src/models/registry.py`, không còn thuộc đề tài.
+
+**Hệ quả:** teacher duy nhất có ma trận KD hợp lệ là **`efficientnetv2_m`** → xem §2.2.
+
+---
+
+## 1. Bảng xếp hạng (sắp theo AUPRC giảm dần)
+
+| # | Model | Vai trò | n | AUPRC | pAUC@80 | AUC | Sens | Sens@95Spec |
 |---|---|---|---|---|---|---|---|---|
-| 1 | fastvit_sa12 ← convnextv2_base | KD | 5 | **0.1908** | 0.6756 | 0.9902 | 0.949 | 0.944 |
-| 2 | mobilenetv4 ← maxvit_base | KD | ⚠️1 | 0.1905 | 0.6510 | 0.9899 | 0.959 | 0.959 |
-| 3 | mobilenetv4 ← efficientnetv2_m | KD | 5 | 0.1905 | 0.6361 | 0.9897 | 0.949 | 0.947 |
-| 4 | efficientformerv2_s2 ← efficientnetv2_m | KD | ⚠️2 | 0.1899 | 0.6211 | 0.9892 | 0.950 | 0.950 |
-| 5 | mobilenetv4 ← convnextv2_base | KD | 5 | 0.1898 | 0.6614 | 0.9891 | **0.962** | 0.940 |
-| 6 | efficientformerv2_s2 ← convnextv2_base | KD | ⚠️4 | 0.1897 | **0.6839** | 0.9892 | 0.960 | 0.947 |
-| 7 | fastvit_sa12 ← efficientnetv2_m | KD | 5 | 0.1896 | 0.6517 | 0.9888 | 0.953 | 0.948 |
-| — | **convnextv2_base** | *teacher* | 5 | 0.1893 | 0.6830 | 0.9888 | 0.949 | 0.936 |
-| 8 | fastvit_sa12 ← maxvit_base | KD | ⚠️1 | 0.1888 | 0.6124 | 0.9880 | 0.934 | 0.934 |
-| 9 | mobilenetv3_large ← efficientnet_b4 | KD | 5 | 0.1881 | 0.6313 | 0.9873 | 0.955 | 0.927 |
-| 10 | mobilevit_s ← efficientnet_b4 | KD | 5 | 0.1879 | 0.6391 | 0.9872 | 0.945 | 0.932 |
-| 11 | efficientnet_b0 ← efficientnet_b4 | KD | 5 | 0.1877 | 0.6511 | 0.9870 | 0.940 | 0.932 |
-| — | efficientnetv2_m | *teacher* | 5 | 0.1875 | 0.6487 | 0.9869 | 0.928 | 0.928 |
-| 12 | mobilenetv4 | baseline | 5 | 0.1870 | 0.6090 | 0.9862 | 0.956 | 0.933 |
-| — | **maxvit_base** | *teacher* | 5 | 0.1869 | **0.6878** | 0.9863 | 0.944 | 0.934 |
-| 13 | mobilevit_s | baseline | 5 | 0.1866 | 0.6273 | 0.9858 | 0.940 | 0.934 |
-| 14 | mobilenetv3_large | baseline | 5 | 0.1858 | 0.6607 | 0.9852 | 0.934 | 0.933 |
-| 15 | fastvit_sa12 | baseline | 5 | 0.1856 | 0.6679 | 0.9849 | 0.938 | 0.929 |
-| 16 | efficientnet_b0 | baseline | 5 | 0.1850 | 0.6550 | 0.9844 | 0.933 | 0.910 |
-| — | efficientnet_b4 | *teacher* | 5 | 0.1785 | 0.5998 | 0.9777 | 0.909 | 0.910 |
+| — | **maxvit_base** | *teacher* | 5 | **0.6566 ± 0.0211** | 0.1830 ± 0.0025 | 0.9824 ± 0.0024 | 0.924 | 0.917 |
+| — | **convnextv2_base** | *teacher* | 5 | 0.6506 ± 0.0306 | 0.1822 ± 0.0021 | 0.9816 ± 0.0021 | 0.920 | 0.915 |
+| — | efficientnetv2_m | *teacher* | 5 | 0.6298 ± 0.0488 | 0.1826 ± 0.0025 | 0.9820 ± 0.0025 | 0.927 | 0.912 |
+| — | efficientformerv2_s2 | *baseline* | 5 | 0.6283 ± 0.0147 | 0.1812 ± 0.0016 | 0.9804 ± 0.0016 | 0.918 | 0.918 |
+| 1 | efficientformerv2_s2 ← efficientnetv2_m | KD | 5 | **0.6220 ± 0.0531** | 0.1849 ± 0.0017 | 0.9841 ± 0.0017 | 0.929 | 0.931 |
+| 2 | fastvit_sa12 ← efficientnetv2_m | KD | 5 | 0.6209 ± 0.0225 | 0.1853 ± 0.0023 | 0.9846 ± 0.0023 | 0.929 | **0.934** |
+| — | mobilenetv4_conv_medium | *baseline* | 5 | 0.6101 ± 0.0476 | 0.1798 ± 0.0052 | 0.9790 ± 0.0053 | 0.920 | 0.916 |
+| — | fastvit_sa12 | *baseline* | 5 | 0.6082 ± 0.0417 | 0.1825 ± 0.0032 | 0.9817 ± 0.0033 | 0.923 | 0.923 |
+| 3 | mobilenetv4_conv_medium ← efficientnetv2_m | KD | 5 | 0.6056 ± 0.0341 | **0.1859 ± 0.0016** | **0.9852 ± 0.0017** | **0.933** | 0.930 |
+| 4 | repvit_m1_0 ← efficientnetv2_m | KD | 5 | 0.5537 ± 0.0292 | 0.1832 ± 0.0008 | 0.9823 ± 0.0009 | 0.924 | 0.923 |
+| — | repvit_m1_0 | *baseline* | 5 | 0.5365 ± 0.0362 | 0.1718 ± 0.0024 | 0.9709 ± 0.0025 | 0.912 | 0.890 |
 
-⚠️ = chưa đủ 5 fold (maxvit-KD mới 1 fold; efficientformerv2_s2 2–4 fold). Cần chạy nốt để chốt.
+*(Sens / Sens@95Spec làm tròn 3 chữ số; std đầy đủ trong `aggregated.json`. Chỉ student KD được đánh số hạng.)*
+
+**Đọc bảng:** theo **AUPRC**, teacher (nặng) đứng đầu và thứ hạng giữa student KD/baseline lẫn lộn.
+Nhưng theo **pAUC@80 / AUC / Sensitivity**, **4 student KD chiếm trọn nhóm đầu** (pAUC 0,1832–0,1859)
+so với baseline (0,1718–0,1825) và **cao hơn cả 3 teacher** (0,1822–0,1830) — đó là nơi KD thể hiện (§3).
 
 ---
 
 ## 2. Kết luận rút ra
 
-### 2.1 Model chính xác nhất (tổng thể)
-- **KD fastvit_sa12 ← convnextv2_base** dẫn đầu pAUC (0.1908) + AUC (0.9902), AUPRC cao (0.6756).
-- Về **AUPRC** (headline): cao nhất là **efficientformerv2_s2 ← convnextv2_base (0.6839)** nhưng
-  mới 4 fold ⚠️; kế đến fastvit (0.6756) và mobilenetv4←convnextv2 (0.6614) đều đủ 5 fold.
+### 2.1 Model student tốt nhất
+**`mobilenetv4_conv_medium ← efficientnetv2_m` (KD).** Dẫn đầu **pAUC@80 (0.1859)** + **AUC (0.9852)**
++ **Sensitivity (0.933)** trong toàn bộ student, đồng thời là model **nhanh nhất/nhẹ nhất** đã đo
+(22,6 ms · 32,1 MB `.pte` — §2.4).
+- **AUPRC cao nhất trong nhóm KD student:** `efficientformerv2_s2 ← efficientnetv2_m` (0.6220).
+- Lưu ý trung thực: **AUPRC của KD không phải lúc nào cũng > baseline** (efv2: base 0.6283 > KD 0.6220;
+  mnv4: base 0.6101 > KD 0.6056) — nhưng đều **trong nhiễu** (< 1 std). KD thắng chắc ở pAUC/Sens (§3).
 
-### 2.2 Teacher tốt nhất
-- **maxvit_base (AUPRC 0.6878)** và **convnextv2_base (0.6830)** là 2 teacher mạnh nhất.
-- **efficientnet_b4 yếu nhất** (AUPRC 0.5998, pAUC 0.1785) — thấp hơn cả student của nó.
-- → Teacher mạnh (convnextv2/maxvit) tạo ra student tốt hơn hẳn teacher yếu (efficientnet_b4).
+### 2.2 Teacher — chỉ so được STANDALONE
+- Standalone: **`maxvit_base` (0.6566) ≈ `convnextv2_base` (0.6506)**, hơn `efficientnetv2_m` (0.6298)
+  nhưng **trong 1 std** → không tuyên bố "teacher mạnh nhất" tuyệt đối.
+- ⚠️ **Không kết luận được "teacher nào tạo student tốt nhất"** — chỉ `efficientnetv2_m` có ma trận KD
+  hợp lệ. Muốn khép phải train lại KD của convnextv2/maxvit (§4).
 
-### 2.3 Student vượt teacher
-- Mọi student SOTA (0.63–0.68 AUPRC) **vượt teacher efficientnet_b4 (0.60)**. KD + kiến trúc
-  mobile hiện đại cho kết quả tốt hơn teacher CNN cũ.
+### 2.3 Student vs teacher
+Teacher (AUPRC 0.63–0.66) **cao hơn** student (0.55–0.62) ở AUPRC. Nhưng student KD **đạt/vượt teacher
+ở pAUC@80 và Sensitivity** dù nhẹ hơn nhiều lần — đúng mục tiêu KD (nén về mobile mà giữ vùng độ nhạy cao).
 
-### 2.4 Ứng viên cho mobile (đã export `.pte`, đo on-device Pixel 6a)
-| Model (bản deploy) | pAUC | AUPRC | Sens | Latency@t4 | Size .pte | Fold |
+> ⚠️ Luận điểm cũ **"student vượt teacher"** đã bị rút: nó so với teacher `efficientnet_b4`
+> (AUPRC 0.5998) — model đã bị loại khỏi đề tài.
+
+### 2.4 Ứng viên cho mobile (đo on-device Pixel 6a, `.pte` FP32, 4 threads)
+
+| Model (bản deploy) | AUPRC | pAUC | Sens | Latency@t4 | Size .pte | n |
 |---|---|---|---|---|---|---|
-| fastvit ← convnextv2 (KD) | **0.1908** | 0.6756 | 0.949 | 65 ms | 40 MB | 5 |
-| efficientformerv2_s2 ← convnextv2 (KD) | 0.1897 | **0.6839** | 0.960 | 43 ms | 47 MB | ⚠️4 |
-| **mobilenetv4 ← convnextv2 (KD)** | 0.1898 | 0.6614 | **0.962** | 22 ms | 32 MB | 5 |
-| mobilenetv3 ← b4 (KD) | 0.1881 | 0.6313 | 0.955 | **8.4 ms** | **16 MB** | 5 |
+| **mobilenetv4 ← efficientnetv2_m (KD)** | 0.6056 | **0.1859** | **0.933** | **22,6 ms** | **32,1 MB** | 5 |
+| efficientformerv2_s2 ← efficientnetv2_m (KD) | **0.6220** | 0.1849 | 0.929 | 42,8 ms | 47,0 MB | 5 |
+| fastvit_sa12 ← efficientnetv2_m (KD) | 0.6209 | 0.1853 | 0.929 | 65,5 ms | 40,3 MB | 5 |
+| repvit_m1_0 ← efficientnetv2_m (KD) | 0.5537 | 0.1832 | 0.924 | *chưa đo* | *chưa đo* | 5 |
 
-**Khuyến nghị Phase 1:** **mobilenetv4 ← convnextv2_base** là điểm cân bằng tốt nhất (đủ 5 fold,
-AUPRC 0.6614, Sens cao nhất 0.962, 22 ms/32 MB). Chọn **mobilenetv3** nếu ưu tiên tốc độ/nhẹ
-tuyệt đối (8.4 ms/16 MB, đổi lại AUPRC thấp hơn).
+Latency là **weight-independent** (`docs/MOBILE.md §0`) nên số đo 2026-07-04 vẫn hợp lệ cho các kiến
+trúc này; cột độ chính xác đã thay bằng bản July-15+.
 
-**Ứng viên mới nổi:** **efficientformerv2_s2** có **AUPRC cao nhất (0.6839)** và **nhanh hơn
-fastvit** trên máy thật (43 vs 65 ms) — vượt fastvit ở cả accuracy lẫn tốc độ. Nhược: `.pte` lớn
-nhất (47 MB) và **mới 4 fold** → cần chạy nốt fold 5 rồi mới đưa vào khẳng định chính thức.
+**Khuyến nghị Phase 1:** **`mobilenetv4 ← efficientnetv2_m`** — thắng ở cả hai trục: nhanh/nhẹ nhất
+*và* dẫn đầu pAUC/AUC/Sens. Nếu bắt buộc tối đa AUPRC → `efficientformerv2_s2` (0.6220) nhưng chậm
+gần 2× và `.pte` lớn hơn 15 MB.
 
-*Chi tiết benchmark: xem [../benchmark/README.md](../benchmark/README.md). Hiệu quả KD: xem
+**FastViT bị lấn át:** AUPRC ≈ EfficientFormerV2 (0.6209 vs 0.6220) nhưng chậm hơn **1,5×** (65,5 vs
+42,8 ms) — một kết luận chỉ có được nhờ đo on-device thật.
+
+---
+
+## 3. Còn thiếu
+- **KD `convnextv2_base`/`maxvit_base` × 4 student** (đợt mới) → khép §2.2.
+- **Benchmark `repvit_m1_0`** + params/FLOPs cho 3 teacher.
+- **Export `.pte`** cho checkpoint July-15+ (`exports/` đang rỗng) + parity check.
+
+*Chi tiết benchmark: [../benchmark/README.md](../benchmark/README.md). Hiệu quả KD:
 [03_kd_effectiveness.md](03_kd_effectiveness.md).*

@@ -1,15 +1,23 @@
+> ⛔ **SUPERSEDED — 2026-08-26. KHÔNG trích số từ file này.**
+>
+> Bản thay thế duy nhất: [`reports/BAO_CAO_TONG_HOP.md`](../reports/BAO_CAO_TONG_HOP.md).
+>
+> Lý do: cùng phạm vi "chỉ 1 teacher" (22/08).
+
+---
+
 # NỘI DUNG SLIDE — BẢO VỆ ĐỀ CƯƠNG LUẬN VĂN THẠC SĨ
 
 > **Hướng dẫn dùng file này:** Mỗi mục `## Slide N` là một slide. Phần **Tiêu đề** là title, **Nội dung** là các bullet đưa lên slide (giữ ngắn gọn), **Ghi chú thuyết trình** là lời nói của người trình bày (không đưa lên slide). Đưa toàn bộ file này cho AI dựng slide (Gamma / Beautiful.ai / PowerPoint Copilot) và yêu cầu: "tạo slide theo từng mục, phong cách học thuật, tối giản, có biểu đồ/bảng khi được gợi ý".
 >
-> **Tổng: 24 slide** (+ 1 slide tùy chọn 19B + phụ lục tài liệu tham khảo) · Thời lượng đề xuất: 16–20 phút · Đối tượng: Hội đồng đánh giá đề cương.
+> **Tổng: 24 slide** (+ 2 slide bổ sung **19B** tùy chọn và **21B** ablation dữ liệu + phụ lục tài liệu tham khảo) · Thời lượng đề xuất: 16–20 phút · Đối tượng: Hội đồng đánh giá đề cương.
 >
 > **⚠️ HÌNH ĐÃ VẼ SẴN — BẮT BUỘC DÙNG, KHÔNG VẼ LẠI:** Thư mục `report_phase_1/figures/` chứa các hình dạng SVG/PNG do học viên tự vẽ (phong cách "soft-card" đồng bộ). Khi một slide ghi *"DÙNG HÌNH SẴN: `figures/<tên>.png`"* thì **chèn đúng file PNG đó làm hình chính của slide, không tự sinh lại hình mới**. Dùng bản `_slide.png` (tỉ lệ 16:9) cho slide. Các hình có sẵn cho bộ slide này:
 > - `figures/kd_pipeline_slide.png` — pipeline tổng thể 3 bước (Teacher → Chưng cất KD → Đánh giá + triển khai) → **Slide 18**
 > - `figures/kd_flow_slide.png` — cơ chế chưng cất tri thức (teacher đóng băng, nhãn mềm, hàm mất mát kết hợp, backprop chỉ student) → **Slide 6** (và tái dùng ở **Slide 16**)
 > - `figures/app_inference_slide.png` — luồng suy luận trên thiết bị của ứng dụng (camera → cổng chất lượng → suy luận .pte → ngưỡng → khuyến nghị) → **Slide 19B**
 >
-> **Ghi chú số liệu:** Các slide phần "Kết quả bước đầu" dùng số THẬT đã chạy 5-fold CV trên test độc lập (cập nhật 2026-07-04). Đây là kết quả *bước đầu* để chứng minh tính khả thi — một số cặp mới đủ 4 fold và phần cross-domain/fairness chưa hoàn tất (nói rõ khi trình bày). Tài liệu tham khảo trong slide được **đánh số lại từ [1]** (không theo số của đề cương).
+> **Ghi chú số liệu (cập nhật 2026-08-22):** Các slide phần "Kết quả bước đầu" dùng số THẬT đã chạy **đủ 5-fold CV** trên test độc lập, trích từ `experiments/runs/*/aggregated.json`. **Phạm vi: chỉ các run huấn luyện từ 15/7/2026** — đợt hợp lệ, đồng bộ với bộ mô hình hiện tại. Hệ quả phải nói rõ khi trình bày: **ma trận KD mới hoàn tất cho một teacher (EfficientNetV2-M)**, nên câu hỏi "teacher nào chưng cất tốt nhất" chưa trả lời được; phần cross-domain/fairness cũng chưa chạy. Tài liệu tham khảo trong slide được **đánh số lại từ [1]** (không theo số của đề cương).
 
 ---
 
@@ -272,20 +280,18 @@
 
 | Vai trò | Model | Paradigm |
 |---|---|---|
-| **Teacher** | EfficientNet-B4 (~17,6M) | Compound-scaling CNN |
-| Teacher | EfficientNetV2-M | CNN cải tiến |
+| **Teacher** | EfficientNetV2-M | CNN cải tiến (fused-MBConv) |
 | Teacher | ConvNeXtV2-Base | Modern ConvNet |
 | Teacher | MaxViT-Base | CNN–Transformer hybrid |
-| **Student** | EfficientNet-B0 (~4,0M) | Compound-scaling CNN |
-| Student | MobileNetV3-Large (~4,2M) | NAS-optimized CNN |
-| Student | MobileViT-S (~4,9M) | Hybrid CNN-Transformer |
-| Student | MobileNetV4-Conv-M (~8,4M) | Depthwise-sep CNN |
-| Student | FastViT-SA12 (~10,6M) | CNN + Reparam |
-| Student | EfficientFormerV2-S2 (~12,1M) | Attention-CNN hybrid |
+| **Student** | MobileNetV4-Conv-M (8,44M) | Depthwise-separable CNN |
+| Student | FastViT-SA12 (10,56M) | CNN + Reparameterization |
+| Student | EfficientFormerV2-S2 (12,13M) | Attention–CNN hybrid |
+| Student | RepViT-M1.0 | CNN mang thiết kế ViT |
 
-- Chung head: GAP → Dropout → Dense(1); `sigmoid` tại inference; backbone từ `timm` (kiến trúc mới cần `timm≥1.0`); teacher **luôn đóng băng** khi distill
+- Chung head: GAP → Dropout → Dense(1); `sigmoid` tại inference; backbone từ `timm` (`timm≥1.0`); teacher **luôn đóng băng** khi distill
+- Ma trận đầy đủ = **3 teacher × 4 student × 2 nhánh (KD / baseline) × 5 fold**
 
-**Ghi chú thuyết trình:** Nói rõ — đây **không phải** hai "tầng" tách biệt; đây là *một dải teacher từ yếu (B4) đến mạnh (MaxViT/ConvNeXtV2)* và *một dải student trải nhiều paradigm*, để quét được cả hai câu hỏi trong cùng khung đối chứng.
+**Ghi chú thuyết trình:** Nói rõ ý đồ thiết kế: *một dải teacher có chất lượng khác nhau* × *một dải student trải nhiều paradigm*, để quét được cả hai câu hỏi (paradigm nào hưởng lợi nhất, teacher mạnh có tạo student tốt hơn không) trong cùng một khung đối chứng. Params của student là số **thực đo**; 3 teacher và RepViT chưa chạy job benchmark nên không trích số.
 
 **Gợi ý hình:** Bảng trên, cột trái tô màu theo Teacher/Student; sắp teacher theo chất lượng tăng dần.
 
@@ -302,9 +308,9 @@ L_total = α · L_hard + (1 − α) · T² · L_soft
 - `L_hard = FocalLoss(z_student, y_true)` — γ=2, α=0,25 [17] → xử lý mất cân bằng
 - `L_soft = BCE(σ(z_student/T), σ(z_teacher/T))` — truyền "dark knowledge", **T = 4,0**
 - Hệ số cân bằng **α = 0,3** → 30% nhãn cứng + 70% nhãn mềm (thiên về học từ teacher)
-- Nhánh **baseline: α = 1,0**, không load teacher → **kiểm soát tuyệt đối** thí nghiệm
+- Nhánh **baseline**: một cờ cấu hình `use_kd=false` chuyển sang `Trainer` + Focal Loss thuần, **không nạp teacher** (tương đương α = 1,0) → **kiểm soát tuyệt đối** thí nghiệm
 
-**Ghi chú thuyết trình:** Điểm mới so với Hinton gốc: thay CE hard-label bằng **Focal Loss** vì mất cân bằng cực đoan. Nhấn cơ chế baseline (α=1, không teacher) — đây là nền để đo Δ sạch.
+**Ghi chú thuyết trình:** Điểm mới so với Hinton gốc: thay CE hard-label bằng **Focal Loss** vì mất cân bằng cực đoan. Nhấn cơ chế baseline — cùng một script, cùng data/seed/siêu tham số, chỉ đổi một cờ để bỏ teacher — đây là nền để đo Δ sạch. (Nếu hội đồng hỏi thêm: repo còn cài sẵn 2 biến thể tắt-mặc-định — MSE trên logit thô, và chưng cất quan hệ ở mức đặc trưng RKD — để ngỏ cho giai đoạn sau.)
 
 **Gợi ý hình:** Đặt **công thức lớn** làm trọng tâm slide; bên cạnh **tái dùng `figures/kd_flow_slide.png`** (đã có khối "Combined KD loss" ghi rõ `0.3·focal + 0.7·T²·BCE(soft), T=4` và teacher đóng băng) để minh họa 2 dòng gradient hard/soft đổ vào student. Không vẽ sơ đồ mới — hình này đã thể hiện đúng cơ chế.
 
@@ -316,14 +322,19 @@ L_total = α · L_hard + (1 − α) · T² · L_soft
 
 **Nội dung:**
 - Nguyên tắc: mỗi student chạy **2 nhánh (KD / không KD)** với **cùng** dữ liệu, seed, siêu tham số, quy trình — **chỉ khác hàm mất mát** → mọi Δ đều quy về KD
-- Ma trận thực nghiệm (5-fold CV):
-  - 4 teacher × 5 folds = **20 lượt**
-  - 6 student baseline × 5 folds = **30 lượt**
-  - ~12 cặp teacher–student KD × 5 folds ≈ **60 lượt**
-- Định lượng: **ΔpAUC**, **ΔAUPRC** (KD − baseline)
-- Kiểm định ý nghĩa: **Paired t-test (p < 0,05)** trên 5 fold — không kết luận từ một con số điểm
+- Ma trận thực nghiệm (5-fold CV) — **tổng 110 lượt huấn luyện**:
 
-**Gợi ý hình:** Sơ đồ nhánh Student → {KD, Baseline} → so sánh Δ; ma trận teacher×student dạng lưới.
+| Nhóm | Lượt | Trạng thái |
+|---|---|---|
+| 3 teacher × 5 fold | 15 | ✅ |
+| 3 teacher ISIC-only (ablation PAD) × 5 fold | 15 | ✅ |
+| 4 student baseline × 5 fold | 20 | ✅ |
+| KD: 3 teacher × 4 student × 5 fold | 60 | 🔄 20/60 |
+
+- Định lượng: **ΔpAUC**, **ΔAUPRC** (KD − baseline); Δ nhỏ hơn 1 std được mô tả là "trong nhiễu"
+- Kiểm định ý nghĩa: **Paired t-test (p < 0,05)** trên 5 fold — *bước còn lại*, hiện đang báo cáo mean ± std và so Δ với std
+
+**Gợi ý hình:** Sơ đồ nhánh Student → {KD, Baseline} → so sánh Δ; ma trận teacher×student dạng lưới, tô ô đã xong.
 
 ---
 
@@ -347,8 +358,9 @@ L_total = α · L_hard + (1 − α) · T² · L_soft
 7. **Triển khai:** export **ExecuTorch .pte (FP32)** → benchmark **Pixel 6a** → phân tích Pareto
 
 **Nội dung (bullet phụ nếu còn chỗ):**
-- Cấu hình bằng **Hydra**; chạy trên **cụm UIT Slurm (GPU L40, MPS)**; submit qua `slurm/submit.sh`
-- Huấn luyện: **AdamW** (LR 1e-4 backbone / 1e-3 head), cosine annealing, ≤50 epoch, checkpoint theo val pAUC
+- Cấu hình bằng **Hydra**; khởi chạy qua lớp script `run/*.sh` (`bash run/train_teacher.sh TEACHER=…`) — **1 lệnh = 1 tiến trình = cả 5 fold**, log tee ra file nên mất SSH không mất kết quả
+- Môi trường: **máy chủ GPU thuê ngoài (2 máy × 1 RTX 3090)**, không có hệ quản lý hàng đợi — chạy dưới `tmux`
+- Huấn luyện: **AdamW** (LR 1e-4 backbone / 1e-3 head), cosine + 3 epoch warmup, ≤50 epoch, early stopping theo `val_loss`, **checkpoint theo `val pAUC@80`**
 
 **Gợi ý hình:** `figures/kd_pipeline_slide.png` (3 bước băng ngang). Nếu muốn tô sáng, nhấn **Bước 2 (Chưng cất KD)** và **Bước 3 (Đánh giá + triển khai)** — hai bước cốt lõi của đóng góp.
 
@@ -413,58 +425,88 @@ L_total = α · L_hard + (1 − α) · T² · L_soft
 
 ---
 
-## Slide 21 — Kết quả bước đầu (1): độ chính xác — student sau KD vượt cả teacher yếu
+## Slide 21 — Kết quả bước đầu (1): độ chính xác — student nhỏ đạt vùng độ nhạy của teacher
 
 **Tiêu đề:** Kết quả bước đầu — độ chính xác (5-fold CV, test độc lập, mean ± std)
 
 **Nội dung:**
 
-**Teacher (chất lượng tăng dần):**
+**Teacher (standalone, đủ 5 fold):**
 | Teacher | AUPRC | pAUC@80 | Sensitivity |
 |---|---|---|---|
-| EfficientNet-B4 | 0,600 ± 0,027 | 0,1785 | 0,909 |
-| EfficientNetV2-M | 0,649 ± 0,026 | 0,1875 | 0,928 |
-| ConvNeXtV2-Base | **0,683 ± 0,025** | 0,1893 | 0,949 |
-| MaxViT-Base | **0,688** | 0,1869 | 0,944 |
+| **MaxViT-Base** | **0,6566 ± 0,0211** | 0,1830 | 0,924 |
+| ConvNeXtV2-Base | 0,6506 ± 0,0306 | 0,1822 | 0,920 |
+| EfficientNetV2-M | 0,6298 ± 0,0488 | 0,1826 | **0,927** |
 
-**Student KD tiêu biểu:**
-| Student ← Teacher | AUPRC | pAUC@80 | Sens | Fold |
+**Student sau KD (teacher = EfficientNetV2-M, đủ 5 fold cả 4 student):**
+| Student | AUPRC | pAUC@80 | Sens | Sens@95Spec |
 |---|---|---|---|---|
-| FastViT-SA12 ← ConvNeXtV2 | 0,676 | **0,1908** | 0,949 | 5 |
-| MobileNetV4 ← ConvNeXtV2 | 0,661 | 0,1898 | **0,962** | 5 |
-| EfficientFormerV2-S2 ← ConvNeXtV2 | **0,684** | 0,1897 | 0,960 | ⚠️4 |
-| MobileNetV3-L ← EfficientNet-B4 | 0,631 | 0,1881 | 0,955 | 5 |
+| EfficientFormerV2-S2 | **0,6220** | 0,1849 | 0,929 | 0,931 |
+| FastViT-SA12 | 0,6209 | 0,1853 | 0,929 | **0,934** |
+| **MobileNetV4-Conv-M** | 0,6056 | **0,1859** | **0,933** | 0,930 |
+| RepViT-M1.0 | 0,5537 | 0,1832 | 0,924 | 0,923 |
 
-- 🎯 **Phát hiện mạnh:** student ~4–12M param **vượt teacher EfficientNet-B4** (~17,6M) ở cả AUPRC lẫn pAUC → KD + kiến trúc mobile hiện đại + xử lý mất cân bằng hoạt động tốt
+- 🎯 **Phát hiện chính:** **cả 4 student sau KD đều đạt pAUC@80 (0,183–0,186) ngang hoặc CAO HƠN cả 3 teacher (0,182–0,183)** và độ nhạy tương đương — dù nhẹ hơn nhiều lần. Đúng mục tiêu của KD: nén về mobile mà giữ vùng độ nhạy cao.
+- ⚠️ **Trung thực:** ở **AUPRC** thì teacher vẫn cao hơn (0,63–0,66 vs 0,55–0,62). Không nói "student vượt teacher".
 
-**Ghi chú thuyết trình:** Mở bằng phát hiện ấn tượng nhất (student vượt teacher). Nói rõ efficientformerv2 mới 4 fold ⚠️ → trung thực. pAUC mọi student ~0,19 (gần trần 0,20).
+**Ghi chú thuyết trình:** Mở bằng phát hiện chắc chắn nhất: student nhỏ đạt vùng độ nhạy của teacher. Ngay sau đó chủ động nói phần chưa đạt (AUPRC) — hội đồng đánh giá cao sự trung thực hơn tô hồng. Nếu bị hỏi teacher nào mạnh nhất: MaxViT ≈ ConvNeXtV2 nhưng **chênh trong 1 std**, không tuyên bố tuyệt đối.
 
-**Gợi ý hình:** 2 bảng cạnh nhau; highlight ô pAUC 0,1908 và dòng "student vượt teacher B4".
+**Gợi ý hình:** 2 bảng cạnh nhau; vẽ một đường ngang ở mức pAUC teacher (~0,183) để thấy 4 student KD đều nằm trên/ngang đường đó.
 
 ---
 
-## Slide 22 — Kết quả bước đầu (2): KD giúp gì & chạy trên Pixel 6a ra sao
+## Slide 21B — Kết quả bước đầu (2): ablation dữ liệu — PAD-UFES-20 có thực sự giúp không?
+
+**Tiêu đề:** Ablation dữ liệu — chứng minh (không giả định) rằng trộn PAD-UFES-20 là đúng
+
+**Nội dung:**
+- **Thiết kế đối chứng:** cùng cấu hình, cùng **một tập test**, chỉ khác TRAIN+VAL — *ISIC+PAD* vs *ISIC-only*. Chạy cho **cả 3 teacher**, mỗi nhánh 5 fold (30 lượt huấn luyện).
+- **Ô quyết định = subset ảnh PAD trong test** (miền lâm sàng mà nhánh ISIC-only chưa từng thấy):
+
+| Teacher | ΔAUPRC | ΔpAUC@80 | ΔSens | ΔSens@95Spec |
+|---|---|---|---|---|
+| EfficientNetV2-M | **+0,1241** | +0,0349 | +0,0756 | +0,1844 |
+| ConvNeXtV2-Base | **+0,0920** | +0,0356 | +0,1256 | +0,1089 |
+| MaxViT-Base | **+0,1311** | +0,0352 | +0,1256 | **+0,2322** |
+
+- **Miền ISIC gốc: Δ nằm trong nhiễu** → thêm PAD **không hại** miền dermoscopy
+- 🎯 **Kết luận:** trộn ảnh smartphone lâm sàng giúp mô hình tổng quát hóa **rõ rệt** sang đúng loại ảnh mà ứng dụng thực tế sẽ gặp — đúng với **cả 3/3** teacher
+
+**Ghi chú thuyết trình:** Đây là slide cho thấy đề tài *kiểm chứng* các lựa chọn thiết kế chứ không chỉ khẳng định. Nhấn: kết quả nhất quán trên cả 3 teacher nên không phải may mắn của một kiến trúc. Nếu hội đồng hỏi "sao không đo trên toàn bộ test": vì nhánh ISIC-only chưa từng thấy ảnh PAD nên số whole-test bị thổi phồng — subset PAD mới là ô so sánh công bằng.
+
+**Gợi ý hình:** Biểu đồ cột nhóm: 3 teacher × 2 nhánh (ISIC-only vs +PAD) trên AUPRC của subset PAD.
+
+---
+
+## Slide 22 — Kết quả bước đầu (3): KD giúp gì & chạy trên Pixel 6a ra sao
 
 **Tiêu đề:** Hiệu quả KD (trung thực) + benchmark thật trên Pixel 6a
 
 **Nội dung:**
-- **KD cải thiện NHẤT QUÁN pAUC@80 và Sensitivity** trên **mọi** cặp student × teacher (Δ luôn dương) → đúng mục tiêu y tế "không bỏ sót"
-- **AUPRC phụ thuộc chất lượng teacher (phát hiện tinh tế):**
-  - Teacher mạnh (ConvNeXtV2) → KD nâng AUPRC MobileNetV4 **+0,052** (0,609 → 0,661)
-  - Teacher yếu (EfficientNet-B4) → ΔAUPRC nằm trong nhiễu → *KD chỉ nâng AUPRC khi teacher đủ mạnh*
 
-**Benchmark on-device Pixel 6a (.pte FP32, 4 threads, median):**
-| Model | AUPRC | Latency | Size .pte | FPS |
+**Δ = KD − Baseline** (teacher EfficientNetV2-M, cùng data/seed/siêu tham số, **4/4 student × 5 fold**):
+
+| Student | ΔpAUC@80 | ΔAUPRC | ΔSens | ΔSens@95Spec |
 |---|---|---|---|---|
-| MobileNetV3-L (KD) | 0,631 | **8,4 ms** | **16 MB** | 119 |
-| **MobileNetV4 ← ConvNeXtV2 (KD)** | 0,661 | 22,6 ms | 32 MB | 44 |
-| EfficientFormerV2-S2 ← ConvNeXtV2 | 0,684 ⚠️ | 42,8 ms | 47 MB | 23 |
-| FastViT ← ConvNeXtV2 (KD) | 0,676 | 65,5 ms | 40 MB | 15 |
+| RepViT-M1.0 | **+0,0115** | **+0,0172** | +0,0124 | **+0,0324** |
+| FastViT-SA12 | +0,0028 | +0,0127 | +0,0066 | +0,0108 |
+| MobileNetV4-Conv-M | +0,0061 | −0,0045 | +0,0124 | +0,0141 |
+| EfficientFormerV2-S2 | +0,0037 | −0,0062 | +0,0108 | +0,0133 |
 
-- ⚠️ **Thứ hạng latency ĐẢO trên mobile:** FastViT chậm nhất (65 ms) dù ít param hơn EfficientFormerV2 → **phải đo on-device thật, không suy từ FLOPs**
-- 🎯 **Khuyến nghị deploy:** **MobileNetV4 ← ConvNeXtV2** = cân bằng tốt nhất (đủ 5 fold, Sens 0,962, 22 ms/32 MB) *và* là case chứng minh KD mạnh nhất; chọn **MobileNetV3** nếu ưu tiên nhẹ/nhanh tối đa
+- ✅ **Chắc chắn: KD cải thiện 4/4 student** ở **pAUC@80, AUC, Sensitivity và Sens@95Spec** → đúng mục tiêu y tế "không bỏ sót ca ác tính"
+- ⚠️ **Trung thực: ΔAUPRC hỗn hợp** (2 dương / 2 âm nhẹ) — **cả 4 đều nhỏ hơn 1 std → nằm trong nhiễu**, không phải "KD làm hại". Bằng chứng KD của đề tài nằm ở **pAUC + độ nhạy**, không phải AUPRC
 
-**Ghi chú thuyết trình:** Trung thực là điểm cộng: KD chắc chắn ở pAUC/Sens, còn AUPRC "có sắc thái" (phụ thuộc teacher) → dùng Paired t-test kết luận. Nhấn latency đảo — chính là lý do đề tài *phải* benchmark trên máy thật.
+**Benchmark on-device Pixel 6a (`.pte` FP32, 4 threads, median):**
+| Model (KD ← EfficientNetV2-M) | AUPRC | pAUC | Latency | Size .pte | FPS |
+|---|---|---|---|---|---|
+| **MobileNetV4-Conv-M** | 0,6056 | **0,1859** | **22,6 ms** | **32 MB** | 44 |
+| EfficientFormerV2-S2 | **0,6220** | 0,1849 | 42,8 ms | 47 MB | 23 |
+| FastViT-SA12 | 0,6209 | 0,1853 | 65,5 ms | 40 MB | 15 |
+
+- ⚠️ **Thứ hạng latency KHÔNG theo params:** FastViT chậm nhất (65 ms) dù **ít param hơn** EfficientFormerV2 (10,6M vs 12,1M) → **phải đo on-device thật, không suy từ FLOPs**. FastViT bị lấn át: chậm hơn 1,5× mà độ chính xác ngang
+- 🎯 **Khuyến nghị deploy:** **MobileNetV4-Conv-M ← EfficientNetV2-M** — thắng ở *cả hai* trục: nhanh nhất/nhẹ nhất **và** dẫn đầu pAUC@80 (0,1859), AUC (0,9852), Sens (0,933) trong toàn bộ student
+
+**Ghi chú thuyết trình:** Trung thực là điểm cộng: KD chắc chắn ở pAUC/Sens (4/4), còn AUPRC nằm trong nhiễu — nói thẳng, và giải thích vì sao std lớn hơn Δ ở prevalence 0,39%. Nếu bị hỏi "sao chỉ có một teacher": ma trận KD của 2 teacher còn lại đang chạy, đó là công việc còn lại trong kế hoạch. Nhấn latency đảo — chính là lý do đề tài *phải* benchmark trên máy thật.
 
 **Gợi ý hình:** Trái — bảng benchmark; phải — scatter Pareto AUPRC (trục y) vs latency (trục x), khoanh MobileNetV4 là "điểm cân bằng".
 
@@ -482,16 +524,18 @@ L_total = α · L_hard + (1 − α) · T² · L_soft
 
 | GĐ | Nội dung | Thời gian | Trạng thái |
 |---|---|---|---|
-| 1 | Pipeline + tiền xử lý + 5-fold CV | 06/2026 | ✅ Xong |
-| 2 | Huấn luyện teacher | 06/2026 | ✅ Phần lớn |
-| 3 | Huấn luyện student (KD + baseline) — hoàn thiện ma trận | 06–07/2026 | 🔄 Đang chạy |
-| 4 | Export .pte + benchmark Pixel 6a + Pareto | 07/2026 | 🔄 4 model xong |
-| 5 | Cross-domain (HAM10000) + fairness (Fitzpatrick17k) | 07–08/2026 | ⏳ Chưa |
-| 6 | Tổng hợp 5-fold + Paired t-test + tương quan teacher↔Δ | 08/2026 | ⏳ Chưa |
-| 7 | Viết luận văn | 08–10/2026 | ⏳ |
-| 8 | Hoàn thiện, nộp & bảo vệ | 11/2026 | ⏳ |
+| 1 | Pipeline + tiền xử lý + 5-fold CV + test holdout độc lập | 06/2026 | ✅ Xong |
+| 2 | Huấn luyện 3 teacher (15 lượt) | 07/2026 | ✅ Xong |
+| 3 | **Ablation dữ liệu** (teacher ISIC-only, 15 lượt) | 07/2026 | ✅ Xong |
+| 4 | 4 student nhánh baseline (20 lượt) | 07–08/2026 | ✅ Xong |
+| 5 | Ma trận KD: 3 teacher × 4 student × 5 fold (60 lượt) | 08–09/2026 | 🔄 20/60 |
+| 6 | Export `.pte` + parity check + benchmark Pixel 6a + Pareto | 09/2026 | 🔄 đã đo 3 kiến trúc |
+| 7 | Cross-domain (HAM10000) + fairness (Fitzpatrick17k) | 09–10/2026 | ⏳ Chưa |
+| 8 | Tổng hợp 5-fold + Paired t-test + tương quan teacher↔Δ + hiệu chuẩn | 10/2026 | ⏳ Chưa |
+| 9 | Viết luận văn | 09–11/2026 | ⏳ |
+| 10 | Hoàn thiện, nộp & bảo vệ | 11/2026 | ⏳ |
 
-**Ghi chú thuyết trình:** GĐ 2–3 phụ thuộc hàng đợi GPU cụm dùng chung nên chạy gối nhau. Kết quả bước đầu (slide 21–22) chính là output của GĐ 1–4.
+**Ghi chú thuyết trình:** Đã hoàn thành **70/110 lượt huấn luyện**. Kết quả ở slide 21–22 chính là output của GĐ 1–6. Đường găng là GĐ 5 — thiếu nó thì chưa trả lời được câu "teacher nào chưng cất tốt nhất"; em đã ghi rõ điều đó thay vì trích số của đợt huấn luyện cũ.
 
 **Gợi ý hình:** Gantt chart ngang, tô màu trạng thái (xong/đang/chưa).
 
@@ -503,7 +547,11 @@ L_total = α · L_hard + (1 − α) · T² · L_soft
 
 **Nội dung:**
 - Đề tài **lấp đồng thời 3 khoảng trống**: KD trên nhiều paradigm · vai trò chất lượng teacher · khả thi triển khai điện thoại thực tế
-- **Kết quả bước đầu đã chứng minh khả thi:** student nhỏ sau KD **vượt teacher yếu**; KD cải thiện **nhất quán** pAUC & độ nhạy; đã **chạy thật** trên Pixel 6a (8–65 ms)
+- **Kết quả bước đầu đã chứng minh khả thi:**
+  - KD cải thiện **nhất quán 4/4 student** ở pAUC@TPR≥80%, AUC và độ nhạy — student nhỏ đạt vùng độ nhạy của teacher
+  - **Ablation chứng minh** trộn PAD-UFES-20 giúp **cả 3/3 teacher** trên ảnh lâm sàng mà không hại miền gốc
+  - Đã **chạy thật** trên Pixel 6a: 22–65 ms, `.pte` 32–47 MB
+- **Còn lại (nói rõ):** hoàn tất ma trận KD cho 2 teacher còn lại để trả lời "teacher nào chưng cất tốt nhất"; cross-domain + fairness; kiểm định thống kê
 - Đóng góp: **bằng chứng thực nghiệm có hệ thống** + **pipeline & báo cáo triển khai Android tái sử dụng được**
 - Ứng dụng: sàng lọc ung thư da thời gian thực, bảo vệ riêng tư, phù hợp vùng thiếu nguồn lực y tế
 

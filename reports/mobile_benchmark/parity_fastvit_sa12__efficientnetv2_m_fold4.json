@@ -1,0 +1,26 @@
+{
+  "model_name": "fastvit_sa12",
+  "pte_path": "exports/executorch/fastvit_sa12__efficientnetv2_m_fold4.pte",
+  "pte_size_mb": 40.347,
+  "executorch_api": "executorch.runtime.Runtime",
+  "reference_csv": "data/benchmark_set/ref_fastvit_sa12.csv",
+  "n_samples": 100,
+  "input_shape": [
+    3,
+    224,
+    224
+  ],
+  "tolerance": 0.001,
+  "max_abs_logit_delta": 2.5199248790741535e-05,
+  "mean_abs_logit_delta": 6.797276552900459e-06,
+  "p99_abs_logit_delta": 2.1737784114050937e-05,
+  "max_abs_prob_delta": 6.280794459745387e-06,
+  "n_over_tolerance": 0,
+  "worst_sample": {
+    "id": "0019",
+    "pytorch_logit": -0.109985,
+    "pte_logit": -0.11001019924879074,
+    "abs_delta": 2.5199248790741535e-05
+  },
+  "passed": true
+}

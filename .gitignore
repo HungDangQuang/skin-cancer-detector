@@ -79,3 +79,14 @@ logs/
 # Claude Code — personal/local files (kept off git)
 CLAUDE.local.md
 .claude/settings.local.json
+
+# Analysis outputs under reports/: keep the citable summaries, drop the bulk.
+# _replaced/ (363 MB), _metadata_backup/ (233 MB) and _archive/ (67 MB) are
+# BACKUPS written by pull_results.sh / attach_metadata.sh — never citable.
+# reports/external/**/fold_*/ is 364 MB of per-fold predictions.csv regenerable
+# by run/evaluate_external.sh; the aggregated.{json,md} beside them ARE kept,
+# because that is what the report quotes.
+reports/_replaced/
+reports/_metadata_backup/
+reports/_archive/
+reports/external/**/fold_*/

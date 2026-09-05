@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="726" viewBox="0 0 1000 726"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9AA0A6"/>
+    </marker>
+    <marker id="arrowP" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4B41B8"/>
+    </marker>
+    <filter id="cardShadow" x="-6%" y="-6%" width="112%" height="118%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#1a1a1a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+  <rect width="1000" height="726" fill="#FFFFFF"/>
+
+  <!-- ===== TEST SET (gray) ===== -->
+  <rect x="40" y="34" width="740" height="76" rx="14" fill="#EEEDEA" stroke="#D8D6D1"/>
+  <text x="410" y="64" text-anchor="middle" font-size="16" font-weight="700" fill="#55534E">The test set, already scored</text>
+  <text x="410" y="88" text-anchor="middle" font-size="12" fill="#5A5A5A">62,040 rows · 241 malignant · saved predictions are reused, nothing is re-run</text>
+
+  <line x1="410" y1="110" x2="410" y2="146" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <text x="396" y="133" text-anchor="end" font-size="11" font-style="italic" fill="#8A8A8A">draw 62,040 row indices, with replacement</text>
+
+  <!-- ===== ONE ITERATION (purple) ===== -->
+  <rect x="40" y="150" width="740" height="238" rx="14" fill="#ECEBFB" stroke="#C9C6F0"/>
+  <text x="410" y="182" text-anchor="middle" font-size="16" font-weight="700" fill="#4B41B8">One iteration</text>
+
+  <rect x="62" y="200" width="340" height="86" rx="10" fill="#FFFFFF" stroke="#D6D3F5" filter="url(#cardShadow)"/>
+  <text x="232" y="226" text-anchor="middle" font-size="13" font-weight="700" fill="#4B41B8">With distillation</text>
+  <text x="232" y="248" text-anchor="middle" font-size="11" fill="#5A5A5A">score all 5 folds on the drawn rows</text>
+  <text x="232" y="270" text-anchor="middle" font-size="11" fill="#5A5A5A">→ average the 5 folds</text>
+
+  <rect x="418" y="200" width="340" height="86" rx="10" fill="#FFFFFF" stroke="#D6D3F5" filter="url(#cardShadow)"/>
+  <text x="588" y="226" text-anchor="middle" font-size="13" font-weight="700" fill="#4B41B8">Without distillation</text>
+  <text x="588" y="248" text-anchor="middle" font-size="11" fill="#5A5A5A">score all 5 folds on the drawn rows</text>
+  <text x="588" y="270" text-anchor="middle" font-size="11" fill="#5A5A5A">→ average the 5 folds</text>
+
+  <rect x="62" y="296" width="696" height="28" rx="7" fill="#E0DEF7"/>
+  <text x="410" y="315" text-anchor="middle" font-size="12" font-weight="600" fill="#4B41B8">both sides score the SAME drawn rows — that is what &quot;paired&quot; means</text>
+
+  <rect x="62" y="334" width="696" height="36" rx="9" fill="#FFFFFF" stroke="#D6D3F5"/>
+  <text x="410" y="358" text-anchor="middle" font-size="14" font-weight="700" fill="#4B41B8">Δ  =  average with distillation  −  average without</text>
+
+  <!-- loop back: stays right of the container, re-enters at its right edge -->
+  <path d="M780,352 L844,352 L844,182 L784,182" fill="none" stroke="#4B41B8" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arrowP)"/>
+  <rect x="866" y="240" width="94" height="52" rx="10" fill="#E0DEF7"/>
+  <text x="913" y="263" text-anchor="middle" font-size="14" font-weight="700" fill="#4B41B8">repeat</text>
+  <text x="913" y="282" text-anchor="middle" font-size="14" font-weight="700" fill="#4B41B8">× 2000</text>
+
+  <line x1="410" y1="388" x2="410" y2="418" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+  <!-- ===== DISTRIBUTION (olive) ===== -->
+  <rect x="40" y="422" width="920" height="180" rx="14" fill="#EFF5E2" stroke="#D2E3B0"/>
+  <text x="500" y="452" text-anchor="middle" font-size="16" font-weight="700" fill="#55801F">2000 values of Δ — the 95% interval is the middle 95% of them</text>
+
+  <!-- case A: clear of zero -->
+  <rect x="62" y="466" width="430" height="118" rx="10" fill="#FFFFFF" stroke="#DCEBC3" filter="url(#cardShadow)"/>
+  <text x="152" y="492" text-anchor="middle" font-size="11" fill="#8A8A8A">0</text>
+  <line x1="152" y1="500" x2="152" y2="552" stroke="#B0B6BC" stroke-width="1.4" stroke-dasharray="3 3"/>
+  <path d="M234,546 C254,546 262,508 292,508 C322,508 330,546 350,546 Z" fill="#DCEBD9" stroke="#1E7A45" stroke-width="1.4"/>
+  <line x1="236" y1="546" x2="348" y2="546" stroke="#1E7A45" stroke-width="4"/>
+  <text x="277" y="574" text-anchor="middle" font-size="12" font-weight="700" fill="#1E7A45">clear of 0 → the gain is real</text>
+
+  <!-- case B: crosses zero -->
+  <rect x="508" y="466" width="430" height="118" rx="10" fill="#FFFFFF" stroke="#DCEBC3" filter="url(#cardShadow)"/>
+  <text x="700" y="492" text-anchor="middle" font-size="11" fill="#8A8A8A">0</text>
+  <line x1="700" y1="500" x2="700" y2="552" stroke="#B0B6BC" stroke-width="1.4" stroke-dasharray="3 3"/>
+  <path d="M636,546 C656,546 664,508 700,508 C736,508 744,546 764,546 Z" fill="#F6DBD5" stroke="#B23A2A" stroke-width="1.4"/>
+  <line x1="638" y1="546" x2="762" y2="546" stroke="#B23A2A" stroke-width="4"/>
+  <text x="723" y="574" text-anchor="middle" font-size="12" font-weight="700" fill="#B23A2A">crosses 0 → not decided</text>
+
+  <!-- ===== BOTTOM NOTE ===== -->
+  <rect x="40" y="626" width="920" height="66" rx="14" fill="#EEEDEA" stroke="#D8D6D1"/>
+  <text x="500" y="654" text-anchor="middle" font-size="14" font-weight="700" fill="#55534E">Run this once for each of the 12 pairs</text>
+  <text x="500" y="676" text-anchor="middle" font-size="12" fill="#5A5A5A">the results table counts how many of the 12 intervals land clear of 0, and on which side</text>
+</svg>
