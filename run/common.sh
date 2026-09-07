@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Common library for the NON-SLURM runner (plain GPU server / VM over SSH).
+# Common library for the run/ execution layer (plain GPU server / VM over SSH).
 # Source this from each run/*.sh script:   source "$(dirname "$0")/common.sh"
 #
-# This is the local-server analogue of slurm/_lib.sh. It intentionally drops
+# This is the local-server analogue of run/common.sh. It intentionally drops
 # every cluster-specific concern (no `module load`, no /datastore, no MPS, no
 # scontrol/gpu_check.sh) — on your own box you own the GPU, so GPU selection is
 # just CUDA_VISIBLE_DEVICES. Everything else (fold loop, run-dir convention,
@@ -48,8 +48,7 @@ activate_venv() {
 }
 
 # ---------------------------------------------------------------------------
-# GPU selection. On a shared cluster this was --gres=mps + gpu_check.sh; on your
-# own box it is just CUDA_VISIBLE_DEVICES. Behavior:
+# GPU selection is just CUDA_VISIBLE_DEVICES. Behavior:
 #   GPU=0            -> pin to physical GPU 0 (the code then sees it as cuda:0)
 #   GPU="0,1"        -> expose both (single-process still uses cuda:0)
 #   GPU unset / auto -> auto-pick the GPU with the most free VRAM

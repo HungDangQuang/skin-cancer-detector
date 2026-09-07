@@ -105,7 +105,7 @@ def main():
     if not test_csv.exists():
         raise SystemExit(
             f"Test split not found at {test_csv}. Run scripts/prepare_data.py "
-            "(or slurm/10_prepare_data.slurm) first."
+            "(or run/prepare_data.sh) first."
         )
 
     # Identical preprocessing to evaluation — same builder, same dataset class.

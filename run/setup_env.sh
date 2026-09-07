@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
-# One-time environment setup for a plain Linux GPU server / VM (no Slurm).
+# One-time environment setup for a plain Linux GPU server / VM.
 # Creates a fresh venv (./.venv-linux by default) and installs the project.
 #
 # Usage (on the server, from the repo root):

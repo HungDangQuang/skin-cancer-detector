@@ -7,7 +7,7 @@ assessment of thesis readiness.
 > auto-eval lines** (`logs/train_student_<job>_<fold>.out`, the
 > `src.evaluation.evaluator` line). They are byte-identical to the cluster's
 > `experiments/runs/<run>/fold_*/test_metrics.json`, which are **not yet rsync'd**.
-> Re-pull the canonical JSONs + run `22_aggregate_folds.slurm` to replace these with
+> Re-pull the canonical JSONs + run `run/aggregate.sh` to replace these with
 > the official `aggregated.{json,md}` before quoting in the thesis.
 > Teacher numbers are re-aggregated from the fresh per-fold JSONs (its on-disk
 > `aggregated.json` is **stale** — job 28179, old leaked-split teacher, AUC 0.87 — ignore it).
@@ -118,7 +118,7 @@ offline from existing runs — zero storage, no retraining.
 
 ## 9. Immediate next steps (storage-safe)
 
-1. Aggregate students (`22_aggregate_folds.slurm`) + re-pull canonical `aggregated.{json,md}`
+1. Aggregate students (`run/aggregate.sh`) + re-pull canonical `aggregated.{json,md}`
    to replace the log-extracted numbers here.
 2. Build the mobile FP32 benchmark (params + size + CPU-latency proxy) → completes pillar 4.
 3. Patch evaluator to save predictions → unlock AUPRC / calibration / CIs / Grad-CAM.

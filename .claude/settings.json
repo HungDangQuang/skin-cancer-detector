@@ -53,9 +53,6 @@
       "Bash(make format)",
       "Bash(make test)",
       "Bash(make clean)",
-      "Bash(squeue:*)",
-      "Bash(sacct:*)",
-      "Bash(scontrol show:*)",
       "Bash(mlflow ui:*)",
       "Bash(nvidia-smi:*)",
       "Bash(bash -n:*)",
@@ -67,12 +64,20 @@
       "Bash(kaggle datasets files:*)",
       "Bash(kaggle --version)",
       "Bash(df -h:*)",
-      "Edit(/.claude/skills/analyze-evaluation/**)",
+      "Bash(bash run/progress.sh:*)",
+      "Bash(bash run/progress_all.sh:*)",
+      "Edit(/.claude/skills/eval-results/**)",
       "mcp__claude_ai_Google_Drive__read_file_content",
       "mcp__claude_ai_Google_Drive__create_file",
-      "Edit(/.claude/skills/kd-experiment/**)",
+      "Edit(/.claude/skills/code-change/**)",
       "Read(//Users/hungdang/Documents/android-projects/SkinDetector/**)",
-      "Bash(mkdir -p docs app/src/main/java/com/nemis/skindetector/ml)"
+      "Bash(mkdir -p docs app/src/main/java/com/nemis/skindetector/ml)",
+      "Bash(ssh -o ConnectTimeout=40 vastnew 'sleep 240; cd /workspace/skin-cancer-detector && ls data/raw/fitzpatrick17k/images | wc -l; ls reports/external/ham10000/headline | wc -l; tmux ls 2>/dev/null | grep -E \"^\\(dl_fitz|eval_ham\\)\" | wc -l')",
+      "Bash(ssh -o ConnectTimeout=40 vastnew 'cd /workspace/skin-cancer-detector && ls data/raw/fitzpatrick17k/images | wc -l; ls reports/external/ham10000/headline | wc -l; tmux ls 2>/dev/null | grep -E \"^\\(dl_fitz|eval_ham\\)\" | wc -l')",
+      "Bash(python3 -)",
+      "Bash(grep -A6 -iE \"^Host vastnew\" ~/.ssh/config 2>/dev/null | head -40)",
+      "Read(//Users/hungdang/.ssh/**)",
+      "Bash(git restore *)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
@@ -92,9 +97,17 @@
       "Bash(make train-:*)",
       "Bash(make poc-:*)",
       "Bash(python scripts/:*)",
-      "Bash(sbatch:*)",
-      "Bash(scancel:*)",
-      "Bash(bash slurm/:*)",
+      "Bash(bash run/train_:*)",
+      "Bash(bash run/prepare_:*)",
+      "Bash(bash run/ablation_:*)",
+      "Bash(bash run/export_:*)",
+      "Bash(bash run/setup_:*)",
+      "Bash(bash run/poc.sh:*)",
+      "Bash(bash run/validate.sh:*)",
+      "Bash(bash run/aggregate.sh:*)",
+      "Bash(bash run/evaluate.sh:*)",
+      "Bash(bash run/benchmark.sh:*)",
+      "Bash(bash run/make_benchmark_set.sh:*)",
       "Bash(kaggle competitions download:*)",
       "Bash(kaggle datasets download:*)",
       "Bash(unzip:*)",
@@ -112,13 +125,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command // empty'); [ -z \"$cmd\" ] && exit 0; printf '%s' \"$cmd\" | grep -Eq 'pytest[[:space:]]+(--collect-only|--version)' && exit 0; if printf '%s' \"$cmd\" | grep -Eq '(^|[^[:alnum:]_])(pip[0-9]*|python[0-9]*[[:space:]]+-m[[:space:]]+pip)[[:space:]]+install|make[[:space:]]+(install-dev|install)([[:space:]]|$)|(^|[^[:alnum:]_])pytest([[:space:]]|$)|python[0-9]*[[:space:]]+[^|]*scripts/(train_teacher|train_student|evaluate|prepare_data|predict|export_model)\\.py'; then echo \"[local-python-guard] Blocked: this project does not run Python/pip on the Mac (local env != runtime). Run training/eval/data on the UIT cluster via the submit-slurm skill (bash slurm/submit.sh ...); use validate-pipeline for local static checks. See CLAUDE.md 'Local environment != runtime environment'.\" >&2; exit 2; fi; exit 0",
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); [ -z \"$cmd\" ] && exit 0; printf '%s' \"$cmd\" | grep -Eq 'pytest[[:space:]]+(--collect-only|--version)' && exit 0; if printf '%s' \"$cmd\" | grep -Eq '(^|[^[:alnum:]_])(pip[0-9]*|python[0-9]*[[:space:]]+-m[[:space:]]+pip)[[:space:]]+install|make[[:space:]]+(install-dev|install)([[:space:]]|$)|(^|[^[:alnum:]_])pytest([[:space:]]|$)|python[0-9]*[[:space:]]+[^|]*scripts/(train_teacher|train_student|evaluate|prepare_data|predict|export_model)\\.py'; then echo \"[local-python-guard] Blocked: this project does not run Python/pip on the Mac (local env != runtime). Run training/eval/data on the GPU server via run/*.sh (bash run/train_teacher.sh ...); use validate-pipeline for local static checks. See CLAUDE.md 'Local environment != runtime environment'.\" >&2; exit 2; fi; exit 0",
             "statusMessage": "Guarding against local Python/pip execution"
-          },
-          {
-            "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command // empty'); [ -z \"$cmd\" ] && exit 0; printf '%s' \"$cmd\" | grep -Eq 'submit\\.sh|sbatch' || exit 0; files=$(printf '%s' \"$cmd\" | grep -oE 'slurm/[A-Za-z0-9_./-]+\\.slurm'); [ -z \"$files\" ] && exit 0; bad=\"\"; for sf in $files; do [ -f \"$sf\" ] || continue; h=$(grep -nE '#SBATCH[[:space:]]+--gres=gpu|\\bscancel\\b|\\bpkill\\b|\\bkillall\\b|^[[:space:]]*kill[[:space:]]|nvidia-smi[[:space:]]+(--reset-gpu|-r\\b|--gpu-reset)|fuser[[:space:]]+-k|#SBATCH[[:space:]]+--preempt|#SBATCH[[:space:]]+--nice=-' \"$sf\" /dev/null 2>/dev/null | grep -vE ':[0-9]+:[[:space:]]*#[^S]'); [ -n \"$h\" ] && bad=\"${bad} [${sf}] ${h}\"; done; [ -z \"$bad\" ] && exit 0; echo \"[slurm-submit-guard] Refusing to submit — job-blocking/forbidden pattern:${bad}. GPU jobs MUST use --gres=mps:l40:N (never --gres=gpu). No scancel/kill/preempt/reset on the shared cluster. Fix the .slurm file first.\" >&2; exit 2",
-            "statusMessage": "Slurm submit guard: checking script before submission"
           }
         ]
       }
@@ -129,18 +137,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -z \"$f\" ] && exit 0; rel=${f#*/skin-cancer-detector/}; case \"$rel\" in src/data/*|scripts/prepare_data.py) skill=review-preprocessing ;; src/training/*|src/models/*|scripts/train_teacher.py|scripts/train_student.py) skill=review-training ;; slurm/*|docs/SLURM*) skill=review-slurm ;; *) exit 0 ;; esac; case \"$rel\" in src/*|configs/*|slurm/*) vp=\" Then run validate-pipeline (static checks) before concluding.\" ;; *) vp=\"\" ;; esac; msg=\"[modification-workflow] You edited ${rel}. Before finishing this task: (1) run the ${skill} skill to review the change; (2) update any affected slurm script AND its docs; (3) keep CLAUDE.md / docs / memory current.${vp}\"; jq -cn --arg m \"$msg\" '{hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:$m},suppressOutput:true}'",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -z \"$f\" ] && exit 0; rel=${f#*/skin-cancer-detector/}; case \"$rel\" in src/data/*|scripts/prepare_data.py) area=\"preprocessing (reference/review-preprocessing.md)\" ;; src/training/*|src/models/*|scripts/train_teacher.py|scripts/train_student.py) area=\"training (reference/review-training.md)\" ;; run/*) area=\"runner scripts (reference/review-runner.md)\" ;; *) exit 0 ;; esac; case \"$rel\" in src/*|configs/*|run/*) vp=\" Then run the validate-pipeline static checks (reference/validate-pipeline.md, via code-change) before concluding.\" ;; *) vp=\"\" ;; esac; msg=\"[modification-workflow] You edited ${rel}. Before finishing this task: (1) run the code-change skill and review the ${area} contract; (2) update any affected run/*.sh script AND its docs (run/README.md); (3) keep CLAUDE.md / docs / memory current.${vp}\"; jq -cn --arg m \"$msg\" '{hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:$m},suppressOutput:true}'",
             "statusMessage": "Routing modification-workflow review reminder"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // empty'); [ -z \"$f\" ] && exit 0; rel=${f#*/skin-cancer-detector/}; case \"$rel\" in slurm/*.slurm) : ;; *) exit 0 ;; esac; [ -f \"$f\" ] || exit 0; hits=$(grep -nE '#SBATCH[[:space:]]+--gres=gpu|\\bscancel\\b|\\bpkill\\b|\\bkillall\\b|^[[:space:]]*kill[[:space:]]|nvidia-smi[[:space:]]+(--reset-gpu|-r\\b|--gpu-reset)|fuser[[:space:]]+-k|#SBATCH[[:space:]]+--preempt|#SBATCH[[:space:]]+--nice=-' \"$f\" /dev/null 2>/dev/null | grep -vE ':[0-9]+:[[:space:]]*#[^S]'); [ -z \"$hits\" ] && exit 0; msg=\"[slurm-guard:CRITICAL] ${rel} has a job-BLOCKING / shared-cluster-FORBIDDEN pattern — fix before submit. ${hits} | Rules: GPU jobs MUST use --gres=mps:l40:N (never --gres=gpu; QOS caps gres/gpu=0 -> PD forever); no scancel/kill/preempt/reset on the shared cluster. See docs/GOTCHAS.md + review-slurm skill.\"; jq -cn --arg m \"$msg\" '{systemMessage:$m,hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:$m}}'",
-            "statusMessage": "Slurm guard: scanning edited script for blocking patterns"
           }
         ]
       }
