@@ -1,5 +1,8 @@
 # HAM10000 is used ONLY for cross-domain evaluation.
 # NEVER used for training, validation during training, or threshold selection.
+#
+# Prepared by scripts/prepare_external_data.py --dataset ham10000 (NOT by
+# prepare_data.py — there are no folds here, only a held-out test CSV).
 name: ham10000
 role: cross_domain_evaluation
 
@@ -8,7 +11,12 @@ processed_dir: data/processed/ham10000
 splits_dir: data/splits/ham10000
 
 image_size: 224
+num_classes: 1             # binary sigmoid output, same head as training
 image_type: dermoscopic    # different domain from training (non-dermoscopic ISIC 2024)
+
+classes:
+  - benign
+  - malignant
 
 # Original 7-class labels mapped to binary for evaluation
 label_mapping:
@@ -22,6 +30,18 @@ label_mapping:
 
 label_col: label
 image_id_col: image_id
+# One HAM10000 lesion has several photographs; the group key namespaces the
+# lesion id (ham_<lesion_id>) so it can never collide with an ISIC/PAD patient id.
+group_col: patient_id
+
+# Split variants written by prepare_external_data.py:
+#   test_split.csv           one image per lesion  (HEADLINE — independent samples)
+#   test_split_full.csv      every image           (appendix / literature comparison)
+#   test_split_no_akiec.csv  akiec dropped         (label-convention sensitivity)
+splits:
+  headline: test_split.csv
+  full: test_split_full.csv
+  no_akiec: test_split_no_akiec.csv
 
 use_only_for:
   - cross_domain_evaluation

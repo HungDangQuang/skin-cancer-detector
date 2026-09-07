@@ -23,11 +23,12 @@ a skill vs. just doing it inline**.
 
 | Situation | Use |
 |---|---|
-| One result / one file / one sequential step | **Inline** or the matching **skill** (`analyze-evaluation`, `compare-kd`, `diagnose-training`) |
+| One result / one file / one sequential step | **Inline** or the matching **skill** (`eval-results`, or `code-change` for edits) |
+| Learning / reviewing / quizzing project **concepts** (not results) | **Sub-agent** `knowledge-tutor` |
 | Many independent results to triage at once | **Sub-agent, fanned out** (one per run/model/dataset) |
 | Heavy read-only sweep of the whole repo | Built-in **Explore** agent |
 | Designing a large refactor before coding | Built-in **Plan** agent |
-| Anything that must run training/eval | **Neither** — agents are Mac-only; submit via the `submit-slurm` skill |
+| Anything that must run training/eval | **Neither** — agents are Mac-only; submit via the `code-change` skill (`run/README.md`) |
 
 Rule of thumb: a **skill** = one specialized task, runs inline in the main
 context. A **sub-agent** = the same kind of work *replicated in parallel* or kept
@@ -52,6 +53,20 @@ baseline) + pAUC@TPR80 + sens/spec + aggregated mean±std (if present) + overfit
 gap + KD delta + flags. It follows the project metric rules (quote `test_metrics.json`
 not val; AUPRC over AUC-ROC at ~0.4% prevalence; cite mean±std across folds).
 
+### knowledge-tutor
+A Computer-Vision **professor** that teaches, reviews, and quizzes the project's
+*concepts* (not results), grounded in the repo's actual code + `docs/review-knowledge-checklist.md`
++ `report_phase_1/`. Read-only (`Read, Grep, Glob`); replies in Vietnamese (bilingual),
+cites `file:line`, says "chưa xác minh được" instead of guessing. Companion to the
+10-day self-study plan `docs/review-10-day-plan-vi.md`.
+
+- **Explain:** "use knowledge-tutor to explain Tier 6 (KD)"
+- **Quiz / examiner:** "knowledge-tutor: play examiner and grill me on evaluation (Day 8)"
+- **Where's the code:** "knowledge-tutor: where does pAUC get computed, walk me through it"
+
+NOT for a result verdict (that's `result-analyst`) and NOT for reviewing code you just
+changed (use the area review skills).
+
 ## Built-in agents you can also ask for
 
 - **Explore** — read-only fan-out search across many files; returns conclusions,
@@ -69,5 +84,5 @@ not val; AUPRC over AUC-ROC at ~0.4% prevalence; cite mean±std across folds).
 - New/edited agents are picked up at **session start** — restart (or reload) before
   the agent is spawnable, same as hooks.
 - Keep result/analysis agents **read-only** (no Edit/Write) so a parallel swarm
-  can't step on the working tree. The `local-python-guard` / `slurm-*-guard` hooks
-  still apply to anything an agent runs via Bash.
+  can't step on the working tree. The `local-python-guard` hook still applies to
+  anything an agent runs via Bash.

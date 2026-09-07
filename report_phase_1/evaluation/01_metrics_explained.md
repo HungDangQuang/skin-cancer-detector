@@ -50,6 +50,19 @@ Ký hiệu mức quan trọng: 🔴 Cốt lõi · 🟡 Hỗ trợ · ⚪ Bổ su
 - **Là gì:** ngưỡng cắt xác suất, chọn để tối đa **J = Sens + Spec − 1**. **KHÔNG phải 0.5.**
 - **Vì sao dùng:** model xuất 1 logit thô; ngưỡng quyết định benign/malignant phải tối ưu trên
   dữ liệu, và **khác nhau theo model** → phải lưu và triển khai đúng ngưỡng này.
+- ⚠️ Ngưỡng còn **khác nhau giữa các fold của cùng một model** → khi deploy phải lấy lại ngưỡng
+  từ `val_predictions.csv` của đúng fold được ship, không hardcode một con số.
+
+### 🟡 Brier score & ECE — *hiệu chuẩn (calibration), khác với xếp hạng*
+- **Là gì:** `brier` = sai số bình phương trung bình giữa xác suất dự đoán và nhãn; `ECE` =
+  expected calibration error (15 bin). Cả hai nằm sẵn trong `test_metrics.json`.
+- **Vì sao cần:** sampler undersampling dạy model theo prior ~16,7% ác tính, trong khi prevalence
+  thật là **0,39%** → `sigmoid(logit)` **lệch cao có hệ thống**. Con số "% nguy cơ" hiển thị cho
+  người dùng vì thế không trung thực nếu không hiệu chỉnh.
+- **Quan trọng:** đây là chỉ số **chẩn đoán**, không phải chỉ số xếp hạng. Hiệu chỉnh offline bằng
+  `scripts/compute_calibration.py --run-dir <run>` (prior-shift / Platt / isotonic, fit trên
+  `val_predictions.csv`) **không đổi bất kỳ số nào** ở pAUC/AUPRC/AUC — các metric xếp hạng bất
+  biến với mọi biến đổi đơn điệu. Nó chỉ làm xác suất hiển thị trở nên đúng.
 
 ---
 

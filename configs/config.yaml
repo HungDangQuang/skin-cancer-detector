@@ -15,10 +15,26 @@ output_dir: experiments/runs
 run_suffix: ""
 
 device: cuda  # cuda or cpu
+# Kept low so the pipeline stays portable across boxes. On a many-core server
+# raise it at launch (EXTRA="num_workers=16") — it changes no tensor, only
+# throughput. Measured 2026-09-01: the 64-core vast box was starving the GPU at 4.
 num_workers: 4
 
-# cuDNN determinism. true (default) = bit-exact reproducibility (the 30-run
-# baseline behavior). Set false for heavy attention backbones (e.g. maxvit_base)
+# Throughput-only DataLoader options (src/data/datamodule.py::_loader_perf_kwargs).
+# They change nothing the model sees, so runs with and without them are directly
+# comparable. Both are ignored when num_workers=0.
+persistent_workers: true   # don't re-fork the worker pool every epoch
+prefetch_factor: 4         # batches queued per worker ahead of the GPU
+
+# cuDNN determinism. Set false for heavy attention backbones (e.g. maxvit_base)
 # whose deterministic backward raises CUDNN_STATUS_INTERNAL_ERROR — lets cuDNN
 # pick a working algorithm. Override per-run: `cudnn_deterministic=false`.
+#
+# NOTE (measured 2026-09-01, do not restore the old "bit-exact" claim): true does
+# NOT give bit-exact reproducibility. Re-running kd_maxvit_base_to_fastvit_sa12
+# fold 0 with the identical seed and this flag on moved AUPRC by 0.0053
+# (0.65880 -> 0.65347). Full determinism would also need
+# torch.use_deterministic_algorithms(True) and seeded DataLoader workers.
+# Treat ~0.005 AUPRC as the single-fold rerun noise floor.
+# Evidence: experiments/_reproducibility/README.md
 cudnn_deterministic: true

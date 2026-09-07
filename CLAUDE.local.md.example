@@ -16,19 +16,19 @@ into Claude Code's context automatically.
 ## My environment
 
 - **Local dev machine**: macOS (Apple Silicon) — no CUDA. Use `device: cpu` in configs when testing locally.
-- **Real training cluster**: `slurm.uit.edu.vn` (UIT DGX). Username: `<your-username>`.
-- **Project on cluster**: `/datastore/<your-username>/skin-cancer-detector`
-- **venv on cluster**: `/datastore/<your-username>/venv`
+- **Real training server**: `<user>@<host>` (Linux + NVIDIA GPU, over SSH).
+- **Project on the server**: `<abs path to the repo>`
+- **venv on the server**: `<repo>/.venv-linux` (created by `run/setup_env.sh`)
 
 ## Personal preferences
 
 - Always run `make lint` before committing.
-- For long-running training jobs, prefer Slurm over local execution.
+- Launch long training runs under `tmux` on the server (`bash run/train_teacher.sh …`), never locally.
 - When debugging training, check `experiments/<run>/training_curves.png` first.
 
 ## Active branches / tasks
 
-- `feature/poc` — POC smoke-test pipeline (synthetic data + Slurm scripts)
+- `feature/poc` — POC smoke-test pipeline (synthetic data + `run/poc.sh`)
 - `feature/claude-config` — Claude Code skills + settings
 
 ## Datasets I have

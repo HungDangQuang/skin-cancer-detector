@@ -18,6 +18,10 @@ build/
 
 # Virtual environments
 .venv/
+# server training venv (run/setup_env.sh)
+.venv-linux/
+# isolated ExecuTorch venv (run/setup_export_env.sh)
+.venv-export/
 venv/
 env/
 ENV/
@@ -56,8 +60,18 @@ wandb/
 *.pth
 *.pt
 *.onnx
+# ExecuTorch programs pulled from the training box (run/export_all_students.sh).
+# NB: report_phase_1/.../efficientformerv2_s2.pte was committed before this rule
+# and stays tracked — .gitignore does not retroactively untrack a file.
+*.pte
+exports/
 
-# Slurm logs (per-job stdout/stderr)
+# Fixed benchmark input set (run/make_benchmark_set.sh) — 100 images + their
+# fully-preprocessed .bin tensors, ~116 MB per copy. Regenerate, don't commit.
+data/benchmark_set/
+data/benchmark_set_ef/
+
+# Run transcripts (logs/<name>_<timestamp>.log)
 logs/
 *.out
 *.err
@@ -65,3 +79,14 @@ logs/
 # Claude Code — personal/local files (kept off git)
 CLAUDE.local.md
 .claude/settings.local.json
+
+# Analysis outputs under reports/: keep the citable summaries, drop the bulk.
+# _replaced/ (363 MB), _metadata_backup/ (233 MB) and _archive/ (67 MB) are
+# BACKUPS written by pull_results.sh / attach_metadata.sh — never citable.
+# reports/external/**/fold_*/ is 364 MB of per-fold predictions.csv regenerable
+# by run/evaluate_external.sh; the aggregated.{json,md} beside them ARE kept,
+# because that is what the report quotes.
+reports/_replaced/
+reports/_metadata_backup/
+reports/_archive/
+reports/external/**/fold_*/

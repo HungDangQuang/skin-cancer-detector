@@ -1,0 +1,23 @@
+# Privileged (LUPI) teacher — image ⊕ tabular tbp_lv_* metadata fusion.
+# Direction A of docs/metadata_training_plan.md. Same backbone/head as the plain
+# convnextv2_base teacher; adds a tabular MLP fused into the head. REQUIRES
+# data.metadata_cols to be set (else the model raises) — the privileged run sets:
+#   teacher=convnextv2_base_privileged training=distillation_privileged \
+#   'data.metadata_cols=[tbp_lv_symm_2axis,tbp_lv_norm_border,tbp_lv_norm_color,...]'
+# The student stays image-only; the fused feature is distilled via RKD.
+name: convnextv2_base_privileged
+role: teacher
+paradigm: modern_cnn_privileged
+backbone: convnextv2_base.fcmae_ft_in22k_in1k
+pretrained: true
+num_classes: 1    # binary sigmoid output
+
+head:
+  dropout: 0.3
+
+# Tabular branch (privileged metadata MLP) widths. Input dim = len(data.metadata_cols).
+tab_hidden: 64
+tab_out: 64
+
+drop_path_rate: 0.0
+freeze_backbone: false

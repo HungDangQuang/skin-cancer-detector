@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="820" viewBox="0 0 1600 820"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9AA0A6"/>
+    </marker>
+    <filter id="cardShadow" x="-6%" y="-6%" width="112%" height="118%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#1a1a1a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="820" fill="#FFFFFF"/>
+
+  <!-- ===== ONE MODEL (gray) ===== -->
+  <rect x="40" y="175" width="1520" height="90" rx="14" fill="#EEEDEA" stroke="#D8D6D1"/>
+  <text x="800" y="211" text-anchor="middle" font-size="20" font-weight="700" fill="#55534E">One trained model, scored three times</text>
+  <text x="800" y="239" text-anchor="middle" font-size="13" fill="#5A5A5A">the same weights every time — nothing is retrained, nothing is re-tuned between tiers</text>
+
+  <line x1="800" y1="265" x2="800" y2="287" stroke="#9AA0A6" stroke-width="1.6"/>
+  <line x1="280" y1="287" x2="1320" y2="287" stroke="#9AA0A6" stroke-width="1.6"/>
+  <line x1="280" y1="287" x2="280" y2="313" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="800" y1="287" x2="800" y2="313" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="1320" y1="287" x2="1320" y2="313" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+  <!-- ===== TIER 1 (blue) ===== -->
+  <rect x="40" y="315" width="480" height="330" rx="14" fill="#E8F0FB" stroke="#C2D8F2"/>
+  <circle cx="86" cy="359" r="19" fill="#2C63B0"/>
+  <text x="86" y="366" text-anchor="middle" font-size="18" font-weight="700" fill="#FFFFFF">1</text>
+  <text x="116" y="366" font-size="18" font-weight="700" fill="#2C63B0">In-domain</text>
+  <rect x="64" y="393" width="432" height="120" rx="10" fill="#FFFFFF" stroke="#D2E1F6" filter="url(#cardShadow)"/>
+  <text x="280" y="427" text-anchor="middle" font-size="15" font-weight="700" fill="#2C63B0">ISIC 2024 + PAD-UFES-20</text>
+  <text x="280" y="457" text-anchor="middle" font-size="13" fill="#5A5A5A">held-out test split · 62,040 images</text>
+  <text x="280" y="487" text-anchor="middle" font-size="15" font-weight="700" fill="#5A5A5A">0.39% malignant</text>
+  <rect x="64" y="533" width="432" height="76" rx="10" fill="#DCE8F8"/>
+  <text x="280" y="563" text-anchor="middle" font-size="12" font-style="italic" fill="#2C63B0">Does distillation help on the same</text>
+  <text x="280" y="585" text-anchor="middle" font-size="12" font-style="italic" fill="#2C63B0">distribution the model trained on?</text>
+
+  <!-- ===== TIER 2 (purple) ===== -->
+  <rect x="560" y="315" width="480" height="330" rx="14" fill="#ECEBFB" stroke="#C9C6F0"/>
+  <circle cx="606" cy="359" r="19" fill="#4B41B8"/>
+  <text x="606" y="366" text-anchor="middle" font-size="18" font-weight="700" fill="#FFFFFF">2</text>
+  <text x="636" y="366" font-size="18" font-weight="700" fill="#4B41B8">New domain</text>
+  <rect x="584" y="393" width="432" height="120" rx="10" fill="#FFFFFF" stroke="#D6D3F5" filter="url(#cardShadow)"/>
+  <text x="800" y="427" text-anchor="middle" font-size="15" font-weight="700" fill="#4B41B8">HAM10000</text>
+  <text x="800" y="457" text-anchor="middle" font-size="13" fill="#5A5A5A">one image per lesion · 7,470 images</text>
+  <text x="800" y="487" text-anchor="middle" font-size="15" font-weight="700" fill="#5A5A5A">15.7% malignant</text>
+  <rect x="584" y="533" width="432" height="76" rx="10" fill="#E0DEF7"/>
+  <text x="800" y="563" text-anchor="middle" font-size="12" font-style="italic" fill="#4B41B8">Does that gain survive on data the</text>
+  <text x="800" y="585" text-anchor="middle" font-size="12" font-style="italic" fill="#4B41B8">model has never seen?</text>
+
+  <!-- ===== TIER 3 (olive) ===== -->
+  <rect x="1080" y="315" width="480" height="330" rx="14" fill="#EFF5E2" stroke="#D2E3B0"/>
+  <circle cx="1126" cy="359" r="19" fill="#55801F"/>
+  <text x="1126" y="366" text-anchor="middle" font-size="18" font-weight="700" fill="#FFFFFF">3</text>
+  <text x="1156" y="366" font-size="18" font-weight="700" fill="#55801F">Skin tone</text>
+  <rect x="1104" y="393" width="432" height="120" rx="10" fill="#FFFFFF" stroke="#DCEBC3" filter="url(#cardShadow)"/>
+  <text x="1320" y="427" text-anchor="middle" font-size="15" font-weight="700" fill="#55801F">Fitzpatrick17k</text>
+  <text x="1320" y="457" text-anchor="middle" font-size="13" fill="#5A5A5A">clinical photographs · 4,320 images</text>
+  <text x="1320" y="487" text-anchor="middle" font-size="15" font-weight="700" fill="#5A5A5A">50.0% malignant</text>
+  <rect x="1104" y="533" width="432" height="76" rx="10" fill="#E6EFD3"/>
+  <text x="1320" y="563" text-anchor="middle" font-size="12" font-style="italic" fill="#55801F">Does it hold across light, medium</text>
+  <text x="1320" y="585" text-anchor="middle" font-size="12" font-style="italic" fill="#55801F">and dark skin?</text>
+
+</svg>
