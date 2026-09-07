@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
+from src.utils.batch import unpack_batch
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -132,12 +133,17 @@ class Trainer:
         grad_clip = self.cfg.training.get("grad_clip", None)
 
         pbar = tqdm(loader, desc=f"Train [{epoch}/{total_epochs}]", leave=False)
-        for images, labels in pbar:
+        for batch in pbar:
+            images, meta, mask, labels = unpack_batch(batch)
             images = images.to(self.device)
             labels = labels.float().to(self.device)
+            if meta is not None:
+                meta, mask = meta.to(self.device), mask.to(self.device)
 
             self.optimizer.zero_grad()
-            logits = self.model(images)
+            # Privileged teacher (direction A) takes (images, meta, mask); the
+            # image-only path is unchanged.
+            logits = self.model(images, meta, mask) if meta is not None else self.model(images)
             loss = self.criterion(logits, labels)
             loss.backward()
 
@@ -160,11 +166,14 @@ class Trainer:
         total_loss, total = 0.0, 0
         all_labels, all_probs = [], []
 
-        for images, labels in tqdm(loader, desc="Val", leave=False):
+        for batch in tqdm(loader, desc="Val", leave=False):
+            images, meta, mask, labels = unpack_batch(batch)
             images = images.to(self.device)
             labels_float = labels.float().to(self.device)
+            if meta is not None:
+                meta, mask = meta.to(self.device), mask.to(self.device)
 
-            logits = self.model(images)
+            logits = self.model(images, meta, mask) if meta is not None else self.model(images)
             loss = self.criterion(logits, labels_float)
 
             total_loss += loss.item() * images.size(0)

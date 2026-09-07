@@ -1,0 +1,59 @@
+# Student KD training for a PRIVILEGED (LUPI) teacher — direction A of
+# docs/metadata_training_plan.md. Identical to distillation_rkd.yaml (logit KD +
+# RKD feature term); RKD is the mechanism that leaks the teacher's FUSED
+# (image ⊕ tbp_lv_*) feature structure into the image-only student. The student
+# never sees metadata. Run with:
+#   student=<s> teacher=efficientnetv2_m_privileged training=distillation_privileged \
+#   'data.metadata_cols=[tbp_lv_symm_2axis,tbp_lv_norm_border,tbp_lv_norm_color,...]'
+# No `privileged` flag is needed here: KDTrainer detects the privileged teacher
+# via its accepts_metadata attribute and feeds it (images, meta, mask).
+use_kd: true        # KDTrainer + frozen teacher + BinaryDistillationLoss
+epochs: 50
+batch_size: 64
+grad_clip: 1.0
+
+optimizer:
+  name: adamw
+  lr_backbone: 1.0e-4
+  lr_head: 1.0e-3
+  weight_decay: 1.0e-4
+  betas: [0.9, 0.999]
+
+scheduler:
+  name: cosine
+  T_max: 50
+  eta_min: 1.0e-6
+  warmup_epochs: 3
+
+# Hard-label loss component (used inside distillation loss)
+loss:
+  name: focal_loss
+  gamma: 2.0
+  alpha: 0.25
+
+# Knowledge Distillation hyperparameters
+# L_total = alpha * L_focal(student, true) + (1 - alpha) * L_soft  [+ RKD feature term]
+distillation:
+  temperature: 4.0    # T — softens teacher/student distributions
+  alpha: 0.3          # weight of hard-label focal loss (0.3 hard + 0.7 soft)
+  soft_loss_type: bce # bce (default, T^2 soft BCE) | mse (Kim et al. 2021, MSE on raw logits)
+  # Feature-based KD: distills the teacher's FUSED (image+metadata) structure into
+  # the image-only student. Projector-free RKD tolerates the teacher/student dim
+  # mismatch (teacher fused dim > student image dim). This block is REQUIRED for
+  # the privileged variant — without it the metadata never reaches the student.
+  feature_kd:
+    type: rkd
+    weight_dist: 25.0   # lambda_distance (Park 2019 default; re-tune for binary)
+    weight_angle: 50.0  # lambda_angle    (Park 2019 default)
+
+callbacks:
+  early_stopping:
+    enabled: true
+    patience: 10
+    monitor: val_loss
+    mode: min
+  checkpoint:
+    enabled: true
+    monitor: val_pauc_at_tpr80
+    mode: max
+    save_last: true

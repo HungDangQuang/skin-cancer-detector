@@ -1,16 +1,54 @@
 # Fitzpatrick17k is used ONLY for fairness analysis (never training).
+#
+# The release ships URLs, not images: fetch them with
+#   python scripts/download_fitzpatrick17k.py
+# then prepare with
+#   python scripts/prepare_external_data.py --dataset fitzpatrick17k
 name: fitzpatrick17k
 role: fairness_evaluation
 
 raw_dir: data/raw/fitzpatrick17k
 processed_dir: data/processed/fitzpatrick17k
+splits_dir: data/splits/fitzpatrick17k
 
 image_size: 224
+num_classes: 1           # binary sigmoid output, same head as training
+image_type: clinical     # atlas photographs — closer to PAD-UFES-20 than to ISIC
 
+classes:
+  - benign
+  - malignant
+
+label_col: label
+image_id_col: image_id
+group_col: patient_id    # = image_id; this atlas set has no patient/lesion grouping
+
+# three_partition_label → binary. `non-neoplastic` (inflammatory / infectious
+# conditions) sits outside the benign-vs-malignant task the models were trained
+# for, so the headline split drops it; the merged variant is reported alongside.
+label_mapping:
+  malignant: 1
+  benign: 0
+  non-neoplastic: 0
+
+# Skin-tone column used for the fairness grouping. Some releases also carry
+# `fitzpatrick_centaur` (annotator-assigned); if so, state the choice explicitly
+# in the report — override with `--tone-col`.
+tone_col: fitzpatrick_scale
+
+# fitzpatrick_scale = -1 means UNKNOWN tone; those rows are dropped at prepare
+# time (a fairness breakdown cannot use them).
 skin_type_groups:
   light:  [1, 2]    # Fitzpatrick I, II
   medium: [3, 4]    # Fitzpatrick III, IV
   dark:   [5, 6]    # Fitzpatrick V, VI
+
+# Split variants written by prepare_external_data.py:
+#   test_split.csv               benign vs malignant only        (HEADLINE)
+#   test_split_with_nonneo.csv   non-neoplastic merged as benign (sensitivity)
+splits:
+  headline: test_split.csv
+  with_non_neoplastic: test_split_with_nonneo.csv
 
 use_only_for:
   - fairness_evaluation

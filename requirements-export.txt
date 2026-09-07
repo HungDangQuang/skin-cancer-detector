@@ -4,7 +4,7 @@
 # Do NOT merge these into requirements.txt. ExecuTorch pins its own torch
 # build, which can differ from the training venv's torch>=2.2 — keeping it in a
 # separate venv (${DATASTORE_USER_DIR}/venv-export, created by
-# slurm/setup_export_env.sh) guarantees the export step can never perturb the
+# run/setup_export_env.sh) guarantees the export step can never perturb the
 # torch version the training/eval jobs depend on.
 #
 # executorch brings its own torch; we only add the bits needed to BUILD the

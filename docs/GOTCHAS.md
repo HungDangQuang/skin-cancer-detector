@@ -2,8 +2,8 @@
 
 These have all bitten this repo at least once. `CLAUDE.md` keeps a short index of
 these under "Recurring gotchas"; this file holds the **full detail** for each one.
-Run the `validate-pipeline` skill after touching `src/`, `configs/`, or `slurm/`
-to catch them before submitting cluster jobs.
+Run the `code-change` skill's `validate-pipeline` checks after touching `src/`, `configs/`, or `run/`
+to catch them before launching jobs on the GPU server.
 
 Sections are grouped: **hard rules** (never violate) → **live coding traps**
 (easy to re-trip when writing new code) → **operational / postmortems**
@@ -14,23 +14,21 @@ kept for the paper trail).
 
 ## Hard rules (never violate)
 
-### Shared-cluster rule for `*.slurm` scripts
+### Everything stays inside the project folder (shared server)
 
-UIT's cluster is shared. **No `slurm/*.slurm` script we author may terminate, preempt, or reset other users' work.** If resources are exhausted, the job goes into `PD` (pending) state and waits — that is the only acceptable behavior. Forbidden in every script: `scancel`/`kill`/`pkill`/`killall`, `nvidia-smi --reset-gpu`, `fuser -k`, `#SBATCH --preempt`, priority-bumping `--nice`, and any write to `/tmp/nvidia-mps` without a job-unique suffix. `validate-pipeline §3f / §3g` lint enforces this — see `.claude/skills/submit-slurm/SKILL.md` "Authoring new `*.slurm` scripts" for the full table and the queue-don't-evict rationale.
+The GPU box (`islabworker2@islab-server2`) is shared with other people and the repo lives on a NAS mount at `/mnt/sharednas/binhnt/hungdang/skin-cancer-detector`. **No `run/*.sh` may touch anything outside the project directory.** Forbidden everywhere: `sudo`, `apt`/`apt-get install`, the system python, edits to `~/.bashrc`/`~/.zshrc`, and killing other people's processes (`pkill`/`killall`/`nvidia-smi --reset-gpu`/`fuser -k`). Dependencies go in `./.venv-linux` (export tooling in `./.venv-export`); env vars are set per session, preferably from inside the repo. `validate-pipeline §3e / §3f` lint enforces this. The user audits it.
 
-### QOS caps `gres/gpu=0` — jobs MUST request `--gres=mps`, never `--gres=gpu` (added 2026-06-28)
+### The server root `/` has been 100% full — set `TMPDIR` inside the project
 
-A "fix" (commit 8229197) tried to stop the MPS-OOMs by switching every GPU script from `--gres=mps:l40:N` to `--gres=gpu:l40:1` (exclusive whole GPU). **It made every job unschedulable** — they sat `PD` forever with `Reason=QOSMaxGRESPerUser` even while the user held 0 GPUs. Root cause confirmed on-cluster: QOS `uit` sets `MaxTRESPerUser = cpu=32,gres/gpu=0,gres/mps=20`. **`gres/gpu=0` per user → any whole-GPU request is rejected outright.** Every running job on the cluster uses `gres/mps:*`; nobody is allowed a whole GPU. The node `AsusL40` has `gpu:l40:8,mps:l40:800` → **100 MPS units per GPU**, and the 20-unit per-user cap = 20% of one GPU, so you **cannot** reserve a whole GPU via MPS either. Commit 8229197 was reverted (2026-06-28); all GPU scripts are back on `--gres=mps:l40:N` + `setup_mps`, and `mps:l40:4` keeps the 5-concurrent-jobs model (20 budget ÷ 4).
+Anything that spills to `/tmp` can fail with `OSError: [Errno 28] No space left on device` even though the NAS has terabytes free. Per session, before a long job: `export TMPDIR="$(pwd)/.tmp"` (and `mkdir -p "$TMPDIR"`). NFS also produces harmless `Device or resource busy` tracebacks on file deletion — those are noise, not failures.
 
-The real OOM cause (jobs 32552/32558, efficientnetv2_m, 2026-06-23) was **not** the gres type — it was `_lib.sh::acquire_gpu` blindly honoring Slurm's pinned `CUDA_VISIBLE_DEVICES=0` without re-checking VRAM. The `gres/mps` plugin schedules by compute-% and ignores GPU memory, so Slurm pinned the job to a GPU another user's ~38 GiB job had filled (7 MiB free) while GPUs 2 & 6 sat empty. **Fixed:** `acquire_gpu` now queries free VRAM on the Slurm-pinned GPU; if it's `< required_vram`, it unsets `CUDA_VISIBLE_DEVICES` and falls through to the existing `nvidia-smi --query-gpu=memory.free` selection to **hop to a GPU with enough free memory** (picks the emptiest, so it never starves a neighbor). This re-enables the smart selection that was previously dead code under MPS. **Verified on-cluster (POC job 34349, 2026-06-28):** Slurm pinned GPU 0 (9128 MB free < 12288 needed) → the guard hopped to GPU 4 and training ran to `[job] DONE` with no OOM — confirming the CVD override routes correctly under this MPS setup. If a GPU with enough free VRAM genuinely doesn't exist, the job picks the emptiest and may still OOM → that's a "wait for the cluster to drain" situation, not a code bug.
+### Never overwrite an existing run-dir — and teachers isolate differently from students
 
-### Always submit through `slurm/submit.sh`
+`scripts/train_student.py` honours `run_suffix=` ([train_student.py:71](../scripts/train_student.py#L71)/[:93](../scripts/train_student.py#L93)), but **`scripts/train_teacher.py` does not** — its run-dir is hard-wired to `<output_dir>/teacher/<name>/fold_N` ([train_teacher.py:39](../scripts/train_teacher.py#L39)). A teacher ablation launched with `run_suffix=` therefore silently writes straight into the main teacher run and destroys it. Isolate teacher variants with `output_dir=` instead — that is why the ISIC-only teacher arm lives under `experiments/runs_isic_only/`. `validate-pipeline §3d` greps for this.
 
-Raw `sbatch` parses `--output=logs/...` before the script runs. If `logs/` doesn't exist at submit time (Slurm 23 silently drops stdout/stderr), you get a job that "ran" with no log. `submit.sh` does `mkdir -p logs` first and forwards env vars via `--export=ALL,VAR=value`. Even if it does fall through, `_lib.sh` writes a fallback `tee` log at `logs/<job>_<jobid>_runtime.log` — always check that file when the SBATCH log is empty.
+### One process per GPU unless you pin different ids
 
-### `/datastore/${USER}` is wrong on shared lab accounts
-
-On `slurm.uit.edu.vn`, multiple people share the `keg` account, so `${USER}` resolves to `keg` and the per-person subdir lives at `/datastore/keg/<name>/`. Scripts default to `/datastore/keg/hungdang/...` and accept a `DATASTORE_USER_DIR=...` env override. Don't reintroduce raw `/datastore/${USER}/...` — `validate-pipeline §3c` will flag it.
+`run/common.sh::select_gpu` auto-picks the freest GPU (`GPU=auto`), so two jobs launched at once can land on the same card and OOM each other. Pin explicitly (`GPU=0` / `GPU=1`) when running concurrently, or use `run/train_kd_parallel.sh`, which is VRAM-gated (starts a job only when running-jobs < `MAX_JOBS` **and** free VRAM ≥ `MIN_FREE_MB`). Measured 2026-08-13 on the 3090: a single KD job already saturates the GPU, so extra concurrency does **not** finish sooner — it only adds OOM risk. `MAX_JOBS=2` is the safe cap.
 
 ---
 
@@ -47,14 +45,14 @@ teacher_cfg = OmegaConf.merge(cfg, {"model": OmegaConf.to_container(cfg.teacher,
 
 ### Package re-exports
 
-If `src/<pkg>/__init__.py` re-exports a symbol, the name has to match the actual `class`/`def` in the submodule. Renaming a class without updating `__init__.py` is the easy way to break the whole import graph from a Slurm job (`ImportError: cannot import name 'X' from 'src.<pkg>.<mod>'`). Static check: `python -c "import src.training, src.models, src.data, src.evaluation"`.
+If `src/<pkg>/__init__.py` re-exports a symbol, the name has to match the actual `class`/`def` in the submodule. Renaming a class without updating `__init__.py` is the easy way to break the whole import graph at job start (`ImportError: cannot import name 'X' from 'src.<pkg>.<mod>'`). Static check: `python -c "import src.training, src.models, src.data, src.evaluation"`.
 
-### Slurm scripts run under `set -euo pipefail`
+### Runner scripts run under `set -euo pipefail`
 
-`slurm/_lib.sh` enables strict mode for every job. Two consequences:
+`run/common.sh` enables strict mode for every job. Two consequences:
 
-- Any reference to a Slurm-provided variable must use a `:-default` form, e.g. `${SLURM_JOB_ID:-$$}`. A bare `${SLURM_JOB_ID}` will kill the job with `unbound variable` if Slurm hasn't set it (running outside `sbatch`, or some MPS configurations).
-- Cluster CLI tools that aren't on every node (`nvidia-smi`, `gpu_check.sh`) must be gated with `command -v` or `[ -x ... ]` and have a fallback path. The `acquire_gpu` helper in `_lib.sh` already implements the gpu_check.sh / nvidia-smi / default fallback chain.
+- Every `KEY=VALUE` knob must be read as `${KEY:-default}` (or `${KEY:?message}` when required). A bare `${FOLDS}` kills the job with `unbound variable` the moment the caller omits it.
+- CLI tools that aren't on every box (`nvidia-smi`, `tmux`) must be gated with `command -v` or made non-fatal (`2>/dev/null` + a default). `select_gpu` in `run/common.sh` already implements the nvidia-smi / fallback chain.
 
 ### timm `num_features` is unreliable as the head input dim
 
@@ -75,7 +73,7 @@ If `src/<pkg>/__init__.py` re-exports a symbol, the name has to match the actual
 - To change augmentation, edit the **YAML**, not `transforms.py`. Adding a new op also needs a builder entry in `_TRANSFORM_BUILDERS`; an unknown `name` raises.
 - `augmentation=light` (default) reproduces the original hard-coded pipeline → the 30-run baseline is reproducible. `augmentation=heavy` is the stronger anti-overfit variant.
 - **MixUp / CutMix / CoarseDropout(CutOut) are forbidden in code** (`_FORBIDDEN_OPS` → `ValueError`), enforcing the docs/PREPROCESSING.md decision. Don't add them to the YAML expecting them to run.
-- `drop_path_rate` (stochastic depth) is a per-model-config knob (default 0.0/off) passed via `create_timm_backbone` only when `>0`. Some timm archs may not accept the kwarg — if a run sets `drop_path_rate>0` and errors with `TypeError`, that arch doesn't support it; verify per-arch on the cluster.
+- `drop_path_rate` (stochastic depth) is a per-model-config knob (default 0.0/off) passed via `create_timm_backbone` only when `>0`. Some timm archs may not accept the kwarg — if a run sets `drop_path_rate>0` and errors with `TypeError`, that arch doesn't support it; verify per-arch on the server.
 - `val_metrics.json` is a new per-fold output (best-epoch val metrics). `aggregate_folds.py` still reads only `test_metrics.json`; the val file is for the val−test overfitting gap, computed separately.
 
 ### `load_config()` must compose Hydra defaults for the root config
@@ -84,7 +82,7 @@ If `src/<pkg>/__init__.py` re-exports a symbol, the name has to match the actual
 
 ### NumPy 2.0 removed `np.trapz`
 
-`np.trapz(y, x)` is gone — replacement is `np.trapezoid(y, x)` (added in 2.0). The cluster venv has NumPy 2.x. Any new metric/integration code should use `np.trapezoid`.
+`np.trapz(y, x)` is gone — replacement is `np.trapezoid(y, x)` (added in 2.0). The server venv has NumPy 2.x. Any new metric/integration code should use `np.trapezoid`.
 
 ### `Trainer.history` populates differently from `KDTrainer.history`
 
@@ -94,21 +92,17 @@ If `src/<pkg>/__init__.py` re-exports a symbol, the name has to match the actual
 
 ## Operational / postmortems
 
-### `keg` is a shared lab account — `squeue -u keg` shows everyone
+### Track your own jobs — the box is shared
 
-When tracking your own jobs, filter by job name: `squeue -u keg --name=poc_teacher`. For postmortems use `sacct -u keg --starttime=$(date -d "1 hour ago" '+%H:%M:%S')`. Per-user job IDs are unique, so any single `squeue -j <jobid>` / `sacct -j <jobid>` still works without a filter.
-
-### `/usr/local/bin/gpu_check.sh` is bypassed by default
-
-The cluster's GPU dispatcher has a typo on line 31 (`nvidia-smi-i` instead of `nvidia-smi -i`) that makes it always false-negative AND it issues `scontrol requeue $SLURM_JOB_ID` internally before returning to us — so any fallback we run gets SIGTERM'd by Slurm seconds later. `_lib.sh::acquire_gpu` therefore picks a GPU itself via `nvidia-smi --query-gpu=memory.free` and skips the helper. Opt back in with `USE_CLUSTER_GPU_CHECK=1` only after UIT admin fixes the typo. **Do not** pass that env var to `submit.sh` in the meantime — it puts the job back into the requeue loop.
+There's no scheduler, so a long run is just a process. Launch under `tmux` (or `nohup`) so an SSH drop doesn't kill it, and find it again with `ps -ef | grep train_`, `nvidia-smi` (which PIDs hold VRAM), or the transcript at `logs/<name>_<timestamp>.log`. Only kill PIDs you started.
 
 ### Data-strategy ablations: `run_suffix` isolation + the two design traps (added 2026-06-21)
 
-The data strategy (PAD mixing + undersampler) is ablated by `slurm/13_ablation_sampler.slurm` and `slurm/14_ablation_pad.slurm`. Three things that will silently invalidate a result if forgotten:
+The data strategy (PAD mixing + undersampler) is ablated by `run/ablation_sampler.sh` and `run/ablation_pad.sh`. Three things that will silently invalidate a result if forgotten:
 
-- **`run_suffix` (root `config.yaml`, default `""`)** is appended to the run-dir name (`kd_<teacher>_to_<student><suffix>/fold_N`) so an ablation arm never overwrites the main 30 runs. The ablation slurms set it (`__samp_off`, `__ratio3`, `__train_isic_only`, …). A new ablation that forgets `run_suffix` will clobber a real run.
+- **`run_suffix` (root `config.yaml`, default `""`)** is appended to the run-dir name (`kd_<teacher>_to_<student><suffix>/fold_N`) so an ablation arm never overwrites the main 30 runs. `run/ablation_sampler.sh` / `run/ablation_pad.sh` set it (`__samp_off`, `__ratio3`, `__train_isic_only`, …). A new ablation that forgets `run_suffix` will clobber a real run.
 - **`data.train_sources`** (in `configs/data/isic2024.yaml`, default `null`) filters **TRAIN+VAL only** — `SkinLesionDataModule._filter_to_sources` deliberately leaves the **test set whole** so both PAD-ablation arms share an identical held-out test (its PAD portion trained on by neither). Don't "helpfully" filter the test too; that breaks the comparison. It raises if a filter empties a split.
-- **The PAD ablation must run baseline (no KD).** A teacher trained on ISIC+PAD leaks PAD via soft labels into the ISIC-only arm, confounding "does PAD data help". `14_ablation_pad.slurm` defaults `TRAINING=baseline` for this reason — only switch to KD if you also train a matched ISIC-only teacher.
+- **The PAD ablation must run baseline (no KD).** A teacher trained on ISIC+PAD leaks PAD via soft labels into the ISIC-only arm, confounding "does PAD data help". `run/ablation_pad.sh` defaults `TRAINING=baseline` for this reason — only switch to KD if you also train a matched ISIC-only teacher.
 
 Per-domain (ISIC vs PAD) verdicts read the `source` column in `predictions.csv` (written by `Evaluator.save_predictions`, derived via `source_from_path`). Quote **AUPRC** over AUC-ROC at this prevalence.
 
@@ -117,7 +111,7 @@ Per-domain (ISIC vs PAD) verdicts read the `source` column in `predictions.csv` 
 POC smoke-test of the 3 SOTA teachers (jobs 32296/32297/32298): `convnextv2_base` and `efficientnetv2_m` PASS; **`maxvit_base` FAILS at `loss.backward()` with `RuntimeError: cuDNN error: CUDNN_STATUS_INTERNAL_ERROR`** (forward completes — not a tag/shape bug; timm tags + head dims of all 3 are confirmed correct). Two likely causes, in order: (1) **VRAM exhaustion** — maxvit_base (~119M + windowed/grid attention) has the largest backward activation footprint, and cuDNN masks workspace-alloc OOM as INTERNAL_ERROR; it failed even at POC batch 16, so batch 64 is worse. (2) deterministic-cuDNN incompatibility. Fixes available (combine both when retrying maxvit):
 - **`cudnn_deterministic`** (root `config.yaml`/`config_poc.yaml`, default `true` = the bit-exact 30-run baseline behavior). `set_seed(seed, deterministic=...)` now honors it: `false` → `cudnn.deterministic=False` + `cudnn.benchmark=True` (lets cuDNN pick a working algo). Both training scripts pass `cfg.get("cudnn_deterministic", True)`. Override per-run: `cudnn_deterministic=false`. Only the convnextv2/efficientnetv2_m/maxvit teachers need consider this; the baseline 30 runs keep the default `true`.
 - For the VRAM cause: lower `training.batch_size` and raise `acquire_gpu` for maxvit only (it's resolution-locked to 224, so batch is the only memory lever). If it still OOMs at small batch, maxvit_base is impractical on this MPS setup — drop it and keep convnextv2_base/efficientnetv2_m as the SOTA teachers.
-- Both levers reach the training scripts via the `EXTRA=` passthrough on `11/12/02/03` (space-separated Hydra overrides, forwarded verbatim and word-split at the call site — quote it as one shell arg). Retry: `bash slurm/submit.sh slurm/02_poc_teacher.slurm TEACHER=maxvit_base EXTRA="cudnn_deterministic=false training.batch_size=8"` (POC), then `slurm/11_train_teacher.slurm TEACHER=maxvit_base EXTRA="cudnn_deterministic=false training.batch_size=16"` (real).
+- Both levers reach the training scripts via the `EXTRA=` passthrough on `11/12/02/03` (space-separated Hydra overrides, forwarded verbatim and word-split at the call site — quote it as one shell arg). Retry: `bash run/poc.sh STAGE=teacher TEACHER=maxvit_base EXTRA="cudnn_deterministic=false training.batch_size=8"` (POC), then `run/train_teacher.sh TEACHER=maxvit_base EXTRA="cudnn_deterministic=false training.batch_size=16"` (real).
 
 ---
 
@@ -129,7 +123,7 @@ Historically [src/evaluation/metrics.py](../src/evaluation/metrics.py) integrate
 
 ### Baseline (no-KD) student training — FIXED 2026-06-04 via `use_kd` flag
 
-Previously `KDTrainer.__init__` read `cfg.training.distillation` unconditionally and `train_student.py` always built a `KDTrainer`, so any `training=baseline` run crashed with `ConfigAttributeError: Missing key distillation` (jobs 26729/26730/26731, 2026-05-30). Now `scripts/train_student.py` reads `use_kd = cfg.training.get("use_kd", True)` and branches: **`use_kd: true`** (`distillation.yaml`) → `KDTrainer` + frozen teacher + `BinaryDistillationLoss`, run-dir `kd_<teacher>_to_<student>/`; **`use_kd: false`** (`baseline.yaml`) → plain `Trainer` + `BinaryFocalLoss`, no teacher load, run-dir `baseline_<student>/`. The baseline arm of the 30-run experiment is now runnable: `bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=<s> TRAINING=baseline`.
+Previously `KDTrainer.__init__` read `cfg.training.distillation` unconditionally and `train_student.py` always built a `KDTrainer`, so any `training=baseline` run crashed with `ConfigAttributeError: Missing key distillation` (jobs 26729/26730/26731, 2026-05-30). Now `scripts/train_student.py` reads `use_kd = cfg.training.get("use_kd", True)` and branches: **`use_kd: true`** (`distillation.yaml`) → `KDTrainer` + frozen teacher + `BinaryDistillationLoss`, run-dir `kd_<teacher>_to_<student>/`; **`use_kd: false`** (`baseline.yaml`) → plain `Trainer` + `BinaryFocalLoss`, no teacher load, run-dir `baseline_<student>/`. The baseline arm of the 30-run experiment is now runnable: `bash run/train_student.sh STUDENT=<s> TRAINING=baseline`.
 
 ### PAD-UFES-20 `img_id` already includes the file extension — FIXED 2026-06-07
 

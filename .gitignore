@@ -18,6 +18,10 @@ build/
 
 # Virtual environments
 .venv/
+# server training venv (run/setup_env.sh)
+.venv-linux/
+# isolated ExecuTorch venv (run/setup_export_env.sh)
+.venv-export/
 venv/
 env/
 ENV/
@@ -57,7 +61,7 @@ wandb/
 *.pt
 *.onnx
 
-# Slurm logs (per-job stdout/stderr)
+# Run transcripts (logs/<name>_<timestamp>.log)
 logs/
 *.out
 *.err

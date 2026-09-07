@@ -24,7 +24,7 @@ number all headline-metric choices (AUPRC over AUC-ROC) are justified against.
 `bash scripts/setup_pad_ufes_20.sh <bundle.zip>`, which extracts the nested
 `imgs_part_*.zip` and writes `data/raw/pad_ufes_20/{metadata.csv, images/}`.
 PAD is **optional**: `prepare_data.py` concatenates it only if that dir exists,
-else it runs ISIC-only. See [SLURM.md §3.1](SLURM.md) for the cluster steps.
+else it runs ISIC-only. See [run/README.md](../run/README.md) for the cluster steps.
 
 ---
 
@@ -48,6 +48,89 @@ is ~0.03% of all positives.
 **ID namespacing:** when ISIC + PAD are concatenated, `patient_id` must be
 namespaced (e.g. `pad_…`) so a PAD id cannot collide with an ISIC id and leak
 across folds.
+
+### 1.1 External test sets (HAM10000 / Fitzpatrick17k) — two-tier filter policy
+
+`process_ham10000` / `process_fitzpatrick17k` (same file) prepare the two
+**evaluation-only** datasets. They are never trained on, which inverts the logic
+above: for a training set, dropping a bad image improves the signal; for a test
+set, **every dropped image silently changes the benchmark**. So filtering runs in
+two tiers:
+
+| Tier | What | Action | Log |
+|---|---|---|---|
+| 1 — integrity | unreadable / corrupt / decode bomb / native side `< 32 px` / missing file / dead-link payload | **DROP** (not a valid model input at all) | `data/processed/<ds>/excluded_images.csv` |
+| 2 — quality | `is_uninformative`, exact-pixel duplicate | **KEEP + flag** | `data/processed/<ds>/quality_flags.csv` + a `quality_flags` column in the split CSV |
+
+Reporting both the full and the flag-filtered subset is what shows the verdict
+does not depend on the filter.
+
+**Why tier 2 never drops:** `is_uninformative`'s thresholds were calibrated on
+ISIC dermoscopy tiles. A flat clinical photograph of uniform skin can trip
+`std < 8.0` — and how flat a photo reads is not independent of skin tone, so
+auto-dropping would bias the *fairness* numbers by the very variable being
+measured.
+
+**Geometry stays squashed.** External images are resized to `224×224` without
+preserving aspect ratio, exactly like `process_isic2024` / `process_pad_ufes_20`.
+HAM10000 is 4:3, so a center-crop would be tempting — but it would stack a
+*preprocessing* difference on top of the *domain* difference being measured, and
+the two could not be told apart afterwards.
+
+**Per-dataset specifics:**
+
+- **HAM10000** — several photographs share one `lesion_id`, and md5 dedup cannot
+  catch them (different shots = different pixels). `is_lesion_representative`
+  marks the first image per lesion by sorted `image_id` (deterministic), and the
+  headline split uses only those; treating all shots as independent would shrink
+  confidence intervals artificially. `dx` is carried through so the
+  `akiec → malignant` convention can be re-tested without reprocessing.
+- **Fitzpatrick17k** — the release ships **URLs, not images**
+  (`scripts/download_fitzpatrick17k.py` fetches them). Validation is
+  `HTTP 200 → Content-Type: image/* → PIL decode → md5 matches the metadata
+  column`; the md5 layer is what reliably catches a dead link whose HTML error
+  page was saved as a `.jpg`. Rows with `fitzpatrick_scale = -1` (unknown tone)
+  are dropped at prepare time. **The download success rate is a coverage
+  limitation that belongs in the thesis**, and it may not be uniform across tone
+  groups.
+- **Framing confound** — many Fitzpatrick17k photographs frame a whole limb or
+  face rather than a lesion close-up, unlike everything the models trained on.
+  There is no lesion detector here and a hand-rolled "wide-field" heuristic could
+  filter unevenly across tones, so this is quantified by hand instead:
+  `scripts/sample_spotcheck.py` draws a seeded, tone-stratified sample of 100 for
+  manual labelling and reports the rate per tone group.
+
+**Leakage guard.** `scripts/prepare_external_data.py` ends with an overlap check
+against the internal splits — an `image_id` intersection (decisive for HAM10000,
+which keeps `ISIC_*` ids from the ISIC Archive) plus a decoded-pixel md5 check
+against the internal held-out test split. It writes
+`reports/external_overlap_check_<ds>.md` and **exits 2 on any hit**; an
+overlapping image is data the model may have trained on, which would inflate the
+"generalization" number.
+
+**Split variants written** (all in the internal `test_split.csv` schema, so
+`SkinLesionDataset` reads them unchanged):
+
+| Dataset | File | Role |
+|---|---|---|
+| ham10000 | `test_split.csv` | headline — one image per lesion |
+| ham10000 | `test_split_full.csv` | every image (appendix / literature comparison) |
+| ham10000 | `test_split_no_akiec.csv` | akiec dropped (label-convention sensitivity) |
+| fitzpatrick17k | `test_split.csv` | headline — benign vs malignant only |
+| fitzpatrick17k | `test_split_with_nonneo.csv` | `non-neoplastic` merged into benign |
+
+Prepared with (CPU-only, no GPU):
+
+```bash
+bash run/prepare_external.sh DATASET=ham10000
+bash run/prepare_external.sh DATASET=fitzpatrick17k DOWNLOAD_LIMIT=50   # trial first
+```
+
+> ⚠️ **Not yet wired to evaluation.** `SkinLesionDataModule.setup()` always builds
+> train/val from `fold_dir`, so it cannot read a test-only split yet, and
+> `Evaluator` defaults to picking a Youden threshold **on the set being measured**
+> — which would violate the `do_not_use_for: threshold_selection` rule these
+> configs declare. Both are the next phase's work.
 
 ---
 
@@ -84,7 +167,7 @@ orthogonal**, and as specified they risk over-correcting.
 `undersampling_ratio × focal_α` (e.g. ratios {1:3, 1:5, raw} × α {0.25, 0.5})
 on a fixed fold and report a small table. This both fixes the over-correction
 risk and turns an assumption into a result. **Now wired** as
-`slurm/13_ablation_sampler.slurm` (`SAMP=off|3|5|10`, toggles
+`run/ablation_sampler.sh` (`SAMP=off|3|5|10`, toggles
 `data.use_weighted_sampler`/`data.undersample_ratio`) — see §7.
 
 ---
@@ -159,15 +242,18 @@ To align the proposal §2.2/§3.5 with the corrected spec, the proposal should:
 - [x] `transforms.py`: widen rotation to full 0–360° (`rotate_limit=180`); add low-p CLAHE (`p=0.2`, before Normalize); aug kept class-symmetric. *(done 2026-06-04)*
 - [x] `preprocessing.py`: min-size filter (`min_size=32`, fresh-decode only); exact-duplicate dedup (md5 of resized pixels, first kept); widened `except` to include `Image.DecompressionBombError`; PAD `patient_id` namespaced (`pad_…`) against cross-dataset GroupKFold collision. *(done 2026-06-04)*
 - [x] Loss/config: `focal_alpha` (`training.loss.alpha`) and `undersample_ratio` (`data.undersample_ratio`) were **already** config-driven — sweepable via Hydra overrides, no change needed.
-- [x] Add the `ratio × α` ablation to the experiment plan — `slurm/13_ablation_sampler.slurm` (§7). *(wired 2026-06-21)*
+- [x] Add the `ratio × α` ablation to the experiment plan — `run/ablation_sampler.sh` (§7). *(wired 2026-06-21)*
 - [x] `transforms.py`: make augmentation **config-driven** (read `configs/augmentation/{light,heavy}.yaml`); `light` == prior hard-coded behavior, `heavy` == stronger safe variant; MixUp/CutMix/CutOut enforced-forbidden via `raise`. *(done 2026-06-21, §4.1)*
 - [x] Models: add `drop_path_rate` (stochastic depth) knob, default 0.0/off, via `create_timm_backbone`. *(done 2026-06-21, §4.2)*
 - [x] fix the `test_split.csv` independence issue — independent patient-disjoint holdout carved before CV (`test_holdout_splits`, default 6). *(done 2026-06-06)*
+- [x] `preprocessing.py`: external eval-only processors `process_ham10000` / `process_fitzpatrick17k` on a shared `_clean_external_image`, with the **two-tier** filter policy (§1.1); `scripts/download_fitzpatrick17k.py` (URL fetch + 4-step validation), `scripts/prepare_external_data.py` (split variants + leakage guard), `scripts/sample_spotcheck.py` (framing confound), `run/prepare_external.sh`. The existing ISIC/PAD processors were **not touched**. *(done 2026-08-10; images not yet downloaded — nothing run on the server)*
 
 ### Known limitations of the implemented filters (verify on cluster)
 - Dedup is **per-dataset** (`seen_hashes` resets between ISIC and PAD) and **exact-pixel only** — an ISIC↔PAD exact dup or a near-duplicate won't be caught. Intra-dataset exact dups (the main risk) are covered.
 - `min_size` only applies on the **fresh decode**; an image already resized to 224 on a prior run can't be re-checked for native size.
 - Thresholds (`min_size=32`, `std<8`, `0.97`) are untuned — confirm the `excluded_images.csv` per-label breakdown on the cluster before trusting them; never auto-drop malignant without a look.
+- On the external sets (§1.1) the same thresholds only **flag** (tier 2), so an untuned `std<8` cannot silently shrink the benchmark — but the flag counts still need a look before the filtered-subset numbers are quoted.
+- The Fitzpatrick17k `md5hash` column is *assumed* to be the md5 of the image bytes. The downloader probes the first 25 fetches and aborts if under half match, rather than rejecting the whole dataset after hours — if that fires, re-run with `--md5-check warn` and record the choice.
 
 > The α/ratio interaction (§3) remains an empirical claim to confirm via the
 > cluster ablation, not an asserted fact.
@@ -183,8 +269,8 @@ single-variable, 5-fold, and land in isolated run-dirs via `run_suffix`.
 
 | Ablation | Script | Varies | Held fixed | Read the verdict from |
 |---|---|---|---|---|
-| **Sampler** | `13_ablation_sampler.slurm` | `data.use_weighted_sampler` / `data.undersample_ratio` (`SAMP=off\|3\|5\|10`) | KD, **teacher reused**, seed, folds, loss | pAUC / sens / AUPRC vs the main ratio-5 run |
-| **PAD mixing** | `14_ablation_pad.slurm` | `data.train_sources` (`ARM=isic_only\|isic_pad`) — filters **TRAIN+VAL only** | **baseline (no KD)**, identical combined test | per-domain rows (PAD-source) of the combined test |
+| **Sampler** | `run/ablation_sampler.sh` | `data.use_weighted_sampler` / `data.undersample_ratio` (`SAMP=off\|3\|5\|10`) | KD, **teacher reused**, seed, folds, loss | pAUC / sens / AUPRC vs the main ratio-5 run |
+| **PAD mixing** | `run/ablation_pad.sh` | `data.train_sources` (`ARM=isic_only\|isic_pad`) — filters **TRAIN+VAL only** | **baseline (no KD)**, identical combined test | per-domain rows (PAD-source) of the combined test |
 
 Two design rules that make the comparisons honest:
 - **PAD ablation runs baseline, not KD.** A KD teacher trained on ISIC+PAD would

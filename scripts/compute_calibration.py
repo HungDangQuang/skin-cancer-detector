@@ -29,10 +29,17 @@ raw numbers match test_metrics.json exactly.
 
 Runs on the SERVER (needs numpy + scikit-learn + matplotlib), not the Mac.
 
+Optional --subgroup <col> (direction D fairness diagnostic): break the raw-vs-
+calibrated ECE/Brier down per subgroup (e.g. anatom_site_general / sex). Needs
+data.metadata_cols set at prepare-time so the column exists in predictions.csv.
+The GLOBAL correction is unchanged — no per-group calibrator is fit (too few
+positives per group at 0.39% prevalence); it only REPORTS per-group calibration.
+
 Usage:
     python scripts/compute_calibration.py --run-dir experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium
     python scripts/compute_calibration.py --run-dir <run> --target-prevalence 0.0039
     python scripts/compute_calibration.py --run-dir <run> --method isotonic
+    python scripts/compute_calibration.py --run-dir <run> --subgroup anatom_site_general
 """
 from __future__ import annotations
 
@@ -69,6 +76,23 @@ def load_predictions(csv_path: Path) -> tuple[np.ndarray, np.ndarray]:
             y_true.append(int(float(row["y_true"])))
             y_prob.append(float(row["y_prob"]))
     return np.asarray(y_true, dtype=float), np.asarray(y_prob, dtype=float)
+
+
+def load_column(csv_path: Path, col: str) -> np.ndarray | None:
+    """Read one column (as strings) from a predictions CSV; None if absent.
+
+    Used by --subgroup: an empty/blank cell becomes "nan" so PAD rows (which
+    have no ISIC metadata) group into a single explicit bucket instead of "".
+    """
+    vals: list[str] = []
+    with open(csv_path, newline="") as f:
+        reader = csv.DictReader(f)
+        if col not in (reader.fieldnames or []):
+            return None
+        for row in reader:
+            v = str(row.get(col, "")).strip()
+            vals.append(v if v else "nan")
+    return np.asarray(vals, dtype=object)
 
 
 def prior_correct(p: np.ndarray, pi_train: float, pi_target: float) -> np.ndarray:
@@ -149,6 +173,12 @@ def main() -> None:
                     help="displayed prevalence for prior-shift: 'auto' (mean y_true of test) or a float")
     ap.add_argument("--method", choices=["none", "isotonic", "platt"], default="none",
                     help="none = prior-shift closed form (default); isotonic/platt fit on val_predictions.csv")
+    ap.add_argument("--subgroup", default=None,
+                    help="predictions.csv column (e.g. anatom_site_general / sex) to break "
+                         "calibration ECE/Brier down by. Needs data.metadata_cols set at "
+                         "prepare-time so the column exists in predictions.csv (direction D).")
+    ap.add_argument("--min-subgroup-n", type=int, default=20,
+                    help="skip subgroups with fewer than this many pooled samples (default 20)")
     args = ap.parse_args()
 
     run_dir: Path = args.run_dir
@@ -164,9 +194,20 @@ def main() -> None:
     pi_train = 1.0 / (1.0 + args.ratio)
     per_fold: dict[str, dict] = {}
     pooled_true, pooled_raw, pooled_cal = [], [], []
+    pooled_sub: list = []
+    subgroup_missing = False  # True if --subgroup col absent from any used fold
 
     for idx, fold_dir in folds:
         y_true, y_prob = load_predictions(fold_dir / "predictions.csv")
+        sub_vals = None
+        if args.subgroup:
+            sub_vals = load_column(fold_dir / "predictions.csv", args.subgroup)
+            if sub_vals is None:
+                subgroup_missing = True
+            elif len(sub_vals) != len(y_true):
+                print(f"WARN fold {idx}: --subgroup column length mismatch; skipping subgroup.",
+                      file=sys.stderr)
+                subgroup_missing = True
 
         if args.method == "none":
             if args.target_prevalence == "auto":
@@ -199,6 +240,8 @@ def main() -> None:
         pooled_true.append(y_true)
         pooled_raw.append(y_prob)
         pooled_cal.append(p_cal)
+        if args.subgroup and sub_vals is not None and len(sub_vals) == len(y_true):
+            pooled_sub.append(sub_vals)
 
     if not per_fold:
         print("ERROR: no fold produced calibration numbers (see warnings above).", file=sys.stderr)
@@ -208,6 +251,10 @@ def main() -> None:
     agg_mean = {k: mean(f[k] for f in per_fold.values()) for k in metric_keys}
     agg_std = {k: (stdev([f[k] for f in per_fold.values()]) if len(per_fold) > 1 else 0.0)
                for k in metric_keys}
+
+    y_true_all = np.concatenate(pooled_true)
+    raw_all = np.concatenate(pooled_raw)
+    cal_all = np.concatenate(pooled_cal)
 
     out = {
         "run_dir": str(run_dir),
@@ -220,15 +267,48 @@ def main() -> None:
         "mean": agg_mean,
         "std": agg_std,
     }
+
+    # --- Optional per-subgroup breakdown (direction D fairness diagnostic) ---
+    # Same GLOBAL correction (no per-group calibrator — too few positives per group
+    # at 0.39% prevalence to fit one honestly); we only REPORT raw-vs-calibrated
+    # ECE/Brier per subgroup so uneven calibration quality across site/sex is visible.
+    if args.subgroup:
+        if subgroup_missing or not pooled_sub:
+            print(f"WARN: --subgroup '{args.subgroup}' not found in predictions.csv "
+                  f"(set data.metadata_cols at prepare-time + re-eval); skipping subgroup.",
+                  file=sys.stderr)
+        else:
+            sub_all = np.concatenate(pooled_sub)
+            groups: dict[str, dict] = {}
+            for g in sorted(set(sub_all.tolist())):
+                mask = sub_all == g
+                n_g = int(mask.sum())
+                if n_g < args.min_subgroup_n:
+                    continue
+                yt, rw, cl = y_true_all[mask], raw_all[mask], cal_all[mask]
+                groups[str(g)] = {
+                    "n": n_g,
+                    "prevalence": float(yt.mean()),
+                    "brier_raw": brier_score(yt, rw),
+                    "ece_raw": expected_calibration_error(yt, rw),
+                    "brier_cal": brier_score(yt, cl),
+                    "ece_cal": expected_calibration_error(yt, cl),
+                }
+            out["subgroup_col"] = args.subgroup
+            out["min_subgroup_n"] = args.min_subgroup_n
+            out["subgroups"] = groups
+            print(f"[calibration] subgroup '{args.subgroup}': {len(groups)} groups "
+                  f">= {args.min_subgroup_n} samples")
+            for g, m in groups.items():
+                print(f"[calibration]   {g:>20} n={m['n']:<6} prev={m['prevalence']:.4f} "
+                      f"ECE {m['ece_raw']:.4f}->{m['ece_cal']:.4f}")
+
     json_path = run_dir / "calibration_metrics.json"
     json_path.write_text(json.dumps(out, indent=2))
     print(f"[calibration] wrote {json_path} ({len(per_fold)} folds, method={args.method})")
     print(f"[calibration] ECE  raw {agg_mean['ece_raw']:.4f} -> cal {agg_mean['ece_cal']:.4f} | "
           f"Brier raw {agg_mean['brier_raw']:.4f} -> cal {agg_mean['brier_cal']:.4f}")
 
-    y_true_all = np.concatenate(pooled_true)
-    raw_all = np.concatenate(pooled_raw)
-    cal_all = np.concatenate(pooled_cal)
     png_path = run_dir / "reliability_curve.png"
     _reliability_curve(y_true_all, raw_all, cal_all, png_path, args.method)
     print(f"[calibration] wrote {png_path}")
