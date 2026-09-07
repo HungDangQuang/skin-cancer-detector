@@ -1,3 +1,8 @@
+# SUPERSEDED 2026-08-27 - KHONG TRICH SO TU FILE NAY.
+# Ban do thang 7/2026: chi 4 model, input la tensor ngau nhien (khong phai anh that),
+# warmup 10 / 50 iters (duoi san schema 30/100), khong co parity, dieu kien thiet bi khong ghi.
+# Con chua mobilenetv3_large - kien truc DA XOA khoi registry 15/07/2026.
+# Ban thay the: reports/BENCHMARK_RESULTS.md (Step A/B/C day du, 2026-08-27).
 timestamp,device,manufacturer,soc,abi,android_sdk,model,file_size_mb,threads,warmup_iters,measured_iters,cold_ms,mean_ms,median_ms,p90_ms,p95_ms,p99_ms,min_ms,max_ms,std_ms,fps,load_ms
 2026-07-04 16:00:24,Pixel 6a,Google,Tensor,arm64-v8a,36,efficientformerv2_s2.pte,46.9783,1,10,50,90.8612,88.6613,88.5959,89.7099,90.8055,92.3595,86.8523,92.3595,1.0946,11.2872,73.0083
 2026-07-04 16:00:24,Pixel 6a,Google,Tensor,arm64-v8a,36,efficientformerv2_s2.pte,46.9783,2,10,50,50.0264,51.6090,51.4655,52.6904,52.9060,53.3502,49.4808,53.3502,0.8797,19.4305,36.2457

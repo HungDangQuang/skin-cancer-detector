@@ -2,20 +2,32 @@ from pathlib import Path
 
 from omegaconf import OmegaConf, open_dict
 
+from .panderm import PanDermModel
+from .privileged import PrivilegedTimmBackboneModel
 from .timm_backbone import TimmBackboneModel
 
 MODEL_REGISTRY: dict = {
-    # SOTA set — one generic timm wrapper (`TimmBackboneModel`) covers every arch;
-    # there is no per-arch logic, so no family-specific wrapper is needed. Requires
-    # timm>=1.0 (mobilenetv4/fastvit/efficientformerv2 are not in 0.9.x).
+    # SOTA set — one generic timm wrapper (`TimmBackboneModel`) covers every timm
+    # arch; there is no per-arch logic, so no family-specific wrapper is needed.
+    # Requires timm>=1.0 (mobilenetv4/fastvit/efficientformerv2/repvit are not in
+    # 0.9.x). The lone exception is `panderm`, a domain-foundation teacher whose
+    # weights ship OUT of timm (BEiT-style checkpoint) -> its own `PanDermModel`.
     # Teachers (high-capacity, frozen during KD)
     "efficientnetv2_m": TimmBackboneModel,
     "convnextv2_base": TimmBackboneModel,
     "maxvit_base": TimmBackboneModel,
+    "panderm": PanDermModel,
+    # Privileged (LUPI) teachers — image ⊕ tabular `tbp_lv_*` metadata fusion
+    # (direction A). Same timm backbone as their plain counterpart; require
+    # data.metadata_cols set. Student stays image-only (distills the fused
+    # feature structure via RKD). See docs/metadata_training_plan.md §A.
+    "efficientnetv2_m_privileged": PrivilegedTimmBackboneModel,
+    "convnextv2_base_privileged": PrivilegedTimmBackboneModel,
     # Students (mobile-/on-device-latency-optimized)
     "mobilenetv4_conv_medium": TimmBackboneModel,
     "fastvit_sa12": TimmBackboneModel,
     "efficientformerv2_s2": TimmBackboneModel,
+    "repvit_m1_0": TimmBackboneModel,
 }
 
 

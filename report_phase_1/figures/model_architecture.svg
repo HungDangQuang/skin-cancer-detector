@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="994" viewBox="0 0 1000 994" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Helvetica, Arial, sans-serif">
+<rect width="1000" height="994" fill="#FFFFFF"/>
+<defs>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="#9AA0A6"/>
+  </marker>
+  <filter id="cardShadow" x="-6%" y="-6%" width="112%" height="118%">
+    <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#1a1a1a" flood-opacity="0.10"/>
+  </filter>
+</defs>
+<rect x="40" y="30" width="920" height="176" rx="14" fill="#E7F4EC" stroke="#B6DEC5"/>
+<text x="500" y="62" text-anchor="middle" font-size="17" font-weight="700" fill="#1E7A45">Seven backbones — one slot</text>
+<text x="500" y="84" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1E7A45" letter-spacing="1">T E A C H E R S</text>
+<rect x="184" y="92" width="200" height="34" rx="17" fill="#FFFFFF" stroke="#B6DEC5" filter="url(#cardShadow)"/>
+<text x="284" y="113" text-anchor="middle" font-size="11" font-weight="600" fill="#1E7A45">EfficientNetV2-M</text>
+<rect x="400" y="92" width="200" height="34" rx="17" fill="#FFFFFF" stroke="#B6DEC5" filter="url(#cardShadow)"/>
+<text x="500" y="113" text-anchor="middle" font-size="11" font-weight="600" fill="#1E7A45">ConvNeXtV2-B</text>
+<rect x="616" y="92" width="200" height="34" rx="17" fill="#FFFFFF" stroke="#B6DEC5" filter="url(#cardShadow)"/>
+<text x="716" y="113" text-anchor="middle" font-size="11" font-weight="600" fill="#1E7A45">MaxViT-B</text>
+<text x="500" y="148" text-anchor="middle" font-size="9.5" font-weight="700" fill="#1E7A45" letter-spacing="1">S T U D E N T S</text>
+<rect x="139" y="156" width="170" height="34" rx="17" fill="#FFFFFF" stroke="#B6DEC5" filter="url(#cardShadow)"/>
+<text x="224" y="177" text-anchor="middle" font-size="11" font-weight="600" fill="#1E7A45">MobileNetV4-M</text>
+<rect x="323" y="156" width="170" height="34" rx="17" fill="#FFFFFF" stroke="#B6DEC5" filter="url(#cardShadow)"/>
+<text x="408" y="177" text-anchor="middle" font-size="11" font-weight="600" fill="#1E7A45">FastViT-SA12</text>
+<rect x="507" y="156" width="170" height="34" rx="17" fill="#FFFFFF" stroke="#B6DEC5" filter="url(#cardShadow)"/>
+<text x="592" y="177" text-anchor="middle" font-size="11" font-weight="600" fill="#1E7A45">EffFormerV2-S2</text>
+<rect x="691" y="156" width="170" height="34" rx="17" fill="#FFFFFF" stroke="#B6DEC5" filter="url(#cardShadow)"/>
+<text x="776" y="177" text-anchor="middle" font-size="11" font-weight="600" fill="#1E7A45">RepViT-M1.0</text>
+<path d="M 250,212 L 750,212 L 545,250 L 455,250 Z" fill="#E7F4EC" stroke="#B6DEC5" stroke-dasharray="6 4"/>
+<line x1="500" y1="250" x2="500" y2="272" stroke="#9AA0A6" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arrow)"/>
+<rect x="320" y="272" width="360" height="88" rx="12" fill="#FFFFFF" stroke="#D8D6D1" stroke-width="2" stroke-dasharray="7 5" filter="url(#cardShadow)"/>
+<text x="500" y="306" text-anchor="middle" font-size="17" font-weight="700" fill="#55534E" letter-spacing="0.5">BACKBONE</text>
+<text x="500" y="328" text-anchor="middle" font-size="11" fill="#5A5A5A">whichever of the seven fills the slot</text>
+<text x="500" y="345" text-anchor="middle" font-size="11" fill="#5A5A5A">ImageNet init · fully fine-tuned</text>
+<rect x="40" y="295" width="250" height="42" rx="21" fill="#E7F4EC" stroke="#B6DEC5"/>
+<text x="165" y="321" text-anchor="middle" font-size="13" font-weight="700" fill="#1E7A45">224 × 224 × 3</text>
+<line x1="290" y1="316" x2="320" y2="316" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="680" y1="316" x2="700" y2="316" stroke="#D8D6D1" stroke-width="1.4" stroke-dasharray="3 3"/>
+<rect x="700" y="291" width="250" height="50" rx="8" fill="#EEEDEA" stroke="#D8D6D1"/>
+<text x="825" y="312" text-anchor="middle" font-size="10.5" font-weight="600" fill="#55534E">pinned to an exact</text>
+<text x="825" y="327" text-anchor="middle" font-size="10.5" fill="#5A5A5A">weight tag</text>
+<line x1="500" y1="360" x2="500" y2="386" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="335" y="386" width="330" height="42" rx="21" fill="#ECEBFB" stroke="#C9C6F0"/>
+<text x="500" y="412" text-anchor="middle" font-size="13" font-weight="700" fill="#4B41B8">feature vector  (B, C)</text>
+<line x1="335" y1="407" x2="290" y2="407" stroke="#C9C6F0" stroke-width="1.4" stroke-dasharray="3 3"/>
+<rect x="40" y="382" width="250" height="50" rx="8" fill="#ECEBFB" stroke="#C9C6F0"/>
+<text x="165" y="403" text-anchor="middle" font-size="10.5" font-weight="600" fill="#4B41B8">C is measured, not declared</text>
+<text x="165" y="418" text-anchor="middle" font-size="10.5" fill="#5A5A5A">probe: 1280 real vs 960 reported</text>
+<line x1="500" y1="428" x2="500" y2="454" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="320" y="454" width="360" height="88" rx="12" fill="#FFFFFF" stroke="#F0C9C1" stroke-width="2" filter="url(#cardShadow)"/>
+<text x="500" y="488" text-anchor="middle" font-size="17" font-weight="700" fill="#B23A2A" letter-spacing="0.5">HEAD</text>
+<text x="500" y="510" text-anchor="middle" font-size="11" fill="#5A5A5A">Dropout(p)  →  Linear(C, 1)</text>
+<text x="500" y="527" text-anchor="middle" font-size="11" fill="#5A5A5A">identical for all seven · p = 0,1–0,3</text>
+<line x1="680" y1="498" x2="700" y2="498" stroke="#F0C9C1" stroke-width="1.4" stroke-dasharray="3 3"/>
+<rect x="700" y="473" width="250" height="50" rx="8" fill="#FBEAE7" stroke="#F0C9C1"/>
+<text x="825" y="494" text-anchor="middle" font-size="10.5" font-weight="600" fill="#B23A2A">one logit, not two</text>
+<text x="825" y="509" text-anchor="middle" font-size="10.5" fill="#5A5A5A">a 2-way softmax adds nothing</text>
+<line x1="500" y1="542" x2="500" y2="568" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="335" y="568" width="330" height="46" rx="23" fill="#FBEAE7" stroke="#F0C9C1"/>
+<text x="500" y="596" text-anchor="middle" font-size="15" font-weight="700" fill="#B23A2A">z ∈ ℝ   ·   one raw logit</text>
+<line x1="500" y1="614" x2="500" y2="632" stroke="#9AA0A6" stroke-width="1.6"/>
+<line x1="200" y1="632" x2="800" y2="632" stroke="#9AA0A6" stroke-width="1.6"/>
+<line x1="200" y1="632" x2="200" y2="658" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="500" y1="632" x2="500" y2="658" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="800" y1="632" x2="800" y2="658" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="658" width="920" height="140" rx="14" fill="#EFF5E2" stroke="#D2E3B0"/>
+<text x="500" y="690" text-anchor="middle" font-size="17" font-weight="700" fill="#55801F">σ lives outside the model</text>
+<rect x="60" y="714" width="280" height="66" rx="10" fill="#FFFFFF" stroke="#DCEBC3" filter="url(#cardShadow)"/>
+<text x="200" y="738" text-anchor="middle" font-size="13" font-weight="700" fill="#55801F" letter-spacing="0.6">TRAIN</text>
+<text x="200" y="758" text-anchor="middle" font-size="11" fill="#5A5A5A">focal loss on raw z</text>
+<text x="200" y="774" text-anchor="middle" font-size="11" fill="#5A5A5A">no saturation</text>
+<rect x="360" y="714" width="280" height="66" rx="10" fill="#FFFFFF" stroke="#DCEBC3" filter="url(#cardShadow)"/>
+<text x="500" y="738" text-anchor="middle" font-size="13" font-weight="700" fill="#55801F" letter-spacing="0.6">INFER</text>
+<text x="500" y="758" text-anchor="middle" font-size="11" fill="#5A5A5A">σ(z) → probability</text>
+<text x="500" y="774" text-anchor="middle" font-size="11" fill="#5A5A5A">applied after the model</text>
+<rect x="660" y="714" width="280" height="66" rx="10" fill="#FFFFFF" stroke="#DCEBC3" filter="url(#cardShadow)"/>
+<text x="800" y="738" text-anchor="middle" font-size="13" font-weight="700" fill="#55801F" letter-spacing="0.6">EXPORT</text>
+<text x="800" y="758" text-anchor="middle" font-size="11" fill="#5A5A5A">.pte emits z</text>
+<text x="800" y="774" text-anchor="middle" font-size="11" fill="#5A5A5A">parity: max|Δlogit|</text>
+<line x1="500" y1="798" x2="500" y2="824" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+<rect x="40" y="824" width="920" height="140" rx="14" fill="#E8F0FB" stroke="#C2D8F2"/>
+<text x="500" y="856" text-anchor="middle" font-size="17" font-weight="700" fill="#2C63B0">One wrapper class — no per-architecture code</text>
+<rect x="60" y="880" width="280" height="66" rx="10" fill="#FFFFFF" stroke="#D2E1F6" filter="url(#cardShadow)"/>
+<text x="200" y="904" text-anchor="middle" font-size="13" font-weight="700" fill="#2C63B0" letter-spacing="0.6">Architecture is</text>
+<text x="200" y="924" text-anchor="middle" font-size="11" fill="#5A5A5A">the only variable</text>
+<rect x="360" y="880" width="280" height="66" rx="10" fill="#FFFFFF" stroke="#D2E1F6" filter="url(#cardShadow)"/>
+<text x="500" y="904" text-anchor="middle" font-size="13" font-weight="700" fill="#2C63B0" letter-spacing="0.6">12 KD pairs =</text>
+<text x="500" y="924" text-anchor="middle" font-size="11" fill="#5A5A5A">12 config lines</text>
+<rect x="660" y="880" width="280" height="66" rx="10" fill="#FFFFFF" stroke="#D2E1F6" filter="url(#cardShadow)"/>
+<text x="800" y="904" text-anchor="middle" font-size="13" font-weight="700" fill="#2C63B0" letter-spacing="0.6">One export path</text>
+<text x="800" y="924" text-anchor="middle" font-size="11" fill="#5A5A5A">for all 16 variants</text>
+</svg>

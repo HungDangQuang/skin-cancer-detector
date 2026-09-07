@@ -1,14 +1,22 @@
+> ⛔ **SUPERSEDED — 2026-08-26. KHÔNG trích số từ file này.**
+>
+> Bản thay thế duy nhất: [`reports/BAO_CAO_TONG_HOP.md`](../reports/BAO_CAO_TONG_HOP.md).
+>
+> Lý do: cùng phạm vi "chỉ 1 teacher" (22/08).
+
+---
+
 # KỊCH BẢN THUYẾT TRÌNH — BẢO VỆ ĐỀ CƯƠNG LUẬN VĂN
 
-> **Cách dùng:** Mỗi mục tương ứng 1 slide trong [SLIDE_CONTENT.md](SLIDE_CONTENT.md) (bố cục **24 slide** + phụ lục tài liệu tham khảo, cập nhật 2026-07-04). Phần **[LỜI NÓI]** là kịch bản để nói theo (văn nói tự nhiên, KHÔNG đọc nguyên văn bullet trên slide). **[CHUYỂN TIẾP]** là câu nối sang slide sau. **⏱** là thời lượng gợi ý.
+> **Cách dùng:** Mỗi mục tương ứng 1 slide trong [SLIDE_CONTENT.md](SLIDE_CONTENT.md) (bố cục **24 slide** + 2 slide bổ sung 19B/21B + phụ lục tài liệu tham khảo, cập nhật **2026-08-22**). Phần **[LỜI NÓI]** là kịch bản để nói theo (văn nói tự nhiên, KHÔNG đọc nguyên văn bullet trên slide). **[CHUYỂN TIẾP]** là câu nối sang slide sau. **⏱** là thời lượng gợi ý.
 >
-> **Tổng thời lượng mục tiêu: ~18 phút** (còn ~2–7 phút cho Q&A tùy quy định hội đồng). Nếu chỉ cho 15 phút: lướt nhanh slide 12 (dữ liệu bổ trợ), 14 (related work), 19B (bỏ hẳn — là slide tùy chọn).
+> **Tổng thời lượng mục tiêu: ~19 phút** (còn ~2–6 phút cho Q&A tùy quy định hội đồng). Nếu chỉ cho 15 phút: lướt nhanh slide 12 (dữ liệu bổ trợ), 14 (related work), bỏ hẳn 19B (tùy chọn). **Giữ 21B** — đó là kết quả ablation, một trong hai điểm mạnh nhất của buổi này.
 >
 > **Mẹo trình bày:**
 > - Đừng đọc bullet — bullet để hội đồng đọc, bạn *kể* nội dung.
 > - Xương sống để hội đồng nhớ: **3 vấn đề → 1 nút thắt → KD → 3 câu hỏi (RQ1/2/3) → kết quả bước đầu chứng minh khả thi.**
-> - **Điểm nhấn lớn nhất của buổi này là PHẦN 6 (slide 20–22): đã có KẾT QUẢ THẬT.** Đây là thứ khác biệt so với một đề cương thuần lý thuyết — hãy dành năng lượng và sự tự tin cho phần này.
-> - **Nguyên tắc vàng khi đọc số: TRUNG THỰC.** Chỗ nào mới đủ 4 fold, chỗ nào KD chỉ "có sắc thái" (AUPRC phụ thuộc teacher) — nói thẳng. Hội đồng đánh giá cao sự trung thực hơn là tô hồng.
+> - **Điểm nhấn lớn nhất của buổi này là PHẦN 6 (slide 20–22): đã có KẾT QUẢ THẬT, đủ 5 fold.** Đây là thứ khác biệt so với một đề cương thuần lý thuyết — hãy dành năng lượng và sự tự tin cho phần này.
+> - **Nguyên tắc vàng khi đọc số: TRUNG THỰC.** Ba chỗ phải chủ động nói ra, đừng chờ bị hỏi: (1) ở **AUPRC** teacher vẫn hơn student; (2) **ΔAUPRC của KD nằm trong nhiễu**, bằng chứng KD nằm ở pAUC + độ nhạy; (3) **mới có ma trận KD của một teacher** nên chưa trả lời được "teacher nào chưng cất tốt nhất". Hội đồng đánh giá cao sự trung thực hơn là tô hồng — và cả ba điều này đều đã có trong kế hoạch để xử lý.
 
 ---
 
@@ -209,11 +217,11 @@ Và giai đoạn 2024 đến 2025 là lúc hai chuyển biến xảy ra đồng 
 **[LỜI NÓI]**
 Ý tưởng cốt lõi là: thay vì chỉ một cặp teacher–student, em huấn luyện cả một dải teacher với chất lượng khác nhau, ghép với cả một dải student trải nhiều paradigm khác nhau. Chỉ khi làm vậy mới trả lời được RQ1 — paradigm nào hưởng lợi nhất, và RQ2 — teacher mạnh có tạo student tốt hơn không.
 
-Về teacher, em có bốn kiến trúc sắp theo chất lượng tăng dần: EfficientNet-B4 khoảng 17,6 triệu tham số làm mốc, rồi EfficientNetV2-M, ConvNeXtV2-Base, và mạnh nhất là MaxViT-Base — một kiến trúc lai CNN với Transformer.
+Về teacher, em có ba kiến trúc tiên tiến với chất lượng khác nhau: EfficientNetV2-M, ConvNeXtV2-Base, và MaxViT-Base — một kiến trúc lai CNN với Transformer.
 
-Về student, em có sáu kiến trúc trải nhiều paradigm: từ nhóm cổ điển EfficientNet-B0, MobileNetV3-Large, MobileViT-S; đến nhóm thế hệ mới tối ưu cho di động là MobileNetV4, FastViT và EfficientFormerV2.
+Về student, em có bốn kiến trúc thế hệ mới, được tối ưu cho độ trễ trên thiết bị di động và trải nhiều paradigm thiết kế: MobileNetV4-Conv-Medium là CNN depthwise-separable, FastViT-SA12 dùng kỹ thuật reparameterization, EfficientFormerV2-S2 là lai attention với CNN, và RepViT-M1.0 là CNN nhưng mang thiết kế của Vision Transformer.
 
-Em xin lưu ý: đây không phải hai "tầng" tách biệt, mà là một dải teacher từ yếu đến mạnh và một dải student đa paradigm, để quét được cả hai câu hỏi trong cùng một khung đối chứng. Tất cả mô hình dùng chung một classification head, load backbone từ thư viện timm — các kiến trúc mới yêu cầu timm phiên bản 1.0 trở lên — và teacher luôn được đóng băng khi distill.
+Em xin lưu ý ý đồ thiết kế: một dải teacher có chất lượng khác nhau nhân với một dải student đa paradigm, để quét được cả hai câu hỏi trong cùng một khung đối chứng — tổng cộng là ba nhân bốn, tức mười hai cặp chưng cất. Tất cả mô hình dùng chung một classification head, load backbone từ thư viện timm — các kiến trúc này yêu cầu timm phiên bản 1.0 trở lên — và teacher luôn được đóng băng khi distill.
 
 **[CHUYỂN TIẾP]** Vậy việc chưng cất được thực hiện qua hàm mất mát như thế nào?
 
@@ -230,7 +238,7 @@ Thành phần thứ hai là L_soft — phần truyền dark knowledge từ teach
 
 Hai thành phần cân bằng bởi hệ số alpha bằng 0,3 — tức 30% cho nhãn cứng và 70% cho nhãn mềm, phản ánh việc em muốn student học nhiều từ teacher.
 
-Một điểm quan trọng về thiết kế thí nghiệm: khi chạy nhánh baseline, em đặt alpha bằng 1,0 và không load teacher. Nhờ vậy nhánh baseline hoàn toàn không có bất kỳ ảnh hưởng nào của KD — đây là nền để đo Delta một cách sạch sẽ.
+Một điểm quan trọng về thiết kế thí nghiệm: nhánh baseline được bật bằng đúng một cờ cấu hình. Khi cờ đó tắt KD, chương trình chuyển sang bộ huấn luyện thường với Focal Loss thuần và hoàn toàn không nạp teacher — tương đương alpha bằng 1,0. Nhờ vậy hai nhánh dùng chung một mã nguồn, cùng dữ liệu, cùng seed, cùng siêu tham số, chỉ khác hàm mất mát — đây là nền để đo Delta một cách sạch sẽ.
 
 **[CHUYỂN TIẾP]** Và đây chính là điểm cốt lõi trong thiết kế thực nghiệm của em.
 
@@ -241,9 +249,9 @@ Một điểm quan trọng về thiết kế thí nghiệm: khi chạy nhánh ba
 **[LỜI NÓI]**
 Điểm mấu chốt trong thiết kế là nguyên tắc ceteris paribus — "mọi thứ khác giữ nguyên". Mỗi student được huấn luyện song song theo hai nhánh, có KD và không KD, với cùng dữ liệu, cùng seed ngẫu nhiên, cùng siêu tham số và cùng quy trình đánh giá. Khác biệt duy nhất là hàm mất mát. Nhờ đó, mọi chênh lệch quan sát được đều quy về tác động của KD, không lẫn nhiễu.
 
-Về quy mô, toàn bộ ma trận thực nghiệm gồm: 4 teacher nhân 5 fold là 20 lượt huấn luyện; 6 student baseline nhân 5 fold là 30 lượt; và khoảng 12 cặp teacher–student KD nhân 5 fold là khoảng 60 lượt.
+Về quy mô, toàn bộ ma trận thực nghiệm là 110 lượt huấn luyện: 3 teacher nhân 5 fold là 15 lượt; thêm 15 lượt nữa cho nhánh ablation dữ liệu; 4 student baseline nhân 5 fold là 20 lượt; và 12 cặp teacher–student KD nhân 5 fold là 60 lượt. Hiện em đã chạy xong 70 trong số 110 lượt đó.
 
-Hiệu quả KD được định lượng qua Delta pAUC và Delta AUPRC — lấy KD trừ baseline. Và để khẳng định chênh lệch có ý nghĩa thống kê chứ không ngẫu nhiên, em dùng kiểm định Paired t-test trên 5 fold với mức ý nghĩa p nhỏ hơn 0,05 — không kết luận từ một con số điểm.
+Hiệu quả KD được định lượng qua Delta pAUC và Delta AUPRC — lấy KD trừ baseline. Vì độ lệch chuẩn giữa các fold ở AUPRC lớn hơn phần lớn các Delta quan sát được, nguyên tắc của em là: Delta nào nhỏ hơn một độ lệch chuẩn thì mô tả là *nằm trong nhiễu*, không kết luận. Bước kiểm định chính thức bằng Paired t-test trên 5 fold với p nhỏ hơn 0,05 nằm trong kế hoạch — hiện em mới báo cáo mean cộng trừ std và so Delta với std.
 
 **[CHUYỂN TIẾP]** Tiếp theo em xin trình bày phương pháp thực hiện cụ thể.
 
@@ -262,9 +270,9 @@ Bước một là chuẩn bị dữ liệu và huấn luyện teacher. Về dữ
 
 Bước hai là chưng cất KD: mỗi student train hai nhánh — nhánh KD dùng KDTrainer, nhánh baseline dùng Trainer thường — với sampler undersampling 1:5 mỗi epoch.
 
-Bước ba là đánh giá và triển khai: chạy trên test độc lập, ghi test_metrics.json, tổng hợp 5 fold theo mean cộng trừ std, rồi Paired t-test; cuối cùng export sang ExecuTorch .pte và benchmark trên Pixel 6a.
+Bước ba là đánh giá và triển khai: chạy trên test độc lập, ghi lại toàn bộ metrics và cả file dự đoán từng ảnh — nhờ vậy mọi chỉ số đều tính lại được offline mà không cần chạy lại inference — rồi tổng hợp 5 fold theo mean cộng trừ std, và sau đó là kiểm định thống kê. Cuối cùng export sang ExecuTorch .pte và benchmark trên Pixel 6a.
 
-Toàn bộ cấu hình bằng Hydra, chạy trên cụm UIT Slurm với GPU L40. Optimizer là AdamW với learning rate phân tầng, cosine annealing, tối đa 50 epoch, lưu checkpoint theo val pAUC.
+Toàn bộ cấu hình bằng Hydra và khởi chạy qua một lớp script thống nhất — mỗi lệnh là một tiến trình chạy tuần tự cả 5 fold, log được ghi ra file nên mất kết nối SSH cũng không mất kết quả. Em chạy trên máy chủ GPU thuê ngoài, hai máy, mỗi máy một card RTX 3090. Optimizer là AdamW với learning rate phân tầng, cosine annealing có 3 epoch warmup, tối đa 50 epoch, dừng sớm theo val loss, và lưu checkpoint theo val pAUC.
 
 **[CHUYỂN TIẾP]** Sau khi huấn luyện, việc đánh giá được tổ chức thành ba tầng.
 
@@ -324,15 +332,30 @@ Ngược lại, accuracy gần như vô nghĩa ở đây: đoán "tất cả là
 ## Slide 21 — Kết quả bước đầu (1): độ chính xác ⏱ 85s
 
 **[LỜI NÓI]**
-Đây là kết quả thật đã chạy 5-fold cross-validation trên tập test độc lập, báo cáo mean cộng trừ std.
+Đây là kết quả thật, đã chạy đủ 5-fold cross-validation trên tập test độc lập, báo cáo mean cộng trừ std. Em xin nói trước về phạm vi: em chỉ dùng các run huấn luyện từ giữa tháng 7 trở đi, tức đợt đồng bộ với bộ mô hình hiện tại — các run cũ hơn em loại hết để không trộn hai thí nghiệm khác nhau.
 
-Em xin bắt đầu bằng phát hiện ấn tượng nhất. Nhìn bảng teacher, chất lượng tăng dần từ EfficientNet-B4 với AUPRC 0,600, lên EfficientNetV2-M 0,649, ConvNeXtV2-Base 0,683, và MaxViT-Base 0,688. Xu hướng rõ: teacher càng hiện đại, AUPRC càng cao.
+Nhìn bảng teacher: MaxViT-Base đạt AUPRC 0,657, ConvNeXtV2-Base 0,651, EfficientNetV2-M 0,630. Em xin nói ngay cho chính xác: hai teacher đầu chênh nhau **trong một độ lệch chuẩn**, nên em *không* tuyên bố teacher nào mạnh nhất một cách tuyệt đối.
 
-Bây giờ nhìn sang bảng student sau KD. Điểm đáng chú ý là: các student chỉ khoảng 4 đến 12 triệu tham số lại *vượt* teacher EfficientNet-B4 vốn 17,6 triệu tham số — ở cả AUPRC lẫn pAUC. Ví dụ EfficientFormerV2 đạt AUPRC 0,684, FastViT đạt pAUC 0,1908, MobileNetV4 đạt độ nhạy 0,962. Nghĩa là sự kết hợp giữa KD, kiến trúc mobile hiện đại và cách xử lý mất cân bằng đang hoạt động rất tốt.
+Bây giờ nhìn sang bảng student sau chưng cất. Đây là phát hiện chính: cả bốn student — dù nhẹ hơn teacher nhiều lần — đều đạt pAUC ở mức 0,183 đến 0,186, tức **ngang hoặc cao hơn cả ba teacher** vốn ở mức 0,182 đến 0,183; độ nhạy cũng tương đương. Nói cách khác, KD đã nén được đúng cái mà bài toán sàng lọc cần: năng lực ở vùng độ nhạy cao.
 
-Em xin lưu ý để trung thực: dòng EfficientFormerV2 hiện mới đủ 4 fold, em đã đánh dấu cảnh báo — con số sẽ được cập nhật khi đủ 5 fold. Và một điểm chung: pAUC của mọi student đều quanh 0,19, tức đã rất gần trần lý thuyết 0,20.
+Em xin chủ động nói phần chưa đạt, để trung thực: ở chỉ số AUPRC thì teacher vẫn cao hơn student — 0,63 đến 0,66 so với 0,55 đến 0,62. Vì vậy em **không** phát biểu là "student vượt teacher"; phát biểu đúng là student đạt được vùng độ nhạy của teacher với chi phí tính toán nhỏ hơn nhiều lần.
 
-**[CHUYỂN TIẾP]** Nhưng độ chính xác cao chưa đủ. Câu hỏi thật sự là: KD đóng góp bao nhiêu, và chạy trên điện thoại thật ra sao?
+**[CHUYỂN TIẾP]** Trước khi nói KD đóng góp bao nhiêu, em xin trình bày một thí nghiệm đối chứng về dữ liệu.
+
+---
+
+## Slide 21B — Ablation dữ liệu: PAD-UFES-20 có thực sự giúp không? ⏱ 60s
+
+**[LỜI NÓI]**
+Ở phần dữ liệu em có nói là trộn thêm PAD-UFES-20 để mô hình bền vững hơn với ảnh chụp điện thoại. Nhưng nói vậy chỉ là giả định, nên em đã chạy một thí nghiệm đối chứng để kiểm chứng.
+
+Cách làm: em huấn luyện mỗi teacher theo hai nhánh với cấu hình y hệt nhau, chỉ khác tập huấn luyện — một nhánh có PAD, một nhánh chỉ ISIC — rồi đánh giá cả hai trên **cùng một tập test**. Em làm cho cả ba teacher, mỗi nhánh 5 fold, tổng cộng 30 lượt huấn luyện.
+
+Ô so sánh quyết định là phần ảnh PAD trong tập test, tức đúng miền ảnh lâm sàng mà nhánh ISIC-only chưa từng nhìn thấy. Kết quả: cả ba teacher đều tốt lên rõ rệt — AUPRC tăng từ 0,092 đến 0,131, và độ nhạy ở mức đặc hiệu 95% tăng tới 0,23 với MaxViT. Trong khi đó trên miền ISIC gốc thì chênh lệch nằm trong nhiễu, tức việc thêm PAD **không làm hại** miền dermoscopy ban đầu.
+
+Điều em muốn nhấn: kết quả nhất quán trên cả ba kiến trúc teacher, nên đây không phải may mắn của một mô hình. Đây là bằng chứng định lượng cho một lựa chọn thiết kế dữ liệu.
+
+**[CHUYỂN TIẾP]** Còn bản thân kỹ thuật chưng cất thì đóng góp bao nhiêu, và mô hình chạy trên điện thoại thật ra sao?
 
 ---
 
@@ -341,13 +364,19 @@ Em xin lưu ý để trung thực: dòng EfficientFormerV2 hiện mới đủ 4 
 **[LỜI NÓI]**
 Slide này trả lời hai câu hỏi cốt lõi, và em xin trình bày một cách trung thực nhất.
 
-Thứ nhất, KD giúp gì? Có hai mức độ chắc chắn. KD cải thiện *nhất quán* pAUC và độ nhạy trên mọi cặp student với teacher — Delta luôn dương. Đây đúng là mục tiêu y tế "không bỏ sót". Nhưng với AUPRC thì có một sắc thái tinh tế: KD chỉ nâng AUPRC khi teacher đủ mạnh. Cụ thể, với teacher mạnh ConvNeXtV2, KD nâng AUPRC của MobileNetV4 thêm 0,052 — từ 0,609 lên 0,661. Còn với teacher yếu EfficientNet-B4, Delta AUPRC nằm trong khoảng nhiễu. Đây chính là bằng chứng bước đầu cho RQ2: teacher mạnh hơn *có* tạo student tốt hơn, ít nhất về AUPRC.
+Thứ nhất, KD giúp gì? Kết quả của em có hai mức độ chắc chắn khác nhau, và em xin nói rõ cả hai.
 
-Thứ hai, chạy trên điện thoại thật ra sao? Em đã benchmark thật trên Pixel 6a. MobileNetV3 nhẹ nhất — 8,4 mili giây, 16 megabyte. MobileNetV4 22,6 mili giây. EfficientFormerV2 42,8 mili giây. Và FastViT chậm nhất — 65,5 mili giây.
+Chỗ chắc chắn: với teacher EfficientNetV2-M, KD cải thiện *nhất quán* trên **cả bốn trên bốn** student ở pAUC, ở AUC, ở độ nhạy, và ở độ nhạy tại mức đặc hiệu 95%. Delta luôn dương, không có ngoại lệ. Đây đúng là mục tiêu y tế "không bỏ sót". Đáng chú ý là student yếu nhất — RepViT — lại hưởng lợi nhiều nhất, pAUC tăng 0,0115 và độ nhạy tại 95% đặc hiệu tăng 0,032.
 
-Xin quý thầy cô chú ý một điều bất ngờ: FastViT chậm nhất *dù* có ít tham số hơn EfficientFormerV2. Tức thứ hạng độ trễ bị *đảo* trên mobile so với suy đoán từ số tham số hay FLOPs. Đây chính là lý do đề tài *bắt buộc* phải benchmark trên máy thật, không thể suy từ lý thuyết.
+Chỗ chưa chắc chắn, em xin nói thẳng: với AUPRC thì kết quả hỗn hợp — hai student dương, hai student âm nhẹ. Nhưng cả bốn Delta đều **nhỏ hơn một độ lệch chuẩn**, nên cách đọc đúng là "nằm trong nhiễu", chứ không phải "KD làm hại". Kết luận của em vì thế là: bằng chứng về giá trị của KD nằm ở pAUC và độ nhạy, không phải ở AUPRC — và em nêu đúng như vậy chứ không chọn lọc con số có lợi.
 
-Từ đó, khuyến nghị triển khai của em là MobileNetV4 chưng cất từ ConvNeXtV2 — cân bằng tốt nhất: đủ 5 fold, độ nhạy 0,962, 22 mili giây, 32 megabyte, và cũng chính là case chứng minh KD mạnh nhất. Nếu ưu tiên nhẹ và nhanh tối đa thì chọn MobileNetV3.
+Em cũng xin nói rõ một giới hạn: hiện em mới hoàn tất ma trận chưng cất cho **một** teacher. Hai teacher còn lại đang chạy, nên câu hỏi "teacher nào chưng cất tốt nhất" em chưa trả lời được — đó là công việc còn lại và đã nằm trong kế hoạch.
+
+Thứ hai, chạy trên điện thoại thật ra sao? Em đã benchmark thật trên Pixel 6a. MobileNetV4 22,6 mili giây, file 32 megabyte. EfficientFormerV2 42,8 mili giây, 47 megabyte. Và FastViT chậm nhất — 65,5 mili giây.
+
+Xin quý thầy cô chú ý một điều bất ngờ: FastViT chậm nhất *dù* có ít tham số hơn EfficientFormerV2. Tức thứ hạng độ trễ không đi theo số tham số hay FLOPs. Hệ quả thực tế là FastViT bị lấn át hoàn toàn — chậm hơn một phẩy năm lần mà độ chính xác thì ngang. Đây chính là lý do đề tài *bắt buộc* phải benchmark trên máy thật, không thể suy từ lý thuyết.
+
+Từ đó, khuyến nghị triển khai của em là MobileNetV4-Conv-Medium chưng cất từ EfficientNetV2-M. Nó thắng ở cả hai trục cùng lúc: vừa nhanh nhất và nhẹ nhất trong các model đã đo, vừa dẫn đầu pAUC, AUC và độ nhạy trong toàn bộ nhóm student.
 
 **[CHUYỂN TIẾP]** Những kết quả này là output của các giai đoạn đầu trong kế hoạch. Em xin trình bày toàn bộ kế hoạch.
 
@@ -358,11 +387,13 @@ Từ đó, khuyến nghị triển khai của em là MobileNetV4 chưng cất t�
 ## Slide 23 — Kế hoạch thực hiện ⏱ 55s
 
 **[LỜI NÓI]**
-Kế hoạch kéo dài từ tháng 6 đến tháng 11 năm 2026, gồm 8 giai đoạn, và em xin cập nhật trạng thái thật.
+Kế hoạch kéo dài từ tháng 6 đến tháng 11 năm 2026, gồm 10 giai đoạn, và em xin cập nhật trạng thái thật.
 
-Giai đoạn 1 — pipeline và tiền xử lý — đã xong. Giai đoạn 2 — huấn luyện teacher — đã hoàn thành phần lớn. Giai đoạn 3 — huấn luyện student cả KD lẫn baseline — đang chạy để hoàn thiện ma trận. Giai đoạn 4 — export và benchmark Pixel 6a — đã xong 4 model, chính là các số quý thầy cô vừa thấy. Các giai đoạn còn lại: đánh giá chéo miền và fairness, tổng hợp 5-fold cùng Paired t-test, rồi viết và bảo vệ luận văn.
+Giai đoạn 1 — pipeline và tiền xử lý — đã xong. Giai đoạn 2 — huấn luyện ba teacher, 15 lượt — đã xong. Giai đoạn 3 — ablation dữ liệu, 15 lượt — đã xong, chính là slide 21B. Giai đoạn 4 — bốn student nhánh baseline, 20 lượt — đã xong. Giai đoạn 5 — ma trận chưng cất — đang chạy, hiện được 20 trên 60 lượt. Giai đoạn 6 — export và benchmark trên Pixel 6a — đã đo được ba kiến trúc, chính là các số quý thầy cô vừa thấy. Tổng cộng em đã chạy xong 70 trên 110 lượt huấn luyện.
 
-Em xin lưu ý các giai đoạn 2 và 3 phụ thuộc hàng đợi GPU của cụm dùng chung nên chạy gối nhau khi tài nguyên cho phép; phần viết luận văn cũng có thể bắt đầu song song với các chương không phụ thuộc kết quả.
+Các giai đoạn còn lại: đánh giá chéo miền và fairness, tổng hợp 5-fold cùng kiểm định thống kê và hiệu chuẩn xác suất, rồi viết và bảo vệ luận văn.
+
+Em xin lưu ý các giai đoạn huấn luyện phụ thuộc tài nguyên GPU thuê ngoài nên chạy gối nhau khi tài nguyên cho phép; phần viết luận văn cũng có thể bắt đầu song song với các chương không phụ thuộc kết quả. Đường găng hiện tại là giai đoạn 5.
 
 **[CHUYỂN TIẾP]** Em xin tóm lại toàn bộ.
 
@@ -373,7 +404,9 @@ Em xin lưu ý các giai đoạn 2 và 3 phụ thuộc hàng đợi GPU của c�
 **[LỜI NÓI]**
 Tóm lại, đề tài hướng tới lấp đồng thời ba khoảng trống: đánh giá KD một cách hệ thống trên nhiều paradigm kiến trúc; làm rõ vai trò của chất lượng teacher; và chứng minh khả năng chạy thực tế trên điện thoại.
 
-Và khác với một đề cương thuần lý thuyết, kết quả bước đầu của em đã chứng minh được tính khả thi: student nhỏ sau KD đã vượt teacher yếu; KD cải thiện nhất quán pAUC và độ nhạy; và mô hình đã chạy thật trên Pixel 6a với độ trễ từ 8 đến 65 mili giây.
+Và khác với một đề cương thuần lý thuyết, kết quả bước đầu của em đã chứng minh được tính khả thi trên ba mặt: thứ nhất, chưng cất tri thức cải thiện nhất quán cả bốn trên bốn student ở pAUC và độ nhạy, giúp student nhỏ đạt được vùng độ nhạy của teacher; thứ hai, thí nghiệm ablation chứng minh việc trộn dữ liệu ảnh smartphone lâm sàng giúp cả ba trên ba teacher mà không hại miền gốc; thứ ba, mô hình đã chạy thật trên Pixel 6a với độ trễ từ 22 đến 65 mili giây.
+
+Phần còn lại em xin nói rõ: hoàn tất ma trận chưng cất cho hai teacher còn lại, đánh giá chéo miền và công bằng, cùng kiểm định thống kê — tất cả đều đã có trong kế hoạch.
 
 Về đóng góp, em kỳ vọng mang lại một bằng chứng thực nghiệm có hệ thống về tác động của KD, cùng một pipeline và báo cáo triển khai Android tái sử dụng được cho các bài toán ảnh y tế tương tự. Xa hơn, hướng này có thể hỗ trợ sàng lọc ung thư da thời gian thực, bảo vệ riêng tư, và đặc biệt phù hợp với những vùng thiếu nguồn lực y tế.
 
@@ -393,7 +426,7 @@ Dạ, danh sách đầy đủ 22 tài liệu tham khảo có trong slide phụ l
 > Các câu hội đồng có khả năng hỏi cao. Vì bộ slide mới có KẾT QUẢ THẬT, hội đồng sẽ xoáy vào tính vững của số liệu — chuẩn bị kỹ Q7–Q11.
 
 **Q1: Vì sao chọn AUPRC làm chỉ số chính thay vì Accuracy hay AUC-ROC?**
-→ Vì prevalence chỉ ~0,39%. Ở mức mất cân bằng cực đoan này, một mô hình dự đoán "tất cả lành tính" đã đạt accuracy 99,6%, và AUC-ROC cũng bị lạc quan giả vì có quá nhiều mẫu âm. AUPRC tập trung vào lớp dương hiếm, so với baseline = prevalence (≈0,004), nên phản ánh đúng năng lực phát hiện ca ác tính. AUPRC ~0,66 tức gấp hơn 150 lần baseline.
+→ Vì prevalence chỉ ~0,39%. Ở mức mất cân bằng cực đoan này, một mô hình dự đoán "tất cả lành tính" đã đạt accuracy 99,6%, và AUC-ROC cũng bị lạc quan giả vì có quá nhiều mẫu âm. AUPRC tập trung vào lớp dương hiếm, so với baseline = prevalence (≈0,0039), nên phản ánh đúng năng lực phát hiện ca ác tính. AUPRC 0,62 của student tức gấp khoảng 160 lần baseline ngẫu nhiên.
 
 **Q2: Vì sao không dùng lượng tử hóa (quantization) mà chỉ FP32?**
 → Đề tài giới hạn phạm vi ở FP32 để cô lập tác động của KD, tránh trộn thêm biến quantization vào so sánh. Quantization là hướng mở rộng tương lai. Đây là lựa chọn scope có chủ đích, không phải thiếu sót.
@@ -405,22 +438,28 @@ Dạ, danh sách đầy đủ 22 tài liệu tham khảo có trong slide phụ l
 → Đây là giá trị theo thông lệ trong các nghiên cứu KD (Hinton dùng T=2–4; α thiên về soft label khi teacher đáng tin). Vì trọng tâm đề tài là so sánh CÓ/KHÔNG KD trên nhiều kiến trúc chứ không phải tối ưu siêu tham số KD, em cố định để đảm bảo công bằng giữa các cặp.
 
 **Q5: Nếu KD KHÔNG cải thiện thì sao — đề tài còn giá trị không?**
-→ Vẫn có giá trị. Một kết quả "KD không giúp một cách nhất quán trên mọi paradigm" cũng là phát hiện khoa học có ý nghĩa, vì nó đính chính giả định phổ biến rằng KD luôn hiệu quả. Thiết kế đối chứng cho phép kết luận theo cả hai chiều. Thực tế kết quả bước đầu cho thấy KD cải thiện chắc chắn ở pAUC/Sens, còn AUPRC thì "có điều kiện" (cần teacher đủ mạnh) — bản thân sắc thái đó đã là một đóng góp.
+→ Vẫn có giá trị. Một kết quả "KD không giúp một cách nhất quán trên mọi paradigm" cũng là phát hiện khoa học có ý nghĩa, vì nó đính chính giả định phổ biến rằng KD luôn hiệu quả. Thiết kế đối chứng cho phép kết luận theo cả hai chiều. Thực tế kết quả bước đầu cho thấy KD cải thiện chắc chắn ở pAUC/Sens (4/4 student), còn ở AUPRC thì Δ nằm trong nhiễu — chính sự phân tách "giúp ở đâu, không giúp ở đâu" đó đã là một đóng góp, vì nó nói cho người triển khai biết nên kỳ vọng gì ở KD.
 
 **Q6: Vì sao dùng Pixel 6a mà không phải thiết bị khác?**
 → Pixel 6a là thiết bị Android tầm trung phổ biến, đại diện tốt cho chip ARM phổ thông (Cortex-A55/A76) — đúng đối tượng người dùng cộng đồng mà đề tài nhắm tới.
 
 **Q7: ΔpAUC/ΔAUPRC bao nhiêu thì coi là "đáng kể"?**
-→ Em dùng Paired t-test trên 5 fold với p<0,05 để khẳng định ý nghĩa thống kê, kết hợp báo cáo mean ± std để thể hiện cả độ lớn lẫn độ ổn định — không chỉ dựa vào một con số điểm.
+→ Nguyên tắc hiện tại của em: so Δ với độ lệch chuẩn giữa 5 fold — Δ nhỏ hơn 1 std thì mô tả là "trong nhiễu" và không kết luận. Đó là lý do em khẳng định KD ở pAUC/Sens (Δ dương 4/4, ổn định) nhưng *không* khẳng định ở AUPRC (std 0,015–0,053, lớn hơn mọi Δ). Bước tiếp theo trong kế hoạch là Paired t-test trên 5 fold với p<0,05 để có kết luận thống kê chính thức.
 
-**Q8 (MỚI — quan trọng): Kết quả EfficientFormerV2 mới 4 fold, có đáng tin không?**
-→ Em đã đánh dấu rõ dòng đó bằng cảnh báo và nói rõ khi trình bày. Đây là kết quả *bước đầu* để chứng minh khả thi; con số sẽ được cập nhật khi đủ 5 fold. Các kết luận chính của em (student vượt teacher yếu, KD nâng pAUC/Sens nhất quán, latency đảo trên mobile) đều dựa trên các cặp đã đủ 5 fold, nên không phụ thuộc vào dòng 4 fold này.
+**Q8 (MỚI): Vì sao mới có ma trận KD của một teacher? Như vậy có đủ để kết luận không?**
+→ Đủ cho câu hỏi "KD có giúp không", vì với teacher EfficientNetV2-M em có **ma trận đầy đủ 4/4 student × 5 fold**, tức một thí nghiệm đối chứng hoàn chỉnh. Nhưng **không** đủ cho câu hỏi "teacher nào chưng cất tốt nhất" — cái đó cần ít nhất hai teacher, và em nói rõ là chưa trả lời được. Em có kết quả của hai teacher còn lại từ đợt huấn luyện trước, nhưng đã **chủ động loại** vì chúng chưng cất từ bản teacher cũ, trộn vào sẽ so sánh hai thí nghiệm khác nhau. Em chọn báo cáo thiếu còn hơn báo cáo sai.
 
-**Q9 (MỚI): Vì sao student lại vượt được teacher? Nghe có vẻ vô lý.**
-→ Student chỉ vượt teacher *yếu* (EfficientNet-B4), không vượt teacher mạnh nhất. Có ba lý do: (1) các student thế hệ mới (MobileNetV4/FastViT/EfficientFormerV2) tuy ít tham số nhưng kiến trúc hiện đại hơn B4; (2) chúng được distill từ teacher *mạnh hơn* chính B4 (ConvNeXtV2); (3) cách xử lý mất cân bằng (undersampling + Focal Loss) tối ưu trực tiếp cho AUPRC/pAUC. Đây không phải nghịch lý — mà đúng là điều KD hướng tới: nén tri thức của teacher tốt vào student nhỏ.
+**Q9 (MỚI): Student có vượt được teacher không?**
+→ Tùy chỉ số, và em xin trả lời chính xác. Ở **pAUC@TPR≥80% và độ nhạy** thì có — cả 4 student sau KD đều ngang hoặc hơn cả 3 teacher, dù nhẹ hơn nhiều lần. Ở **AUPRC** thì không — teacher vẫn cao hơn (0,63–0,66 so với 0,55–0,62). Lý do student làm tốt ở vùng độ nhạy cao: (1) kiến trúc student thế hệ mới rất hiệu quả trên cùng ngân sách tính toán; (2) tín hiệu mềm của teacher làm mượt biên quyết định, có lợi nhất đúng ở vùng lớp hiếm; (3) cách xử lý mất cân bằng (undersampling + Focal Loss) tối ưu trực tiếp cho vùng độ nhạy cao. Đây đúng là điều KD hướng tới: nén tri thức của teacher vào student nhỏ ở đúng vùng vận hành mà bài toán cần.
 
 **Q10 (MỚI): Latency đảo trên mobile nghĩa là gì, vì sao quan trọng?**
 → Trên máy chủ/GPU, mô hình ít FLOPs thường nhanh hơn. Nhưng trên CPU ARM của điện thoại, FastViT (ít param hơn) lại chậm hơn EfficientFormerV2 vì các phép toán reparam/attention của nó không được tối ưu tốt trên phần cứng đó. Bài học: không thể suy độ trễ mobile từ số param/FLOPs — *phải đo on-device*. Đây chính là một đóng góp thực nghiệm của đề tài, và là lý do RQ3 (đo thật trên phone) là cần thiết chứ không thừa.
 
 **Q11 (MỚI): Cross-domain (HAM10000) và fairness (Fitzpatrick17k) chưa có kết quả — điểm yếu?**
-→ Đúng, hai phần này thuộc giai đoạn 5, hiện chưa chạy — em đã ghi rõ trạng thái "chưa" trong bảng kế hoạch. Pipeline đánh giá cho cả hai đã sẵn sàng (chỉ chạy inference hậu kỳ, không cần train lại). Đây là công việc còn lại của luận văn, và em ưu tiên hoàn thiện ma trận KD/baseline trước vì đó là đóng góp cốt lõi.
+→ Đúng, hai phần này thuộc giai đoạn 7, hiện chưa chạy — em đã ghi rõ trạng thái "chưa" trong bảng kế hoạch. Tầng chuẩn bị dữ liệu cho cả hai đã code xong, gồm cả bước kiểm tra rò rỉ tự động dừng chương trình nếu có ảnh trùng với tập nội bộ; phần còn lại chỉ là chạy inference hậu kỳ, không cần train lại. Em ưu tiên hoàn thiện ma trận KD/baseline trước vì đó là đóng góp cốt lõi. Một lưu ý kỹ thuật em đã lường trước: Fitzpatrick17k chỉ phát hành URL chứ không phát hành ảnh, nên tỉ lệ tải về thành công là một biến chưa kiểm soát được.
+
+**Q12 (MỚI): Sao biết trộn PAD-UFES-20 là có lợi, mà không phải chỉ làm nhiễu dữ liệu?**
+→ Em không giả định mà đã chạy ablation đối chứng: mỗi teacher hai nhánh, cấu hình y hệt, chỉ khác tập huấn luyện, đánh giá trên cùng một tập test. Kết quả trên subset ảnh PAD: AUPRC tăng 0,092–0,131 cho **cả ba** teacher, và trên miền ISIC gốc thì chênh lệch nằm trong nhiễu, tức không hại. Vì nhất quán trên cả ba kiến trúc nên đây không phải may mắn của một mô hình.
+
+**Q13 (MỚI): Xác suất mô hình đưa ra có tin được không, khi huấn luyện có undersampling?**
+→ Câu hỏi rất đúng chỗ. Bộ lấy mẫu dạy mô hình theo tỉ lệ ác tính khoảng 16,7%, trong khi thực tế chỉ 0,39%, nên xác suất `sigmoid` thô **lệch cao có hệ thống** — em có đo bằng Brier score và ECE. Điểm quan trọng: điều này **không ảnh hưởng** mọi kết quả xếp hạng em vừa trình bày, vì pAUC, AUPRC và AUC đều bất biến với biến đổi đơn điệu. Nó chỉ ảnh hưởng con số phần trăm hiển thị cho người dùng, và em xử lý bằng một bước hiệu chuẩn hậu kỳ dựa trên tập validation.

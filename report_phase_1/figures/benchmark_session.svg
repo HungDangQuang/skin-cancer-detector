@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="612" viewBox="0 0 1000 612"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9AA0A6"/>
+    </marker>
+    <filter id="ph" x="-12%" y="-8%" width="124%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#1a1a1a" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="heat" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#C2D8F2"/>
+      <stop offset="45%" stop-color="#E4E2DE"/>
+      <stop offset="100%" stop-color="#E8A091"/>
+    </linearGradient>
+  </defs>
+  <rect width="1000" height="612" fill="#FFFFFF"/>
+
+  <rect x="40" y="28" width="920" height="66" rx="12" fill="#EEEDEA" stroke="#D8D6D1"/>
+  <text x="500" y="54" text-anchor="middle" font-size="14" font-weight="700" fill="#55534E">Set the phone up once, then never touch it</text>
+  <text x="500" y="76" text-anchor="middle" font-size="12" fill="#5A5A5A">unplugged  ·  airplane mode  ·  fixed brightness  ·  16 models in shuffled order  ·  1 and 4 threads</text>
+
+  <!-- ============ STAGE 1 ============ -->
+  <text x="130" y="130" text-anchor="middle" font-size="13" font-weight="700" fill="#2C63B0">Load the model</text>
+  <text x="130" y="148" text-anchor="middle" font-size="11" fill="#8A8A8A">time to the first result</text>
+  <rect x="72" y="160" width="116" height="182" rx="17" fill="#FFFFFF" stroke="#C2D8F2" stroke-width="2" filter="url(#ph)"/>
+  <rect x="112" y="170" width="36" height="4" rx="2" fill="#C2D8F2"/>
+  <rect x="82" y="182" width="96" height="136" rx="7" fill="#EDF3FC"/>
+  <text x="130" y="248" text-anchor="middle" font-size="13" font-weight="700" fill="#2C63B0">loading…</text>
+  <rect x="112" y="327" width="36" height="3" rx="1.5" fill="#C2D8F2"/>
+
+  <!-- ============ STAGE 2 ============ -->
+  <text x="372" y="130" text-anchor="middle" font-size="13" font-weight="700" fill="#6E7C8C">Warm-up</text>
+  <text x="372" y="148" text-anchor="middle" font-size="11" fill="#8A8A8A">let clocks and caches settle</text>
+  <rect x="314" y="160" width="116" height="182" rx="17" fill="#FFFFFF" stroke="#C9D6E4" stroke-width="2" filter="url(#ph)"/>
+  <rect x="354" y="170" width="36" height="4" rx="2" fill="#C9D6E4"/>
+  <rect x="324" y="182" width="96" height="136" rx="7" fill="#F1F4F7"/>
+  <text x="372" y="252" text-anchor="middle" font-size="19" font-weight="700" fill="#8A98A6">× 30</text>
+  <rect x="354" y="327" width="36" height="3" rx="1.5" fill="#C9D6E4"/>
+
+  <!-- ============ STAGE 3 ============ -->
+  <text x="614" y="130" text-anchor="middle" font-size="13" font-weight="700" fill="#8A6A3A">Measured runs</text>
+  <text x="614" y="148" text-anchor="middle" font-size="11" fill="#8A8A8A">the timed sample, phone still cool</text>
+  <rect x="556" y="160" width="116" height="182" rx="17" fill="#FFFFFF" stroke="#E3CDB4" stroke-width="2" filter="url(#ph)"/>
+  <rect x="596" y="170" width="36" height="4" rx="2" fill="#E3CDB4"/>
+  <rect x="566" y="182" width="96" height="136" rx="7" fill="#FAF4EC"/>
+  <text x="614" y="252" text-anchor="middle" font-size="19" font-weight="700" fill="#8A6A3A">× 200</text>
+  <rect x="596" y="327" width="36" height="3" rx="1.5" fill="#E3CDB4"/>
+
+  <!-- ============ STAGE 4 ============ -->
+  <text x="856" y="130" text-anchor="middle" font-size="13" font-weight="700" fill="#B23A2A">Keep going 5 minutes</text>
+  <text x="856" y="148" text-anchor="middle" font-size="11" fill="#8A8A8A">until the phone throttles itself</text>
+  <rect x="798" y="160" width="116" height="182" rx="17" fill="#FFFFFF" stroke="#F0C9C1" stroke-width="2" filter="url(#ph)"/>
+  <rect x="838" y="170" width="36" height="4" rx="2" fill="#F0C9C1"/>
+  <rect x="808" y="182" width="96" height="136" rx="7" fill="#FBEAE7"/>
+  <text x="856" y="246" text-anchor="middle" font-size="15" font-weight="700" fill="#B23A2A">HOT</text>
+  <text x="856" y="268" text-anchor="middle" font-size="11" fill="#B23A2A">clock throttled</text>
+  <rect x="838" y="327" width="36" height="3" rx="1.5" fill="#F0C9C1"/>
+
+  <!-- ============ TIME AXIS ============ -->
+  <line x1="130" y1="342" x2="130" y2="372" stroke="#C2D8F2" stroke-width="2"/>
+  <line x1="372" y1="342" x2="372" y2="372" stroke="#C9D6E4" stroke-width="2"/>
+  <line x1="614" y1="342" x2="614" y2="372" stroke="#E3CDB4" stroke-width="2"/>
+  <line x1="856" y1="342" x2="856" y2="372" stroke="#F0C9C1" stroke-width="2"/>
+  <rect x="70" y="372" width="846" height="12" rx="6" fill="url(#heat)"/>
+  <line x1="70" y1="378" x2="948" y2="378" stroke="#9AA0A6" stroke-width="1.4" marker-end="url(#arrow)"/>
+  <text x="500" y="404" text-anchor="middle" font-size="11" font-style="italic" fill="#8A8A8A">one model runs left to right without a pause — the phone only gets hotter</text>
+
+  <!-- ============ WHAT IS RECORDED ============ -->
+  <line x1="130" y1="416" x2="130" y2="436" stroke="#C2D8F2" stroke-width="2"/>
+  <path d="M614,416 L614,426 L556,426 L556,436" fill="none" stroke="#E3CDB4" stroke-width="2"/>
+  <path d="M614,416 L614,426 L672,426 L672,436" fill="none" stroke="#E3CDB4" stroke-width="2"/>
+  <line x1="856" y1="416" x2="856" y2="436" stroke="#F0C9C1" stroke-width="2"/>
+
+  <circle cx="130" cy="450" r="13" fill="#2C63B0"/>
+  <text x="130" y="455" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">1</text>
+  <text x="130" y="482" text-anchor="middle" font-size="12" fill="#5A5A5A">cold start</text>
+
+  <circle cx="372" cy="450" r="13" fill="#FFFFFF" stroke="#C9D6E4" stroke-width="2"/>
+  <text x="372" y="456" text-anchor="middle" font-size="13" font-weight="700" fill="#B0B6BC">–</text>
+  <text x="372" y="482" text-anchor="middle" font-size="12" fill="#9AA0A6">nothing recorded</text>
+
+  <circle cx="556" cy="450" r="13" fill="#8A6A3A"/>
+  <text x="556" y="455" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">2</text>
+  <text x="556" y="482" text-anchor="middle" font-size="12" fill="#5A5A5A">best-case latency</text>
+  <circle cx="672" cy="450" r="13" fill="#8A6A3A"/>
+  <text x="672" y="455" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">3</text>
+  <text x="672" y="482" text-anchor="middle" font-size="12" fill="#5A5A5A">peak memory</text>
+
+  <circle cx="856" cy="450" r="13" fill="#B23A2A"/>
+  <text x="856" y="455" text-anchor="middle" font-size="12" font-weight="700" fill="#FFFFFF">4</text>
+  <text x="856" y="482" text-anchor="middle" font-size="12" font-weight="700" fill="#B23A2A">sustained latency</text>
+
+  <text x="500" y="512" text-anchor="middle" font-size="11" font-style="italic" fill="#8A8A8A">what the run leaves behind</text>
+
+  <rect x="40" y="530" width="920" height="60" rx="12" fill="#EFF5E2" stroke="#D2E3B0"/>
+  <text x="500" y="554" text-anchor="middle" font-size="14" font-weight="700" fill="#55801F">Repeat for all 16 models — inside one single session</text>
+  <text x="500" y="575" text-anchor="middle" font-size="12" fill="#5A5A5A">two sessions are not comparable — one spoiled row voids the whole run</text>
+</svg>

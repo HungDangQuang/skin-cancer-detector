@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
 # Aggregate the 5 fold_*/test_metrics.json under a run dir into mean ± std.
-# Non-Slurm analogue of slurm/22_aggregate_folds.slurm — CPU-only.
 #
 # Usage:  bash run/aggregate.sh RUN_DIR=experiments/runs/teacher/efficientnetv2_m
 # Output: <RUN_DIR>/aggregated.json  +  <RUN_DIR>/aggregated.md
