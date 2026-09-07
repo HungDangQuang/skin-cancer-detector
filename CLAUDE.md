@@ -2,36 +2,35 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## ⚠️ CRITICAL — authoring/editing Slurm scripts (a job must never be blocked or evict others)
+## ⚠️ CRITICAL — running jobs on the shared GPU server
 
-This has cost real days of stuck jobs — treat it as the highest-priority rule set, not a gotcha. These are now **hook-enforced** (`.claude/settings.json`: `slurm-submit-guard` blocks submitting a bad script with exit 2; the slurm-edit guard flags a bad script the moment it's written) AND linted by `validate-pipeline §3f/§3g/§3h`. Full detail: [docs/GOTCHAS.md](docs/GOTCHAS.md); authoring table in [.claude/skills/submit-slurm/SKILL.md](.claude/skills/submit-slurm/SKILL.md); review checklist in [.claude/skills/review-slurm/SKILL.md](.claude/skills/review-slurm/SKILL.md).
+Two rules that have cost real work before. Treat them as the highest-priority rule set, not gotchas. Both are linted by `validate-pipeline §3d/§3e`. Full detail: [docs/GOTCHAS.md](docs/GOTCHAS.md); review checklist in [code-change/reference/review-runner.md](.claude/skills/code-change/reference/review-runner.md).
 
-1. **GPU jobs MUST request `--gres=mps:l40:N` (e.g. `mps:l40:4`) — NEVER `--gres=gpu`.** QOS `uit` caps `gres/gpu=0` per user, so any whole-GPU request sits `PD` forever (`Reason=QOSMaxGRESPerUser`) even while you hold 0 GPUs. Pair it with `setup_mps`.
-2. **Never terminate/preempt/reset other users' work** — no `scancel`/`kill`/`pkill`/`killall`, `nvidia-smi --reset-gpu`, `fuser -k`, `#SBATCH --preempt`, `#SBATCH --nice=-N`, `scontrol requeue` / `USE_CLUSTER_GPU_CHECK=1`. Out of resources = let the job wait in `PD`. That is the only acceptable behavior on this shared cluster.
-3. **Always submit via `bash slurm/submit.sh ...`** — never raw `sbatch` (it drops logs on Slurm 23 if `logs/` is absent).
-4. **Repo/data/runs live under `/datastore/keg/hungdang/...`** (or `DATASTORE_USER_DIR=`) — never raw `/datastore/${USER}/...` (`${USER}` is the shared `keg` account).
-5. **Start from `slurm/_template.slurm`; `source slurm/_lib.sh`; `${VAR:-default}` for every Slurm var.** After editing, run `validate-pipeline` then the `review-slurm` skill before submitting.
+1. **Everything stays inside the project folder.** The box (`islabworker2@islab-server2`, repo on the NAS at `/mnt/sharednas/binhnt/hungdang/skin-cancer-detector`) is shared with other people. No `sudo`, no `apt install`, no system python, no `~/.bashrc` edits, and never kill another person's process (`pkill`/`killall`/`nvidia-smi --reset-gpu`/`fuser -k`). Dependencies live only in `./.venv-linux` (export tooling in `./.venv-export`); env vars are set per session. The user audits this.
+2. **Never overwrite an existing run-dir.** Ablations and variants fork: students with `run_suffix=`, **teachers with `output_dir=`** — `scripts/train_teacher.py:39` hard-wires `<output_dir>/teacher/<name>/fold_N` and does *not* read `run_suffix`, so a teacher variant launched with `run_suffix=` silently destroys the main teacher run. That is why the ISIC-only teacher arm lives under `experiments/runs_isic_only/`.
+
+Also: the server root `/` has hit 100% full, so set a per-session `TMPDIR="$(pwd)/.tmp"` before long jobs; and pin `GPU=<id>` when running two jobs at once (`GPU=auto` picks the freest card, so two launches can collide).
 
 ## Local environment ≠ runtime environment
 
-The local Mac is for editing only. **Do not install Python dependencies locally** (no `pip install`, no `make install-dev` on the Mac, no expectation that `pytest` / `torch` / `sklearn` will import here). The code runs on the UIT Slurm cluster (`slurm.uit.edu.vn`, venv at `${DATASTORE_USER_DIR:-/datastore/keg/hungdang}/venv` — created by `slurm/setup_env.sh`), and that is the only environment that has the full dependency set.
+The local Mac is for editing only. **Do not install Python dependencies locally** (no `pip install`, no `make install-dev` on the Mac, no expectation that `pytest` / `torch` / `sklearn` will import here). The code runs on the Linux GPU server (venv at `./.venv-linux`, created by `run/setup_env.sh`), and that is the only environment that has the full dependency set.
 
 Consequences for verification:
-- After editing `src/`, `configs/`, or `slurm/`, run the **`validate-pipeline`** skill (static checks — Python AST + Hydra config compose + slurm lint, no imports needed) instead of trying to import/run code.
-- Real correctness verification (pytest, training smoke test) happens on the cluster — submit `slurm/01_prepare_poc.slurm` → `02_poc_teacher.slurm` → `03_poc_student.slurm` or invoke the `poc-smoke-test` skill.
-- Do not propose `pip install <x>` to fix a `ModuleNotFoundError` you hit locally — it's expected; the import will resolve on the cluster.
+- After editing `src/`, `configs/`, or `run/`, run the **`code-change`** skill's **`validate-pipeline`** checks (static checks — Python AST + Hydra config compose + runner lint, no imports needed) instead of trying to import/run code.
+- Real correctness verification happens on the server: `bash run/validate.sh` (imports + Hydra dry-load of every registered model, ~1 min) then `bash run/poc.sh` (synthetic end-to-end smoke test), or invoke the `code-change` skill's `poc-smoke-test`.
+- Do not propose `pip install <x>` to fix a `ModuleNotFoundError` you hit locally — it's expected; the import will resolve on the server.
 
-## Modification workflow (mandatory after any code/config/slurm change)
+## Modification workflow (mandatory after any code/config/runner change)
 
-Every edit to project source must be **reviewed, verified, and documented before the task is considered done** — not left for a follow-up. After modifying a file, run this loop automatically (don't wait to be asked). A `PostToolUse` hook in `.claude/settings.json` injects a `[modification-workflow]` reminder naming the right review skill for the edited path; treat that reminder as a required step, not a suggestion.
+Every edit to project source must be **reviewed, verified, and documented before the task is considered done** — not left for a follow-up. After modifying a file, run this loop automatically (don't wait to be asked). A `PostToolUse` hook in `.claude/settings.json` injects a `[modification-workflow]` reminder naming the **`code-change`** skill and the review area for the edited path; treat that reminder as a required step, not a suggestion.
 
 1. **Code** the change.
-2. **Review** with the area-specific skill, routed by what you touched:
-   - `src/data/**`, `scripts/prepare_data.py` → **`review-preprocessing`**
-   - `src/training/**`, `src/models/**`, `scripts/train_{teacher,student}.py` → **`review-training`**
-   - `slurm/**`, `slurm/README.md`, `docs/SLURM.md` → **`review-slurm`**
-3. **Propagate to Slurm (if any).** If the change alters how a job is invoked, what it consumes, or what it produces, update the matching `slurm/*.slurm` script **and** its docs (`slurm/README.md`, `docs/SLURM.md`) in the same task. A code change that silently desyncs from its slurm wrapper is a defect.
-4. **Verify.** Run **`validate-pipeline`** (static checks — the only verification possible on the Mac). Real correctness (pytest / `poc-smoke-test`) is a cluster step; state explicitly that it's deferred to the cluster rather than claiming it passed.
+2. **Review** with the **`code-change`** skill, which routes by what you touched to the matching checklist in its `reference/`:
+   - `src/data/**`, `scripts/prepare_data.py` → `reference/review-preprocessing.md`
+   - `src/training/**`, `src/models/**`, `scripts/train_{teacher,student}.py` → `reference/review-training.md`
+   - `run/**`, `run/README.md` → `reference/review-runner.md`
+3. **Propagate to the runner (if any).** If the change alters how a job is invoked, what it consumes, or what it produces, update the matching `run/*.sh` script **and** `run/README.md` in the same task. A code change that silently desyncs from its runner script is a defect.
+4. **Verify.** Run the **`code-change`** skill's **validate-pipeline** checks (`reference/validate-pipeline.md` — static checks, the only verification possible on the Mac). Real correctness (`bash run/validate.sh`, pytest, the `reference/poc-smoke-test.md` smoke test) is a server step; state explicitly that it's deferred to the server rather than claiming it passed.
 5. **Document.** Keep the docs and knowledge current: `CLAUDE.md` "Recurring gotchas" for anything non-obvious, the relevant `docs/*.md`, and auto-memory (`MEMORY.md` + the matching memory file). The end state of every task is up-to-date docs, not a TODO to update them later.
 
 ## Commands
@@ -80,15 +79,26 @@ make poc-all                        # All three sequentially
 
 The POC config (`configs/config_poc.yaml` + `configs/training/poc.yaml`) uses 2 epochs, batch 16, no warmup, no early stopping. Synthetic images have a learnable color bias (benign=greenish, malignant=reddish) so the model achieves AUC>0.5, confirming gradients flow. See `docs/POC.md` for full details.
 
-## Slurm execution (UIT cluster)
+## Server execution (`run/`)
 
-Cluster scripts live in `slurm/`. **Always submit via the wrapper**:
+Every job is launched from `run/` with `KEY=VALUE` args:
 ```bash
-bash slurm/submit.sh slurm/01_prepare_poc.slurm
-bash slurm/submit.sh slurm/03_poc_student.slurm STUDENT=mobilenetv4_conv_medium
+bash run/poc.sh                                                   # synthetic smoke test
+bash run/train_teacher.sh TEACHER=efficientnetv2_m                # all 5 folds, sequential
+bash run/train_student.sh STUDENT=mobilenetv4_conv_medium GPU=1
 ```
 
-The wrapper does `mkdir -p logs` before `sbatch` (Slurm 23 silently drops output if `logs/` doesn't exist). Every `*.slurm` script sources `slurm/_lib.sh` which provides `set -euo pipefail`, a fallback `tee` log at `logs/<job>_<jobid>_runtime.log`, a diagnostic header, and helpers `load_python_env` / `acquire_gpu` / `setup_mps`. See `docs/SLURM.md` for the full guide.
+To see where a running job is up to (fold, epoch, % done, ETA, RAM/VRAM) without attaching to `tmux`:
+```bash
+bash run/progress.sh          # on a server (WATCH=15 for a live view)
+bash run/progress_all.sh      # from the Mac — every training box at once (HOSTS="vast vastnew")
+```
+Both are read-only; `progress_all.sh` pipes `progress.sh` into each host over `ssh 'bash -s'`, so the servers need no `git pull`.
+
+To decide **how many jobs fit on one card**, `bash run/gpu_probe.sh PID=auto` samples `nvidia-smi` for the life of that job into `reports/gpu_probe_*.csv` and prints p50/p90/p95/max utilization + peak VRAM (also read-only, own-user PIDs only). `progress.sh` gives a snapshot ("is it alive"); the probe gives the distribution ("does a 2nd job fit"). Read it as: **VRAM decides IF a second job fits, utilization decides IF IT HELPS** — a p50 near 100% means the card is saturated and concurrency only adds OOM risk. See [run/README.md §7b](run/README.md).
+
+
+Every `run/*.sh` sources `run/common.sh`, which provides `set -euo pipefail`, repo-root resolution, `activate_venv` (`./.venv-linux`), `select_gpu` (`GPU=auto|<id>|cpu` → `CUDA_VISIBLE_DEVICES`; `auto` picks the freest card) and `start_log` (tees everything to `logs/<name>_<timestamp>.log`, so a dropped SSH session doesn't lose the run). Launch long runs under `tmux`/`nohup`. See [run/README.md](run/README.md) for the full script index and guide.
 
 ## Architecture
 
@@ -98,9 +108,9 @@ This is a **binary skin cancer classification** project (benign=0, malignant=1) 
 
 ### Two-stage training pipeline
 
-**Stage 1 — Teacher**: a high-capacity backbone trained standalone using `Trainer` + `BinaryFocalLoss`. Teachers: the SOTA set `{efficientnetv2_m, convnextv2_base, maxvit_base}`. Pick via `teacher=<name>` (Hydra) or `TEACHER=<name>` (slurm).
+**Stage 1 — Teacher**: a high-capacity backbone trained standalone using `Trainer` + `BinaryFocalLoss`. Teachers: the SOTA set `{efficientnetv2_m, convnextv2_base, maxvit_base}`. Pick via `teacher=<name>` (Hydra) or `TEACHER=<name>` (`run/*.sh`).
 
-**Stage 2 — Student**: one of the SOTA mobile-/on-device-latency-optimized backbones `{mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2}`, trained with `KDTrainer` using `BinaryDistillationLoss`:
+**Stage 2 — Student**: one of the SOTA mobile-/on-device-latency-optimized backbones `{mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2, repvit_m1_0}`, trained with `KDTrainer` using `BinaryDistillationLoss`:
 ```
 L_total = 0.3 * L_focal(student, true_labels) + 0.7 * T² * L_BCE(sigmoid(s/T), sigmoid(t/T))
 ```
@@ -127,7 +137,7 @@ Override at the CLI: `python scripts/train_student.py student=fastvit_sa12 train
 
 ### Model registry
 
-`src/models/registry.py` maps string names → classes. All models inherit from `BaseModel` (ABC), expose `forward(x) -> Tensor (B,)` returning a single raw logit, and share `freeze_backbone()` / `unfreeze()` helpers. Backbones are loaded from `timm`; the classification head is always `Dropout → Linear(in_features, 1)` via `build_head()`. All six models (efficientnetv2_m, convnextv2_base, maxvit_base, mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2) use one generic wrapper `TimmBackboneModel` (`src/models/timm_backbone.py`) — there's no per-arch logic, so a single class covers them (the older baseline family wrappers were removed). They require `timm>=1.0` (mobilenetv4/fastvit/efficientformerv2 are not in 0.9.x).
+`src/models/registry.py` maps string names → classes. All models inherit from `BaseModel` (ABC), expose `forward(x) -> Tensor (B,)` returning a single raw logit, and share `freeze_backbone()` / `unfreeze()` helpers. Backbones are loaded from `timm`; the classification head is always `Dropout → Linear(in_features, 1)` via `build_head()`. All seven timm models (teachers: efficientnetv2_m, convnextv2_base, maxvit_base; students: mobilenetv4_conv_medium, fastvit_sa12, efficientformerv2_s2, repvit_m1_0) use one generic wrapper `TimmBackboneModel` (`src/models/timm_backbone.py`) — there's no per-arch logic, so a single class covers them (the older baseline family wrappers were removed). They require `timm>=1.0` (mobilenetv4/fastvit/efficientformerv2/repvit are not in 0.9.x). The one exception is the domain-foundation teacher `panderm` (PanDerm ViT-B/16, Nature Medicine 2025), whose weights ship **out of timm** as a BEiT-style checkpoint (Google Drive, CC-BY-NC-4.0): `PanDermModel` (`src/models/panderm.py`) subclasses `TimmBackboneModel` — it builds a structurally-compatible timm ViT-B/16 and loads the PanDerm foundation weights over the backbone with a **loud remapping loader** that raises if fewer than `min_weight_match` of the backbone tensors match (so a wrong arch fails instead of silently training a near-random net). Set `teacher.weights_path=<abs path>` on the server for the teacher-training run; the timm arch (`vit_base_patch16_224` vs `beit_base_patch16_224`), feature dim 768, and input normalize must be verified there — see `docs/SOTA_MODEL_DECISION_2026-07.md §5`.
 
 To add a new architecture: register it against `TimmBackboneModel` (or a new class if it needs custom logic) in `MODEL_REGISTRY`, and create a matching config under `configs/student/` or `configs/teacher/`. Use `infer_backbone_out_dim(backbone)` for the head input dim, never `backbone.num_features`.
 
@@ -137,7 +147,7 @@ Primary metric: **pAUC@TPR≥80%** (ISIC 2024 official metric), normalized to [0
 
 **Calibration** (distinct from ranking): `brier`/`ece` in `test_metrics.json` are the RAW miscalibration — the undersampled ~16.7% training prior inflates `sigmoid(logit)` vs the true ~0.39% prevalence. `scripts/compute_calibration.py --run-dir <run>` corrects the *displayed* probabilities offline (prior-shift closed-form by default; Platt/isotonic with `--method`, fit on the `val_predictions.csv` the training scripts now emit) and writes `calibration_metrics.json` + `reliability_curve.png`. Ranking metrics (pAUC/AUPRC/AUC) are invariant to any monotone re-scaling, so this changes **no** Chapter-4 number — it only makes shown "% risk" honest.
 
-External test sets (HAM10000, Fitzpatrick17k) are **never used for training** — only for post-hoc cross-domain and fairness evaluation.
+External test sets (HAM10000, Fitzpatrick17k) are **never used for training** — only for post-hoc cross-domain and fairness evaluation. They are prepared by a **separate** script, `scripts/prepare_external_data.py` (`bash run/prepare_external.sh DATASET=…`) — *not* `prepare_data.py`, which owns the training path — and they produce **one `test_split.csv` per dataset plus sensitivity variants**, no folds. Because they are test sets, cleaning is **two-tier**: only integrity failures are dropped, while `is_uninformative`/duplicate merely *flag* (`docs/PREPROCESSING.md §1.1`). Fitzpatrick17k ships **URLs, not images** — fetch with `scripts/download_fitzpatrick17k.py` first. Preparation ends in a leakage check (`reports/external_overlap_check_<ds>.md`) that **exits 2** on any overlap with the internal splits.
 
 ### Experiment design
 
@@ -164,53 +174,62 @@ experiments/runs/
 
 `scripts/train_teacher.py` and `scripts/train_student.py` reload the best checkpoint from `checkpoints/best_model.pth` after training and run `Evaluator.evaluate(test_dataloader())`, saving the result alongside as `test_metrics.json`. The val-set metrics logged each epoch are *biased* (early-stopping optimizes against val); the `test_metrics.json` is the unbiased generalization number — quote that, not val_pauc, for verdicts. The trainers also write `val_metrics.json` (best-epoch val metrics, aligned to `best_model.pth`); a large **val − test** gap (esp. in AUPRC/pAUC) is the overfitting signal — `val_metrics.json` minus `test_metrics.json`.
 
-### 5-fold CV — one job per model (folds loop sequentially)
+### 5-fold CV — one process per model (folds loop sequentially)
 
-`slurm/11_train_teacher.slurm` and `slurm/12_train_student.slurm` are **single** jobs (no Slurm array): each loops `for FOLD in ${FOLDS:-0 1 2 3 4}` internally and calls the training script once per fold, so **one model = one job = one of the 5 concurrency slots**. (This replaced the earlier `#SBATCH --array=0-4%2` design — that ran 2 folds at once but consumed 2 slots and produced 5 separate array tasks per model.) `--time=72:00:00` (the cluster cap) covers all 5 folds back-to-back. `FOLDS="0 1 2"` + `FOLDS="3 4"` splits a heavy run (e.g. `maxvit_base`) across two jobs if 5 sequential folds risk exceeding 72 h. Submit + log pattern:
+`run/train_teacher.sh` and `run/train_student.sh` are **single** processes: each loops `for FOLD in ${FOLDS:-0 1 2 3 4}` internally and calls the training script once per fold, so **one model = one launch = all 5 folds**. `FOLDS="0 1 2"` + `FOLDS="3 4"` splits a heavy run (e.g. `maxvit_base`) across two launches. Launch + log pattern:
 
 ```bash
-# Submit (one command = one job that trains all 5 folds):
-bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnetv2_m
+# One command = one process that trains all 5 folds:
+bash run/train_teacher.sh TEACHER=efficientnetv2_m
 
-# Logs (single job id, not array):
-logs/train_teacher_<jobid>.out             # SBATCH-redirected
-logs/train_teacher_<jobid>_runtime.log     # fallback tee log
+# Log (tee'd by start_log; survives an SSH drop):
+logs/train_teacher_<timestamp>.log
 
-# Aggregate after the job finishes all 5 folds:
-bash slurm/submit.sh slurm/22_aggregate_folds.slurm \
-    RUN_DIR=experiments/runs/teacher/efficientnetv2_m
+# Aggregate after all 5 folds finish:
+bash run/aggregate.sh RUN_DIR=experiments/runs/teacher/efficientnetv2_m
 ```
+
+To train several KD students concurrently on one GPU, use the VRAM-gated launcher `run/train_kd_parallel.sh` (`MAX_JOBS=2` is the measured safe cap) rather than backgrounding `run/train_student.sh` by hand.
 
 `scripts/aggregate_folds.py` reads `fold_*/test_metrics.json`, computes mean ± std (+ min/max + per-fold) for every numeric metric, and writes `aggregated.json` (machine-readable) and `aggregated.md` (thesis-grade table). Cite the **aggregated mean ± std** for any reportable claim — a single fold's number has wide variance.
 
 ## Recurring gotchas
 
-These have all bitten this repo at least once. Run the `validate-pipeline` skill after touching `src/`, `configs/`, or `slurm/` to catch them before submitting cluster jobs. **Full detail for every item below lives in [docs/GOTCHAS.md](docs/GOTCHAS.md)** — this is just the index; read the matching section there before acting on one.
+These have all bitten this repo at least once. Run the `code-change` skill's `validate-pipeline` checks after touching `src/`, `configs/`, or `run/` to catch them before launching jobs on the server. **Full detail for every item below lives in [docs/GOTCHAS.md](docs/GOTCHAS.md)** — this is just the index; read the matching section there before acting on one.
 
 **Hard rules (never violate):**
-- **No `slurm/*.slurm` may kill/preempt/reset another user's job** — if resources are full, queue (`PD`) and wait. No `scancel`/`kill`/`pkill`, `--reset-gpu`, `fuser -k`, `--preempt`, `--nice`.
-- **GPU scripts MUST use `--gres=mps:l40:N`, never `--gres=gpu`** — QOS caps `gres/gpu=0`, so a whole-GPU request sits `PD` forever (`QOSMaxGRESPerUser`).
-- **Always submit via `slurm/submit.sh`** (it `mkdir -p logs` first; raw `sbatch` silently drops logs on Slurm 23). Check the fallback `logs/<job>_<jobid>_runtime.log` if the SBATCH log is empty.
-- **Never use raw `/datastore/${USER}/...`** — `keg` is shared; default to `/datastore/keg/hungdang` or `DATASTORE_USER_DIR`.
+- **Everything stays inside the project folder** — the server is shared. No `sudo`/`apt`/system-python/`~/.bashrc` edits, no killing other people's processes; deps only in `./.venv-linux` (`./.venv-export` for ExecuTorch), env vars per session.
+- **Never overwrite an existing run-dir** — students fork with `run_suffix=`, **teachers with `output_dir=`** (`train_teacher.py` ignores `run_suffix`).
+- **Set `TMPDIR="$(pwd)/.tmp"` per session** — the server root `/` has hit 100% full; `/tmp` spill causes `Errno 28`.
+- **Pin `GPU=<id>` when running two jobs at once** — `GPU=auto` picks the freest card, so simultaneous launches can collide and OOM.
 
 **Live coding traps:**
 - **Hydra struct mode** — `OmegaConf.set_struct(cfg, False)` before merging any new top-level key, else `ConfigKeyError`.
 - **Package re-exports** — names in `src/<pkg>/__init__.py` must match the real `class`/`def`; verify with `python -c "import src.training, src.models, src.data, src.evaluation"`.
-- **Slurm strict mode (`set -euo pipefail`)** — use `${VAR:-default}` for every Slurm var; gate non-universal CLIs (`nvidia-smi`) with `command -v`.
+- **Runner strict mode (`set -euo pipefail`, via `run/common.sh`)** — use `${VAR:-default}` for every knob; gate non-universal CLIs (`nvidia-smi`) with `command -v`.
 - **timm `num_features` is unreliable** as the head input dim — always use `infer_backbone_out_dim(backbone)`.
 - **`cfg.data.label_col` is the raw name (`target`)** — the processed dataframe uses `label`; pass `label_col="label"` to `generate_group_kfold_splits()`.
 - **`patient_id` must be namespaced** (`pad_{id}`) when concatenating datasets, or groups collide and leak across folds.
 - **Augmentation is config-driven** — edit `configs/augmentation/{light,heavy}.yaml`, not `transforms.py`; MixUp/CutMix/CutOut are forbidden in code.
+- **External test sets filter in TWO tiers** — on HAM10000/Fitzpatrick17k, only integrity failures may be dropped; `is_uninformative`/duplicates just flag. Dropping changes the benchmark, and `is_uninformative`'s ISIC-tuned `std<8` can fire on flat clinical photos — which is not independent of skin tone. Don't "fix" this by reusing the ISIC/PAD drop logic (`docs/PREPROCESSING.md §1.1`).
 - **`load_config()` composes Hydra `defaults:`** for the root config — standalone scripts break without it.
 - **NumPy 2.0 removed `np.trapz`** — use `np.trapezoid`.
 - **New trainer subclass must append `val_pauc`** per epoch, or `plot_training_curves` shape-mismatches.
+- **Direction A (privileged metadata in training) was RUN and does NOT pay off — leave both gates OFF.** Measured 2026-09-05 over 15 folds (`reports/bootstrap_ci_dirA.md`, 28 runs, 2000 replicates). Two findings, and they are NOT the same claim:
+  1. **Metadata alone is inert, not harmful.** The clean comparison — `teacher/efficientnetv2_m_privileged` vs `teacher/efficientnetv2_m`, whose only difference is the tabular branch reading 6 `tbp_lv_*` columns, no KD involved — gives **pAUC 0.1826 vs 0.1826** (identical to 4 dp) and ΔAUPRC −0.0059, inside the ~0.005 rerun noise floor. The features taught the model nothing measurable.
+  2. **Distilling from that teacher (privileged + RKD) HURTS the student.** Paired CI: `mobilenetv4_conv_medium` is significantly worse on **4/4** metrics (ΔpAUC −0.0067 [−0.0107, −0.0029]; ΔAUPRC −0.0338 [−0.0578, −0.0076]; ΔSens@90Spec −0.0149 [−0.0273, −0.0024]); `fastvit_sa12` only on AUPRC and marginally (−0.0219 [−0.0423, **−0.0001**]).
+  **Do not write "metadata is harmful"** — finding 1 refutes that. Write "metadata brought no benefit, and the privileged-distillation route degraded the student". **The harm is also NOT attributable to metadata**: the privileged arm changes TWO things at once (teacher sees metadata + RKD feature loss is added), and `distillation_privileged.yaml` still carries Park-2019 weights `weight_dist: 25.0`/`weight_angle: 50.0` under its own comment "re-tune for binary" — never tuned, ~12% of the gradient. The harm differs sharply by student capacity (mobilenetv4 1.65 GFLOPs hit much harder than fastvit 2.96), which points at RKD rather than at the metadata. The `TRAINING=distillation_rkd` control with a PLAIN teacher would separate them; it has NOT been run.
+  Scope of the null: 6 of 39 available `tbp_lv_*` columns, one teacher arch, with-PAD arm only. Plausible reason it is null: those columns are lesion descriptors *derived from the image* (symmetry, border, colour, eccentricity) that a CNN can already learn — not privileged information in the LUPI sense. The one exception, `tbp_lv_areaMM2` (absolute mm², which a crop genuinely cannot convey), still moved nothing.
+- **Metadata has TWO independent gates** (`docs/metadata_training_plan.md`, default off = image-only unchanged): `data.metadata_cols` = *which* raw cols to carry into the split CSVs (direction D subgroup calibration + the privileged inputs); `data.metadata_as_input` = whether the dataset feeds them into the batch as a 4-tuple `(image, meta, mask, label)` (direction A privileged/LUPI teacher). D sets only `metadata_cols` (model stays image-only, cols ride the `predictions.csv` side-channel via `test_metadata()`); A sets **both**. Any new DataLoader consumer must unpack via `src/utils/batch.py::unpack_batch` (2- or 4-tuple). `iddx_*`/`mel_*` are rejected as leakage; the metadata scaler is fit on the **train fold only**.
 
 **Operational / postmortems (context for helper behavior):**
-- **`keg` is shared** — filter your jobs by name: `squeue -u keg --name=<job>`.
-- **`gpu_check.sh` is bypassed by default** (has a typo + self-requeues); `acquire_gpu` picks the GPU itself.
-- **`acquire_gpu` hops off a full Slurm-pinned GPU** by re-checking free VRAM (the real MPS-OOM fix).
-- **Data-strategy ablations** — `run_suffix` isolates run-dirs, `data.train_sources` filters train+val only (test stays whole), the PAD ablation must run baseline (no KD).
+- **No scheduler** — a run is just a process. Launch under `tmux`/`nohup`; find it again via `ps -ef | grep train_`, `nvidia-smi`, or `logs/<name>_<timestamp>.log`. Only kill PIDs you started.
+- **`run/train_kd_parallel.sh` is VRAM-gated** — launches only when running-jobs < `MAX_JOBS` **and** free VRAM ≥ `MIN_FREE_MB`. Measured 2026-08-13: one KD job already saturates the GPU, so more concurrency adds no speedup, only OOM risk (`MAX_JOBS=2` cap).
+- **Data-strategy ablations** — `run_suffix` isolates student run-dirs (`output_dir` for teachers), `data.train_sources` filters train+val only (test stays whole), the PAD ablation must run baseline (no KD).
 - **`maxvit_base` cuDNN backward error** + the `cudnn_deterministic` lever — likely VRAM; retry with lower batch + `cudnn_deterministic=false`.
+
+- **Validation was ~90% of every KD epoch** (measured 2026-09-03: train 3m21s vs epoch 32m19s) because `_val_epoch` re-ran the *frozen* teacher over all 62k val rows every epoch — ~94% of the val FLOPs for a maxvit teacher. The val pipeline is deterministic and `shuffle=False`, so those logits are constant (verified `max|Δ|=0` over 3 passes): `training.cache_val_teacher_logits` (default on) computes them once and replays them, **exactly**. Companion speed knobs: `training.eval_batch_size`, `persistent_workers`/`prefetch_factor`, and raising `num_workers` at launch on a many-core box.
+- **`cudnn_deterministic: true` is NOT bit-exact.** Re-running one fold with the identical seed moved AUPRC by **0.0053** — treat ~0.005 AUPRC as the single-fold rerun noise floor and never read a smaller per-fold difference as signal. Evidence: `experiments/_reproducibility/README.md`.
 
 **Resolved (historical):**
 - `pauc_at_tpr()` — FIXED 2026-06-04, now the real ISIC 2024 metric (~[0.02, 0.20]).

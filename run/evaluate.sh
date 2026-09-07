@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================================
 # Evaluate one checkpoint on the held-out test set.
-# Non-Slurm analogue of slurm/20_evaluate.slurm.
 #
 # Args are KEY=VALUE OR env vars:
 #   MODEL  model name (e.g. mobilenetv4_conv_medium)   [required]

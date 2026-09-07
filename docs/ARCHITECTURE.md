@@ -27,7 +27,7 @@ splits_dir/  test_split.csv (độc lập, patient-disjoint)  +  fold_{0..4}/{tr
       │
       └─ GIAI ĐOẠN 2 — STUDENT (KD, teacher bị FREEZE)
             scripts/train_student.py  → KDTrainer + BinaryDistillationLoss
-            student ∈ {mobilenetv4_conv_medium | fastvit_sa12 | efficientformerv2_s2}
+            student ∈ {mobilenetv4_conv_medium | fastvit_sa12 | efficientformerv2_s2 | repvit_m1_0}
             → experiments/runs/kd_<teacher>_to_<student>/fold_N/...
       ▼
 Đánh giá tự động cuối train → test_metrics.json (+ val_metrics.json, predictions.csv)
@@ -43,7 +43,9 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 ```
 **Biến thể KD** (opt-in, mặc định giữ nguyên công thức trên): `training.distillation.soft_loss_type=mse` (Kim 2021 — MSE trên raw logit, bỏ T²) và `training=distillation_rkd` (bật RKD feature-KD `src/training/feature_distillation.py`, Park 2019 — khớp distance+angle giữa các mẫu trong batch, không cần projector, cộng thêm vào L_total).
 
-**Thiết kế thực nghiệm:** mỗi student train 2 lần (có KD / không KD) cùng seed+split+hparam → `compute_kd_delta()`. 5-fold CV. Con số **"30 run" = 3 *student* × 2 điều kiện × 5 fold, ứng với MỘT teacher cố định** ("3 arch" ở đây là 3 *student*, KHÔNG phải teacher). Registry khai báo **3 SOTA teacher** và hiện đang train cả 3 → tổng số run thực tế lớn hơn 30. Báo cáo phải nêu rõ phạm vi teacher đang dùng (1 teacher chính + 2 teacher ablation-1-fold, hay cả 3 đầy đủ) thay vì trích mặc định "30".
+**Thiết kế thực nghiệm:** mỗi student train 2 lần (có KD / không KD) cùng seed+split+hparam → `compute_kd_delta()`. 5-fold CV. Con số **"30 run" = 3 *student* × 2 điều kiện × 5 fold, ứng với MỘT teacher cố định** ("3 arch" ở đây là 3 *student*, KHÔNG phải teacher). Báo cáo phải nêu **phạm vi teacher thực tế**, không trích mặc định "30".
+
+> **Cập nhật scope (2026-07, xem [SOTA_MODEL_DECISION_2026-07.md](SOTA_MODEL_DECISION_2026-07.md) để biết ma trận + số lượng đầy đủ):** student giờ là **4** (thêm `repvit_m1_0`). Teacher: `efficientnetv2_m` (chính) + `convnextv2_base` (phụ); `maxvit_base` **giữ trong registry nhưng loại khỏi ma trận KD** (đã train teacher, KD bỏ dở — trích như bằng chứng capacity-gap); thêm teacher foundation da liễu **`panderm`** (ViT-B/16, out-of-timm loader, đang port). KD có thêm điều kiện **RKD** (`training=distillation_rkd`) cho teacher chính + PanDerm.
 
 ---
 
@@ -59,7 +61,8 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | `src/models/` | `registry.py` | `MODEL_REGISTRY` (string→class) + `build_model` / `build_model_from_name` |
 | | `base_model.py` | `BaseModel` (ABC): `forward(x)->Tensor(B,)`, `forward_features(x)->(feat(B,C), logit(B,))` cho feature-KD, `freeze_backbone()`, `unfreeze()` |
 | | `heads.py` | `build_head()` = `Dropout→Linear(in,1)`; dùng `infer_backbone_out_dim()`, **không** dùng `num_features` |
-| | `timm_backbone.py` | `TimmBackboneModel` — wrapper generic DUY NHẤT cho cả 6 model (3 teacher + 3 student; cần `timm>=1.0`) |
+| | `timm_backbone.py` | `TimmBackboneModel` — wrapper generic cho cả 7 model timm (3 teacher + 4 student; cần `timm>=1.0`) |
+| | `panderm.py` | `PanDermModel(TimmBackboneModel)` — teacher foundation da liễu (ViT-B/16 BEiT-style, out-of-timm); nạp weight PanDerm đè lên backbone timm bằng loader remap "loud" (raise nếu match < `min_weight_match`) |
 | `src/training/` | `trainer.py` | `Trainer` (teacher/baseline) |
 | | `kd_trainer.py` | `KDTrainer` (student, teacher frozen) |
 | | `losses.py` | `BinaryFocalLoss` (gamma=2.0, alpha=0.25) |
@@ -69,7 +72,7 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | `src/evaluation/` | `metrics.py` | `compute_metrics()` → `pauc_at_tpr80`, `auc_roc`, `auprc`(+`prevalence`), sensitivity/specificity, `sens_at_{90,95}spec`, TP/FP/TN/FN, `brier`/`ece` (calibration RAW) |
 | | `evaluator.py` | `Evaluator.evaluate()`, `save_predictions()` (ghi `predictions.csv`; train scripts cũng ghi `val_predictions.csv` = fit-set cho calibration) |
 | | `confusion_matrix.py` / `grad_cam.py` | trực quan hoá |
-| `src/inference/` | `predictor.py` / `ensemble.py` | inference đơn / ensemble |
+| `src/inference/` | `predictor.py` / `ensemble.py` | inference đơn / ensemble. **(PLANNED)** `ood_gate.py` — cổng Mahalanobis từ chối ảnh không hợp lệ, post-hoc/opt-in, xem [docs/ood_gate_plan.md](ood_gate_plan.md) |
 | `src/utils/` | `config.py` | `load_config()` — **compose Hydra `defaults:`** (script standalone cần cái này) |
 | | `checkpoint.py` / `seed.py` / `logger.py` / `visualization.py` | tiện ích |
 
@@ -84,11 +87,13 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | Teacher | `efficientnetv2_m` (EfficientNetV2-M) | `TimmBackboneModel` |
 | | `convnextv2_base` (ConvNeXtV2-Base) | `TimmBackboneModel` |
 | | `maxvit_base` | `TimmBackboneModel` |
+| | `panderm` (PanDerm ViT-B/16, domain-foundation) | `PanDermModel` — out-of-timm BEiT-style weights loaded over a timm ViT (`src/models/panderm.py`) |
 | Student (mobile) | `mobilenetv4_conv_medium` | `TimmBackboneModel` |
 | | `fastvit_sa12` | `TimmBackboneModel` |
 | | `efficientformerv2_s2` | `TimmBackboneModel` |
+| | `repvit_m1_0` (RepViT-M1.0, reparam-CNN) | `TimmBackboneModel` |
 
-**Thêm arch mới:** đăng ký key → `TimmBackboneModel` (hoặc class mới nếu cần logic riêng) + tạo config `configs/{student,teacher}/<name>.yaml`. Dùng skill `add-model`.
+**Thêm arch mới:** đăng ký key → `TimmBackboneModel` (hoặc class mới nếu cần logic riêng) + tạo config `configs/{student,teacher}/<name>.yaml`. Dùng skill `code-change` (reference/add-model.md).
 
 ---
 
@@ -102,8 +107,8 @@ defaults: data=isic2024 · training=distillation · augmentation=light · _self_
 | Group | Lựa chọn |
 |---|---|
 | `data/` | `isic2024`, `pad_ufes_20`, `ham10000`, `fitzpatrick17k`, `poc` |
-| `teacher/` | `efficientnetv2_m`, `convnextv2_base`, `maxvit_base` |
-| `student/` | `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2` |
+| `teacher/` | `efficientnetv2_m`, `convnextv2_base`, `maxvit_base`, `panderm` (foundation — set `teacher.weights_path` on server) |
+| `student/` | `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2`, `repvit_m1_0` |
 | `training/` | `distillation` (KD), `distillation_rkd` (KD + RKD feature-KD), `baseline` (no-KD), `default`, `finetuning`, `ablation`, `poc` |
 | `augmentation/` | `light` (mặc định), `heavy` (anti-overfit) |
 
@@ -137,7 +142,7 @@ Calibration (offline, tùy chọn): `scripts/compute_calibration.py --run-dir <r
 
 ## 6. Đánh giá & benchmark
 
-- **Accuracy** (device-independent): `test_metrics.json` → aggregate → so KD vs baseline (skill `compare-kd`, `scripts/compare_kd_results.py`).
+- **Accuracy** (device-independent): `test_metrics.json` → aggregate → so KD vs baseline (skill `eval-results` → reference/compare-kd.md, `scripts/compare_kd_results.py`).
 - **Hiệu năng tĩnh** (so chéo thiết bị được): params / FLOPs / model size — `scripts/benchmark.py`.
 - **Latency** (device-specific): cluster CPU latency chỉ là **proxy**, KHÔNG phải số điện thoại; ranking có thể lật trên mobile (nhất là student transformer). On-device thật: export ExecuTorch `.pte` (`scripts/export_executorch.py`) → `scripts/benchmark_mobile.py` (Pixel 6a).
 - **Cross-domain / fairness:** HAM10000 (cross-domain), Fitzpatrick17k (fairness) — **chỉ post-hoc, không bao giờ train**.

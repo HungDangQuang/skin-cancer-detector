@@ -1,6 +1,10 @@
 # Teacher training config
 epochs: 50
 batch_size: 32
+# Batch size for val/test only (0 = same as batch_size). Eval runs under
+# no_grad, so a larger batch fits and cuts per-batch overhead; eval-mode
+# BatchNorm uses running stats, so per-sample outputs are unchanged.
+eval_batch_size: 0
 grad_clip: 1.0
 
 optimizer:

@@ -22,8 +22,8 @@ This skill exists because the user is building a QA knowledge base
 
 ## When NOT to use
 
-- The user wants a code/config/slurm change → use the matching area skill
-  (`review-preprocessing` / `review-training` / `review-slurm`) and the
+- The user wants a code/config/runner change → use the matching area skill
+  (`review-preprocessing` / `review-training` / `review-runner`) and the
   modification workflow in `CLAUDE.md`. (You *may* still record a QA *afterward* if
   asked.)
 - The user wants a checkpoint/eval verdict → `analyze-evaluation`.
@@ -58,7 +58,7 @@ confirm it reads correctly in the file.
 
 ### 2. Research the answer
 Gather evidence before writing:
-- Identify which area the question touches (data / training / KD / eval / slurm /
+- Identify which area the question touches (data / training / KD / eval / runner /
   experiment design) and open the authoritative files for it. Cross-check against
   `CLAUDE.md` ("Architecture", "Recurring gotchas") and the relevant `docs/*.md`.
 - For results questions, read the run artifacts (`experiments/runs/.../test_metrics.json`,
@@ -95,7 +95,7 @@ Use the template from [QA/README.md](../../../QA/README.md):
 
 Rules for the body:
 - `Status` date = today (`currentDate` in context). Area tag is one of
-  `data` / `training` / `kd` / `evaluation` / `slurm` / `experiment-design` /
+  `data` / `training` / `kd` / `evaluation` / `runner` / `experiment-design` /
   `results`.
 - The `Answer` is self-contained prose a reader can drop into the thesis. Lead with
   the direct answer (yes/no/the number), then the reasoning.
@@ -125,7 +125,7 @@ than leaving a stale claim in a thesis source.
 ## Caveats
 
 - This skill writes documentation only — it never edits `src/`, `configs/`, or
-  `slurm/`. No `validate-pipeline` run is needed, but the *citations* inside the QA
+  `run/`. No `validate-pipeline` run is needed, but the *citations* inside the QA
   must reflect the code as it actually is at write time.
 - Don't duplicate an existing QA — if the question overlaps one already in `QA/`,
   extend or cross-link that file instead of adding a near-duplicate.

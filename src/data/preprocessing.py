@@ -14,6 +14,38 @@ from sklearn.model_selection import StratifiedGroupKFold
 from tqdm import tqdm
 
 
+# Post-biopsy diagnosis / histopathology fields. Their mere presence (or NaN)
+# leaks the label in ISIC 2024, so they are FORBIDDEN as training metadata even
+# in the privileged teacher — see docs/metadata_training_plan.md §0.
+_LEAKAGE_PREFIXES = ("iddx_", "mel_")
+# Base record schema. A metadata_col colliding with one of these would OVERWRITE
+# it (e.g. PAD would set patient_id/label to NaN -> group leakage / label loss).
+_RESERVED_COLS = frozenset(
+    {"image_id", "patient_id", "image_path", "label", "class_name", "source"}
+)
+
+
+def _validate_metadata_cols(metadata_cols: list[str] | None) -> None:
+    """Raise if metadata_cols contains a leakage (iddx_*/mel_*) or reserved column."""
+    if not metadata_cols:
+        return
+    bad = [c for c in metadata_cols if str(c).startswith(_LEAKAGE_PREFIXES)]
+    if bad:
+        raise ValueError(
+            f"metadata_cols contains post-biopsy LEAKAGE columns {bad}: "
+            f"iddx_*/mel_* are diagnosis/histopathology fields whose presence "
+            f"(or NaN) reveals the label. Remove them "
+            f"(see docs/metadata_training_plan.md §0)."
+        )
+    reserved = [c for c in metadata_cols if c in _RESERVED_COLS]
+    if reserved:
+        raise ValueError(
+            f"metadata_cols may not name base schema columns {reserved} "
+            f"(they would overwrite the record's {sorted(_RESERVED_COLS)} — for "
+            f"PAD that means NaN patient_id/label = group leakage / label loss)."
+        )
+
+
 def resize_and_save(src: Image.Image | Path, dst_path: Path, size: tuple[int, int] = (224, 224)) -> None:
     """Resize a PIL image (or path) and save to destination."""
     dst_path.parent.mkdir(parents=True, exist_ok=True)
@@ -56,6 +88,7 @@ def process_isic2024(
     image_id_col: str = "isic_id",
     label_col: str = "target",
     min_size: int = 32,
+    metadata_cols: list[str] | None = None,
 ) -> pd.DataFrame:
     """
     Extract and resize images from ISIC 2024 HDF5 archive.
@@ -65,9 +98,18 @@ def process_isic2024(
           train-image.hdf5     <- HDF5 with keys = isic_id, values = JPEG bytes
           train-metadata.csv   <- isic_id, patient_id, target (0/1), ...
 
+    Args:
+        metadata_cols: optional extra columns to carry from ``train-metadata.csv``
+            into each record (e.g. ``tbp_lv_*`` for the privileged teacher, or
+            ``anatom_site_general``/``sex`` for subgroup calibration). Default
+            ``None`` keeps the historical 6-column schema byte-for-byte. Leakage
+            columns (``iddx_*``/``mel_*``) are rejected up front.
+
     Returns:
-        DataFrame with columns: image_id, patient_id, image_path, label, class_name.
+        DataFrame with columns: image_id, patient_id, image_path, label,
+        class_name, source (+ any ``metadata_cols``).
     """
+    _validate_metadata_cols(metadata_cols)
     raw_dir = Path(raw_dir)
     processed_dir = Path(processed_dir)
     hdf5_path = raw_dir / "train-image.hdf5"
@@ -144,14 +186,20 @@ def process_isic2024(
             else:
                 skipped += 1
 
-            records.append({
+            record = {
                 "image_id": image_id,
                 "patient_id": patient_id,
                 "image_path": str(dst),
                 "label": label,
                 "class_name": class_name,
                 "source": "isic2024",
-            })
+            }
+            if metadata_cols:
+                # Carry the requested raw metadata verbatim; missing -> NaN so the
+                # column exists uniformly and NaN-masking downstream still works.
+                for col in metadata_cols:
+                    record[col] = row.get(col, np.nan)
+            records.append(record)
 
     if excluded:
         processed_dir.mkdir(parents=True, exist_ok=True)
@@ -176,6 +224,7 @@ def process_pad_ufes_20(
     processed_dir: str | Path,
     image_size: int = 224,
     min_size: int = 32,
+    metadata_cols: list[str] | None = None,
 ) -> pd.DataFrame:
     """
     Process PAD-UFES-20 dataset and map 6 classes to binary labels.
@@ -189,9 +238,17 @@ def process_pad_ufes_20(
         Malignant (1): BCC, SCC, MEL
         Benign    (0): ACK, NEV, SEK
 
+    Args:
+        metadata_cols: extra columns kept in the ISIC records. PAD-UFES-20 has a
+            different schema (no ``tbp_lv_*``), so every requested column is set
+            to ``NaN`` here — the NaN mask lets the privileged tabular branch skip
+            (not backprop) PAD samples. Default ``None`` keeps the 6-column schema.
+
     Returns:
-        DataFrame with columns: image_id, patient_id, image_path, label, class_name, source.
+        DataFrame with columns: image_id, patient_id, image_path, label,
+        class_name, source (+ any ``metadata_cols``, all NaN for PAD).
     """
+    _validate_metadata_cols(metadata_cols)
     raw_dir = Path(raw_dir)
     processed_dir = Path(processed_dir)
     images_dir = raw_dir / "images"
@@ -272,7 +329,7 @@ def process_pad_ufes_20(
         else:
             skipped += 1
 
-        records.append({
+        record = {
             "image_id": f"pad_{stem}",
             # Namespace the group key so a PAD patient_id can never collide with
             # an ISIC patient_id and leak across folds in StratifiedGroupKFold.
@@ -281,7 +338,13 @@ def process_pad_ufes_20(
             "label": label,
             "class_name": class_name,
             "source": "pad_ufes_20",
-        })
+        }
+        if metadata_cols:
+            # PAD has no tbp_lv_* — NaN so the column aligns with ISIC; the mask
+            # (NaN -> 0) stops the privileged tabular branch from training on it.
+            for col in metadata_cols:
+                record[col] = np.nan
+        records.append(record)
 
     if excluded:
         processed_dir.mkdir(parents=True, exist_ok=True)
@@ -299,6 +362,382 @@ def process_pad_ufes_20(
         f"benign: {(df['label']==0).sum()} | malignant: {(df['label']==1).sum()} | "
         f"skipped (already-on-disk): {skipped} | "
         f"excluded (corrupt/small/dup/uninformative): {len(excluded)}"
+    )
+    return df
+
+
+# ------------------------------------------------------------------
+# External EVALUATION-ONLY datasets (HAM10000, Fitzpatrick17k)
+#
+# These two are never trained on — they are held-out test sets for the
+# cross-domain (HAM10000) and fairness (Fitzpatrick17k) reports. That flips the
+# cleaning policy relative to ISIC/PAD above: every image dropped here silently
+# CHANGES THE BENCHMARK, so filtering runs in two tiers:
+#
+#   Tier 1 — integrity (row is DROPPED, logged to excluded_images.csv):
+#       unreadable / corrupt / decode bomb / native side < min_size / missing file.
+#       These are not valid model inputs at all.
+#   Tier 2 — quality (row is KEPT, flagged in quality_flags.csv):
+#       `uninformative`, `duplicate`. Reported so metrics can be recomputed on
+#       the filtered subset, proving the verdict does not depend on the filter.
+#
+# NB: is_uninformative's thresholds were calibrated on ISIC dermoscopy tiles; a
+# flat clinical photo of uniform skin can trip them. That is exactly why tier 2
+# only flags — dropping would bias the fairness numbers toward whichever skin
+# tone happens to photograph flatter. See docs/PREPROCESSING.md §1.1.
+# ------------------------------------------------------------------
+
+# HAM10000 7-class dx -> binary. Mirrors configs/data/ham10000.yaml label_mapping.
+# akiec (actinic keratosis / intraepithelial carcinoma) is a borderline call —
+# the `dx` column is kept in the returned frame so an akiec-excluded sensitivity
+# variant can be derived without reprocessing the images.
+HAM10000_LABEL_MAP = {
+    "mel": 1, "bcc": 1, "akiec": 1,
+    "nv": 0, "bkl": 0, "df": 0, "vasc": 0,
+}
+
+# Fitzpatrick17k three_partition_label -> binary. `non-neoplastic` (inflammatory
+# / infectious conditions) is outside the benign-vs-malignant task the models
+# were trained for; it maps to 0 here but is tagged in the returned frame so both
+# label conventions can be reported.
+FITZPATRICK_LABEL_MAP = {"malignant": 1, "benign": 0, "non-neoplastic": 0}
+
+
+def _clean_external_image(
+    src: Path,
+    dst: Path,
+    image_size: int = 224,
+    min_size: int = 32,
+) -> tuple[Image.Image | None, str | None]:
+    """Load → resize → save one external-test image (tier-1 integrity only).
+
+    Returns ``(img, None)`` on success and ``(None, reason)`` when the image
+    fails integrity and the caller must drop the row. Tier-2 quality flags are
+    NOT decided here — the caller runs ``is_uninformative`` / the md5 check and
+    keeps the row either way.
+
+    The resize squashes to a square exactly like ``process_isic2024`` /
+    ``process_pad_ufes_20`` do, so external images reach the model with the SAME
+    geometry the training images had. An aspect-preserving crop here would stack
+    a preprocessing confound on top of the domain shift being measured.
+    """
+    try:
+        if dst.exists():
+            # Fast-path: a previous run already resized this image. Reload it so
+            # the caller's quality flags are still computed. min_size is not
+            # re-checkable on this path (the file on disk is already image_size).
+            return Image.open(dst).convert("RGB"), None
+        if not src.exists():
+            return None, "missing_file"
+        img = Image.open(src).convert("RGB")
+        if min(img.size) < min_size:
+            return None, f"too_small: {img.size}"
+        img = img.resize((image_size, image_size), Image.LANCZOS)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        img.save(dst)
+        return img, None
+    except (OSError, ValueError, Image.DecompressionBombError) as e:
+        return None, f"corrupt: {e}"
+
+
+def _write_external_logs(processed_dir: Path, excluded: list[dict], flagged: list[dict]) -> None:
+    """Persist the two-tier logs side by side (tier 1 dropped / tier 2 kept).
+
+    Both files are written even when empty (header only). The ISIC/PAD writers
+    above guard on ``if excluded:``, which leaves a PREVIOUS run's log in place
+    when a later run finds nothing — and a stale log here would be quoted as this
+    run's exclusion count in the thesis.
+    """
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(excluded, columns=["image_id", "reason"]).to_csv(
+        processed_dir / "excluded_images.csv", index=False
+    )
+    pd.DataFrame(flagged, columns=["image_id", "flags"]).to_csv(
+        processed_dir / "quality_flags.csv", index=False
+    )
+
+
+def _index_images(dirs: list[Path], exts: tuple[str, ...] = (".jpg", ".jpeg", ".png")) -> dict[str, Path]:
+    """Map ``file stem -> path`` across candidate image dirs (first hit wins).
+
+    HAM10000 ships as two zips (``HAM10000_images_part_1/2``) that people extract
+    in inconsistent layouts, so the images are located by stem instead of by an
+    assumed directory.
+    """
+    index: dict[str, Path] = {}
+    for d in dirs:
+        if not d.is_dir():
+            continue
+        for p in sorted(d.rglob("*")):
+            if p.suffix.lower() in exts and p.stem not in index:
+                index[p.stem] = p
+    return index
+
+
+def process_ham10000(
+    raw_dir: str | Path,
+    processed_dir: str | Path,
+    image_size: int = 224,
+    min_size: int = 32,
+    label_mapping: dict[str, int] | None = None,
+) -> pd.DataFrame:
+    """
+    Process HAM10000 for CROSS-DOMAIN evaluation (never training).
+
+    Raw structure expected (either layout works):
+        raw_dir/
+          HAM10000_metadata.csv     <- lesion_id, image_id, dx, dx_type, age, sex, localization
+          images/                   <- or HAM10000_images_part_1/ + _part_2/
+
+    Returns one row per surviving IMAGE with columns:
+        image_id, patient_id, image_path, label, class_name, source, dx,
+        lesion_id, quality_flags, is_lesion_representative
+
+    ``is_lesion_representative`` marks the first image (by sorted image_id — a
+    deterministic, reproducible pick) of each ``lesion_id``. HAM10000 holds
+    several shots of the same lesion, which the md5 dedup below CANNOT catch
+    (different shots = different pixels); treating them as independent samples
+    would shrink confidence intervals artificially. ``dx`` is kept so the
+    akiec-as-malignant convention can be re-tested without reprocessing.
+    """
+    raw_dir = Path(raw_dir)
+    processed_dir = Path(processed_dir)
+    label_mapping = dict(label_mapping) if label_mapping else dict(HAM10000_LABEL_MAP)
+
+    metadata_csv = raw_dir / "HAM10000_metadata.csv"
+    if not metadata_csv.exists():
+        metadata_csv = raw_dir / "metadata.csv"
+    if not metadata_csv.exists():
+        raise FileNotFoundError(
+            f"HAM10000 metadata not found: {raw_dir}/HAM10000_metadata.csv (or metadata.csv)"
+        )
+
+    metadata = pd.read_csv(metadata_csv)
+    for col in ("image_id", "lesion_id", "dx"):
+        if col not in metadata.columns:
+            raise KeyError(f"HAM10000 metadata is missing required column '{col}' ({metadata_csv})")
+
+    image_index = _index_images([
+        raw_dir / "images",
+        raw_dir / "HAM10000_images_part_1",
+        raw_dir / "HAM10000_images_part_2",
+        raw_dir,
+    ])
+    if not image_index:
+        raise FileNotFoundError(f"No HAM10000 image files found under {raw_dir}")
+
+    class_names = {0: "benign", 1: "malignant"}
+    records: list[dict] = []
+    excluded: list[dict] = []
+    flagged: list[dict] = []
+    seen_hashes: dict[str, str] = {}  # md5 -> first image_id carrying it
+    unmapped = 0
+
+    for _, row in tqdm(metadata.iterrows(), total=len(metadata), desc="Processing HAM10000"):
+        image_id = str(row["image_id"])
+        dx = str(row["dx"]).lower()
+        label = label_mapping.get(dx)
+        if label is None:
+            unmapped += 1
+            continue
+
+        class_name = class_names[label]
+        dst = processed_dir / class_name / f"{image_id}.jpg"
+        img, drop_reason = _clean_external_image(
+            src=image_index.get(image_id, raw_dir / f"{image_id}.jpg"),
+            dst=dst,
+            image_size=image_size,
+            min_size=min_size,
+        )
+        if img is None:
+            excluded.append({"image_id": image_id, "reason": drop_reason})
+            continue
+
+        # --- Tier 2: flag, never drop ---
+        flags: list[str] = []
+        if is_uninformative(img):
+            flags.append("uninformative")
+        img_hash = hashlib.md5(img.tobytes()).hexdigest()
+        if img_hash in seen_hashes:
+            flags.append(f"duplicate_of:{seen_hashes[img_hash]}")
+        else:
+            seen_hashes[img_hash] = image_id
+        if flags:
+            flagged.append({"image_id": image_id, "flags": ";".join(flags)})
+
+        records.append({
+            "image_id": image_id,
+            # Namespaced so a HAM lesion id can never collide with an ISIC/PAD
+            # patient id if these frames are ever concatenated.
+            "patient_id": f"ham_{row['lesion_id']}",
+            "image_path": str(dst),
+            "label": label,
+            "class_name": class_name,
+            "source": "ham10000",
+            "dx": dx,
+            "lesion_id": str(row["lesion_id"]),
+            "quality_flags": ";".join(flags),
+        })
+
+    _write_external_logs(processed_dir, excluded, flagged)
+
+    df = pd.DataFrame(records)
+    if df.empty:
+        raise RuntimeError(
+            f"process_ham10000: 0 of {len(metadata)} rows produced an image. Check that "
+            f"image_id values (e.g. {str(metadata['image_id'].iloc[0])!r}) match files under {raw_dir}."
+        )
+
+    # One representative image per lesion — deterministic (first sorted image_id).
+    df = df.sort_values(["lesion_id", "image_id"], kind="mergesort").reset_index(drop=True)
+    df["is_lesion_representative"] = ~df.duplicated(subset="lesion_id", keep="first")
+
+    print(
+        f"HAM10000 — images: {len(df)} | lesions: {df['lesion_id'].nunique()} | "
+        f"benign: {(df['label']==0).sum()} | malignant: {(df['label']==1).sum()} | "
+        f"prevalence: {df['label'].mean():.4f} | "
+        f"dropped (tier 1 integrity): {len(excluded)} | "
+        f"flagged (tier 2 quality, KEPT): {len(flagged)} | "
+        f"dx not in label_mapping: {unmapped}"
+    )
+    return df
+
+
+def process_fitzpatrick17k(
+    raw_dir: str | Path,
+    processed_dir: str | Path,
+    image_size: int = 224,
+    min_size: int = 32,
+    tone_col: str = "fitzpatrick_scale",
+    label_mapping: dict[str, int] | None = None,
+) -> pd.DataFrame:
+    """
+    Process Fitzpatrick17k for FAIRNESS evaluation (never training).
+
+    Raw structure expected (produced by scripts/download_fitzpatrick17k.py):
+        raw_dir/
+          metadata_downloaded.csv   <- rows whose image downloaded + md5-verified
+          images/<md5hash>.jpg
+
+    Row-level filters applied BEFORE any image work:
+      * ``tone_col`` missing / -1  → dropped (unknown skin tone is useless for a
+        fairness breakdown, and -1 is Fitzpatrick17k's explicit "unknown" code).
+
+    ``three_partition_label`` is CARRIED THROUGH rather than filtered, so the
+    caller can emit both label conventions (drop `non-neoplastic` vs merge it
+    into benign) from a single pass.
+
+    Returns columns: image_id, patient_id, image_path, label, class_name, source,
+    fitzpatrick_scale, three_partition_label, quality_flags.
+    """
+    raw_dir = Path(raw_dir)
+    processed_dir = Path(processed_dir)
+    label_mapping = dict(label_mapping) if label_mapping else dict(FITZPATRICK_LABEL_MAP)
+
+    metadata_csv = raw_dir / "metadata_downloaded.csv"
+    if not metadata_csv.exists():
+        raise FileNotFoundError(
+            f"Fitzpatrick17k download manifest not found: {metadata_csv}. "
+            f"Run: python scripts/download_fitzpatrick17k.py --raw-dir {raw_dir}"
+        )
+
+    # reset_index so the iterrows() index below is guaranteed positional and
+    # stays aligned with the tone series taken via .iloc.
+    metadata = pd.read_csv(metadata_csv).reset_index(drop=True)
+    for col in ("md5hash", "three_partition_label"):
+        if col not in metadata.columns:
+            raise KeyError(f"Fitzpatrick17k metadata is missing required column '{col}' ({metadata_csv})")
+    if tone_col not in metadata.columns:
+        raise KeyError(
+            f"Fitzpatrick17k metadata has no skin-tone column '{tone_col}'. "
+            f"Available: {sorted(metadata.columns)}. Some releases annotate tone as "
+            f"'fitzpatrick_centaur' instead — pick one explicitly and record it in docs."
+        )
+    if "fitzpatrick_centaur" in metadata.columns and tone_col != "fitzpatrick_centaur":
+        print(
+            f"NOTE: this release also carries 'fitzpatrick_centaur'; grouping uses "
+            f"'{tone_col}'. State the choice in the fairness report."
+        )
+
+    images_dir = raw_dir / "images"
+    class_names = {0: "benign", 1: "malignant"}
+    records: list[dict] = []
+    excluded: list[dict] = []
+    flagged: list[dict] = []
+    seen_hashes: dict[str, str] = {}
+    dropped_tone = 0
+    unmapped = 0
+
+    tone_series = pd.to_numeric(metadata[tone_col], errors="coerce")
+
+    for idx, row in tqdm(metadata.iterrows(), total=len(metadata), desc="Processing Fitzpatrick17k"):
+        tone = tone_series.iloc[idx]
+        if pd.isna(tone) or int(tone) < 1:
+            dropped_tone += 1
+            continue
+
+        partition = str(row["three_partition_label"]).strip().lower()
+        label = label_mapping.get(partition)
+        if label is None:
+            unmapped += 1
+            continue
+
+        md5hash = str(row["md5hash"])
+        image_id = f"fitz_{md5hash}"
+        class_name = class_names[label]
+        dst = processed_dir / class_name / f"{image_id}.jpg"
+        img, drop_reason = _clean_external_image(
+            src=images_dir / f"{md5hash}.jpg",
+            dst=dst,
+            image_size=image_size,
+            min_size=min_size,
+        )
+        if img is None:
+            excluded.append({"image_id": image_id, "reason": drop_reason})
+            continue
+
+        flags: list[str] = []
+        if is_uninformative(img):
+            flags.append("uninformative")
+        img_hash = hashlib.md5(img.tobytes()).hexdigest()
+        if img_hash in seen_hashes:
+            flags.append(f"duplicate_of:{seen_hashes[img_hash]}")
+        else:
+            seen_hashes[img_hash] = image_id
+        if flags:
+            flagged.append({"image_id": image_id, "flags": ";".join(flags)})
+
+        records.append({
+            "image_id": image_id,
+            # No patient/lesion grouping exists in this atlas-sourced set — every
+            # row is an independent image, so the group key is the image itself.
+            "patient_id": image_id,
+            "image_path": str(dst),
+            "label": label,
+            "class_name": class_name,
+            "source": "fitzpatrick17k",
+            "fitzpatrick_scale": int(tone),
+            "three_partition_label": partition,
+            "quality_flags": ";".join(flags),
+        })
+
+    _write_external_logs(processed_dir, excluded, flagged)
+
+    df = pd.DataFrame(records)
+    if df.empty:
+        raise RuntimeError(
+            f"process_fitzpatrick17k: 0 of {len(metadata)} rows produced an image. "
+            f"Check that {images_dir} holds <md5hash>.jpg files."
+        )
+
+    print(
+        f"Fitzpatrick17k — images: {len(df)} | "
+        f"benign: {(df['label']==0).sum()} | malignant: {(df['label']==1).sum()} | "
+        f"prevalence: {df['label'].mean():.4f} | "
+        f"dropped (unknown skin tone): {dropped_tone} | "
+        f"dropped (tier 1 integrity): {len(excluded)} | "
+        f"flagged (tier 2 quality, KEPT): {len(flagged)} | "
+        f"label not in mapping: {unmapped}"
     )
     return df
 

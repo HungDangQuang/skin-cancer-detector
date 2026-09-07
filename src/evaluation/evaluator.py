@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
+from src.utils.batch import unpack_batch
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -23,26 +24,44 @@ class Evaluator:
         self.threshold = threshold  # if None, computed via Youden's J on the eval set
 
     @torch.no_grad()
-    def evaluate(self, loader, sources: list[str] | None = None) -> dict:
+    def evaluate(
+        self,
+        loader,
+        sources: list[str] | None = None,
+        metadata: dict[str, list] | None = None,
+    ) -> dict:
         """
         Run inference on loader and return metrics dict.
         Model outputs raw logits (B,); sigmoid applied here.
 
         Args:
-            loader: eval DataLoader. Must be shuffle=False if ``sources`` is
-                given, so the per-sample source labels stay row-aligned.
+            loader: eval DataLoader. Must be shuffle=False if ``sources`` or
+                ``metadata`` is given, so the per-sample tags stay row-aligned.
             sources: optional per-sample origin tag (e.g. "isic2024"/"pad_ufes_20"),
                 aligned to the loader's iteration order. Persisted with the raw
                 predictions so callers can compute per-domain breakdowns offline.
+            metadata: optional ``{column: per-sample values}`` (e.g.
+                ``anatom_site_general`` / ``sex``), each list row-aligned to the
+                loader order. Persisted as extra columns in predictions.csv for
+                offline SUBGROUP calibration (direction D). Ranking metrics are
+                unaffected — this is display/analysis metadata only.
         """
         from src.evaluation.metrics import compute_metrics
 
         self.model.eval()
         all_labels, all_probs = [], []
+        # A privileged (LUPI) teacher's own eval batch carries (meta, mask); an
+        # image-only model gets just (images). The student is always image-only.
+        accepts_meta = getattr(self.model, "accepts_metadata", False)
 
-        for images, labels in tqdm(loader, desc="Evaluating"):
+        for batch in tqdm(loader, desc="Evaluating"):
+            images, meta, mask, labels = unpack_batch(batch)
             images = images.to(self.device)
-            logits = self.model(images)
+            if accepts_meta and meta is not None:
+                meta, mask = meta.to(self.device), mask.to(self.device)
+                logits = self.model(images, meta, mask)
+            else:
+                logits = self.model(images)
             probs = torch.sigmoid(logits).cpu().numpy()
 
             all_labels.extend(labels.numpy())
@@ -65,6 +84,15 @@ class Evaluator:
                     "ensure the eval loader uses shuffle=False and sources is row-aligned."
                 )
             metrics["_source"] = list(sources)
+        if metadata:
+            for col, vals in metadata.items():
+                if len(vals) != len(all_labels):
+                    raise ValueError(
+                        f"metadata['{col}'] length ({len(vals)}) != n_samples "
+                        f"({len(all_labels)}); ensure the eval loader uses "
+                        "shuffle=False and metadata is row-aligned."
+                    )
+            metrics["_metadata"] = {col: list(vals) for col, vals in metadata.items()}
 
         logger.info(
             f"pAUC@TPR80={metrics['pauc_at_tpr80']:.4f} | "
@@ -92,12 +120,14 @@ class Evaluator:
 
     def save_predictions(self, metrics: dict, path: str | Path) -> None:
         """
-        Persist row-aligned raw predictions to CSV (y_true, y_prob, y_pred[, source]).
+        Persist row-aligned raw predictions to CSV
+        (y_true, y_prob, y_pred[, source][, <metadata columns>]).
 
         This is the enabler for honest imbalance metrics: AUPRC / PR-curve,
-        fixed-specificity operating points, per-domain breakdowns and bootstrap
-        CIs can all be recomputed offline from this file without re-running
-        inference. No-op if ``evaluate`` was not run first (no raw arrays).
+        fixed-specificity operating points, per-domain breakdowns, offline
+        subgroup calibration and bootstrap CIs can all be recomputed from this
+        file without re-running inference. No-op if ``evaluate`` was not run
+        first (no raw arrays).
         """
         if "_y_true" not in metrics or "_y_prob" not in metrics:
             logger.warning("save_predictions: no raw arrays in metrics; skipping.")
@@ -110,11 +140,16 @@ class Evaluator:
         y_prob = metrics["_y_prob"]
         y_pred = metrics["_y_pred"]
         source = metrics.get("_source")
+        # Extra per-sample metadata columns (e.g. anatom_site_general / sex) for
+        # offline subgroup calibration. Order-stable so the header matches rows.
+        meta = metrics.get("_metadata") or {}
+        meta_cols = list(meta.keys())
         with open(path, "w", newline="") as f:
             writer = csv.writer(f)
-            header = ["y_true", "y_prob", "y_pred"] + (["source"] if source else [])
+            header = ["y_true", "y_prob", "y_pred"] + (["source"] if source else []) + meta_cols
             writer.writerow(header)
             for i in range(len(y_true)):
                 row = [y_true[i], y_prob[i], y_pred[i]] + ([source[i]] if source else [])
+                row += [meta[c][i] for c in meta_cols]
                 writer.writerow(row)
         logger.info(f"Predictions saved to {path} ({len(y_true)} rows)")

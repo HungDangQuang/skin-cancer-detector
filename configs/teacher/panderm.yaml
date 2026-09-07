@@ -1,0 +1,43 @@
+name: panderm
+role: teacher
+paradigm: domain_foundation
+# PanDerm (Nature Medicine 2025, github.com/SiyuanYan1/PanDerm) — dermatology
+# foundation model (ViT-B/16, pretrained on ~2.1M skin images). NOT a timm model
+# name: it ships as a BEiT-style checkpoint `panderm_bb_data6_checkpoint-499.pth`
+# (Google Drive, CC-BY-NC-4.0 — non-commercial/academic, must attribute). We build
+# a structurally-compatible timm ViT-B/16 and load the PanDerm weights on top via
+# PanDermModel (src/models/panderm.py).
+#
+# ⚠️ VERIFY ON SERVER before a full run (docs/SOTA_MODEL_DECISION_2026-07.md §5):
+#   1. Download the checkpoint from Google Drive to `weights_path` below.
+#   2. Confirm the matching timm arch. `vit_base_patch16_224` assumes a plain-ViT
+#      state_dict; if PanDerm is BEiT-style (relative-pos-bias / layer-scale) switch
+#      to `beit_base_patch16_224`. The loader logs the match ratio and RAISES if it
+#      is below `min_weight_match` — use that signal to pick the right arch.
+#   3. Confirm feature dim 768 and the input size/normalize from their notebook
+#      `feature_extraction_and_umap.ipynb`.
+backbone: vit_base_patch16_224
+# PanDerm weights REPLACE timm ImageNet init -> keep timm-pretrained OFF.
+pretrained: false
+# Abs path to the downloaded PanDerm checkpoint ON THE SERVER, or null to skip the
+# foundation load. null is correct ONLY for the KD/eval build (best_model.pth is
+# loaded over the model afterwards). For the teacher-TRAINING run this MUST be set —
+# pass it as a Hydra override via the run/*.sh EXTRA var (a bare dotted positional
+# would break the KEY=VALUE arg parser):
+#   bash run/train_teacher.sh TEACHER=panderm \
+#        EXTRA="teacher.weights_path=/abs/path/panderm_bb_data6_checkpoint-499.pth"
+weights_path: null
+# Loud guard: raise if < this fraction of backbone tensors match the checkpoint
+# (catches a wrong `backbone` arch instead of silently training a near-random net).
+min_weight_match: 0.5
+num_classes: 1    # binary sigmoid output
+
+head:
+  dropout: 0.3
+
+# Stochastic depth (anti-overfit regularizer; strong on ViT). Default 0.0 = off.
+# Enable per-run, e.g. `teacher.drop_path_rate=0.2`. Verify the backbone accepts
+# the kwarg on the server before a full run.
+drop_path_rate: 0.0
+
+freeze_backbone: false
