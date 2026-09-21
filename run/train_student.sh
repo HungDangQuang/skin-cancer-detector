@@ -11,7 +11,7 @@
 #   TEACHER    teacher to distill from (default efficientnetv2_m)
 #   TRAINING   distillation | distillation_rkd | baseline    (default distillation; baseline = no KD)
 #   FOLDS      space-separated fold list  (default "0 1 2 3 4")
-#   AUG        light | heavy              (default light)
+#   AUG        light | heavy | domain              (default light)
 #   DROP_PATH  stochastic depth rate      (default 0.0)
 #   GPU        physical GPU id / "auto" / "cpu"  (default auto)
 #   EXTRA      extra Hydra overrides, verbatim (e.g. EXTRA="cudnn_deterministic=false")

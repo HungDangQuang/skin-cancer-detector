@@ -10,7 +10,7 @@ the same one you edit locally.
 | GPU | `CUDA_VISIBLE_DEVICES` via `GPU=` (`auto` picks the freest GPU) |
 | 5-fold sweep | fold loop inside the `run/*.sh` script (`FOLDS="0 1 2"` to split) |
 | Launch | `bash run/<script>.sh KEY=VALUE` |
-| Logs | `logs/<name>_<timestamp>.log` (every script tees, survives SSH drops) |
+| Logs | `logs/<name>_<timestamp>.log` (every server-side script tees, survives SSH drops) |
 
 All scripts source `run/common.sh`, which provides `set -euo pipefail`, repo-root
 resolution, `activate_venv`, `select_gpu` and `start_log`. Three exceptions, all
@@ -19,6 +19,14 @@ run *before* a venv exists, `train_kd_parallel.sh` drops `-e` so one failed
 student can't abort the batch, and the read-only monitors `progress.sh` /
 `progress_all.sh` are standalone so they can be piped into a server over
 `ssh 'bash -s'` (see §7).
+
+The **Mac-side** helpers are a second, narrower exception: `pull_results.sh` (§8)
+is standalone for the same `ssh 'bash -s'` reason, and `export_thesis_docx.sh`
+(§9) sources `common.sh` but does **not** call `start_log`. Neither runs over SSH
+and both finish in seconds, so a `logs/` transcript per invocation would be
+noise — the same rationale `validate-pipeline` §3a gives when exempting the
+other Mac-side helpers. Every script that can lose work to a dropped connection
+still tees.
 
 > This is a **single-tenant** box: one training process at a time per GPU unless
 > you pin different `GPU=` ids. Keep everything inside the project folder — no
@@ -48,6 +56,9 @@ student can't abort the batch, and the read-only monitors `progress.sh` /
 | `evaluate.sh` | Evaluate one checkpoint on the held-out test set |
 | `evaluate_external.sh` | Cross-domain / fairness eval on HAM10000 / Fitzpatrick17k (frozen threshold) |
 | `plot_pareto.sh` | Pareto figure: in-domain AUPRC (bootstrap CI) vs measured Pixel 6a latency — CPU-only, joins existing artifacts |
+| `plot_ham_summary.sh` | HAM10000 cross-domain summary figure (3 panels: KD forest plot · score-vs-gain · operating-point collapse) — CPU-only, joins two bootstrap reports |
+| `plot_fitzpatrick_summary.sh` | Fitzpatrick17k fairness summary figure (3 panels: tone-group gaps · prevalence trap · teacher-vs-student) — CPU-only, reads prevalence from a predictions.csv |
+| `plot_calibration_summary.sh` | Probability-calibration summary figure (3 panels: one-constant-per-domain · subgroup break · teacher→student inheritance) — CPU-only, derives every prevalence from the artifacts |
 | `bootstrap_ci.sh` | Bootstrap CIs from `predictions.csv`: per-run, paired KD delta, paired ablation delta (`__suffix` forks), named A-vs-B pairs (`PAIR=`), paired fairness gap, per-subgroup variants (`SUBGROUP=`) |
 | `attach_metadata.sh` | Add ISIC metadata columns to existing splits + `predictions.csv` (no GPU, no re-train) — unblocks subgroup calibration |
 | `make_benchmark_set.sh` | Build the fixed 100-image benchmark input set |
@@ -57,6 +68,7 @@ student can't abort the batch, and the read-only monitors `progress.sh` /
 | `export_executorch.sh` | Export to `.pte` for Android on-device |
 | `check_pte_parity.sh` | PyTorch ↔ `.pte` numerical parity gate (`max|Δlogit| < 1e-3`) |
 | `export_all_students.sh` | All four mobile students → `.pte` + parity, one launch (ref/export/parity share one CKPT) |
+| `export_thesis_docx.sh` | **Mac-side**: `thesis/LUAN_VAN.md` → `thesis/LUAN_VAN.docx` via pandoc, with a fidelity gate on figures/tables/headings |
 
 ## 0. One-time setup
 
@@ -142,8 +154,47 @@ bash run/aggregate.sh RUN_DIR=experiments/runs/kd_efficientnetv2_m_to_mobilenetv
 ```
 
 Common knobs (all `KEY=VALUE`): `FOLDS="0 1 2"`, `GPU=1` (pin a specific GPU),
-`GPU=auto` (default — picks the freest GPU), `GPU=cpu`, `AUG=heavy`,
+`GPU=auto` (default — picks the freest GPU), `GPU=cpu`, `AUG=light|heavy|domain`,
 `DROP_PATH=0.1`, `EXTRA="cudnn_deterministic=false training.batch_size=16"`.
+
+**`AUG` has three presets, and the third is not "heavier".** `light` (default) is
+the pipeline the whole 140 fold-run matrix was trained with; `heavy` is the
+anti-overfit lever (higher `p`, wider colour, `+GaussNoise`). Both leave
+`ShiftScaleRotate.scale_limit` at **0.2**, so neither has ever moved the *field of
+view*. `domain` (`configs/augmentation/domain.yaml`, added 2026-09-21) targets the
+two causes diagnosed for the cross-domain collapse — framing (`scale_limit` 0.5,
+`shift_limit` 0.3) and lighting/white balance (`ColorJitter`/`CLAHE`/`RandomGamma`).
+The `val` block is identical in all three: the evaluation path must not move, or
+the arm stops being comparable. Design + expected ceiling: `docs/domain_aug_plan.md`.
+
+The `domain` arm writes to its own tree so it cannot touch the main results —
+`output_dir=` (NOT `run_suffix=`, which `train_teacher.py` ignores):
+
+```bash
+export TMPDIR="$(pwd)/.tmp"
+bash run/train_teacher.sh TEACHER=efficientnetv2_m AUG=domain GPU=0 \
+     EXTRA="output_dir=experiments/runs_aug_domain"
+bash run/train_student.sh STUDENT=mobilenetv4_conv_medium TRAINING=baseline AUG=domain GPU=1 \
+     EXTRA="output_dir=experiments/runs_aug_domain"
+# KD student only AFTER the teacher has all 5 folds (it loads the teacher from
+# the SAME output_dir, so no new teacher config / registry entry is needed):
+bash run/train_student.sh STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m \
+     TRAINING=distillation AUG=domain GPU=0 \
+     EXTRA="output_dir=experiments/runs_aug_domain"
+```
+
+**Watching a run-tree that isn't `experiments/runs`.** `progress.sh`'s *live job*
+panel reads `output_dir=` straight off the command line, so it finds the arm with
+no flag. Its **run-dir table** ("folds with test_metrics.json") scans
+`OUTPUT_DIR_DEFAULT`, which defaults to `experiments/runs` — point it at the arm:
+
+```bash
+OUTPUT_DIR_DEFAULT=experiments/runs_aug_domain bash run/progress.sh
+```
+
+`pull_results.sh` already carries `experiments/runs_aug_domain` in its default
+`ROOTS` (a root that does not exist is skipped), so `/pull-results` sees the arm
+as soon as its first fold lands.
 
 ### 3b. Throughput knobs — use these on every long run
 
@@ -317,6 +368,87 @@ bash run/plot_pareto.sh LATENCY_COL=best_ms OUT=reports/pareto_best.png
 > `reports/ondevice_latency.csv` is **transcribed by hand** from
 > `reports/BENCHMARK_RESULTS.md` (the 32 per-model JSONs are not in this repo). Its
 > header carries the provenance — regenerate it from the JSONs if they land here.
+
+### 5c-ter. HAM10000 cross-domain summary figure (`plot_ham_summary.sh`)
+
+One figure for the whole cross-domain experiment — joins the external and the
+in-domain bootstrap reports, no inference, no training:
+
+```bash
+bash run/plot_ham_summary.sh
+# → reports/ham_summary.{png,svg}
+bash run/plot_ham_summary.sh METRIC=pauc_at_tpr80 OUT=reports/ham_pauc.png
+```
+
+Three panels, because the evaluation answers three questions that one table
+cannot separate:
+
+| Panel | Shows | Answers |
+|---|---|---|
+| (a) forest plot | paired Δ per KD pair, CI bars, vertical line at 0 | did KD survive the domain change |
+| (b) scatter | achieved AUPRC (x) vs that Δ (y) | biggest **gain** ≠ best **score** |
+| (c) dumbbell | Sens@90%Spec in-domain vs on HAM, per run-dir | the operating point does not transfer |
+
+> **Panel (c) fixes specificity at 90 % on BOTH ends**, so the threshold has
+> already been re-picked per domain and sensitivity still collapses — that is the
+> evidence for *ranking capability was lost*, not *the threshold drifted*. It uses
+> `sens_at_90spec` on both sides on purpose: it is the operating point both
+> bootstrap reports carry, so the two halves come from the same estimator.
+
+> **Both inputs must come from the same evaluation round.** If the external eval is
+> re-run, re-run `bootstrap_ci.sh` for **both** `reports/external/ham10000/<variant>/`
+> and `experiments/runs/` before redrawing, or the two ends of panel (c) disagree.
+> The script refuses to draw if a run-dir is present in one report but not the other.
+
+
+### 5c-quater. Fitzpatrick17k fairness figure (`plot_fitzpatrick_summary.sh`)
+
+```bash
+bash run/plot_fitzpatrick_summary.sh
+# → reports/fitzpatrick_summary.{png,svg}
+bash run/plot_fitzpatrick_summary.sh GAP_METRIC=auprc OUT=reports/fitz_auprc.png
+```
+
+| Panel | Shows | Answers |
+|---|---|---|
+| (a) gap strips | each pairwise tone-group gap, one dot per run, vertical line at 0 | the disadvantaged group is the **middle** one, not the darkest |
+| (b) AUPRC vs baseline | per-group AUPRC with that group's prevalence drawn under it | raw AUPRC is not comparable across groups |
+| (c) per-run AUC-ROC | all 19 runs with paired CIs, coloured by role | out of domain the teachers pull ahead again |
+
+> **Panel (a) needs the fairness gaps**, i.e. the headline report must have been
+> produced with `bootstrap_ci.sh … SUBGROUP=tone_group`; the script exits with a
+> pointer if `fairness_gaps` is absent.
+
+> **Prevalence for panel (b) is READ from a `predictions.csv`**, never passed in.
+> AUPRC's random baseline IS the subgroup prevalence, and in `with_non_neoplastic`
+> it differs by tone group (dark ~9.6 % vs light ~15.4 %) — which is exactly the
+> trap the panel exists to show. Hard-coding it would let the figure drift silently
+> if the split were ever rebuilt.
+
+### 5c-quinquies. Probability-calibration figure (`plot_calibration_summary.sh`)
+
+```bash
+bash run/plot_calibration_summary.sh
+# → reports/calibration_summary.{png,svg}
+bash run/plot_calibration_summary.sh OUT=reports/calib.png DPI=300
+```
+
+| Panel | Shows | Answers |
+|---|---|---|
+| (a) one constant per domain | ECE raw → after prior-shift, 19 runs × 3 domains, with each domain's log-odds constant on the axis | the constant's **size** explains all three outcomes at once |
+| (b) subgroup break | the same in-domain runs, all rows vs the PAD clinical photos | a global constant fixes the whole set (19/19) and breaks the subgroup (17/19) |
+| (c) inheritance | teacher ECE vs its four students' ECE, plus the no-teacher control | KD transfers the teacher's calibration profile, near 1:1 |
+
+> **Every prevalence is DERIVED, never passed in.** The prior-shift constant is
+> `logit(pi_target) - logit(pi_train)`, both read out of the calibration JSONs, so
+> the figure cannot drift away from the splits. The script exits non-zero if the
+> three domains disagree on `pi_target`/`pi_train` or cover different run counts —
+> that means two evaluation rounds got mixed.
+
+> **Teacher runs nest one level deeper** (`experiments/runs/teacher/<name>/`,
+> `reports/external/<ds>/<var>/teacher/<name>/`), so every lookup globs
+> recursively. A non-recursive `*/calibration_metrics.json` silently finds 16 of
+> the 19 runs and the figure would quietly describe a smaller experiment.
 
 ### 5d. Subgroup calibration on finished runs (`attach_metadata.sh`)
 
@@ -621,6 +753,54 @@ Notes / limits:
 - The report's "chỉ có ở Mac" list is runs no server has any fold of — usually
   the retired baseline family and the June runs. It is informational; nothing
   touches them.
+
+## 9. Export the thesis to Word (`export_thesis_docx.sh`)
+
+**Mac-side, CPU-only, no venv.** Needs `pandoc` (`brew install pandoc` — a standalone
+binary, nothing to do with `./.venv-linux`).
+
+```bash
+bash run/export_thesis_docx.sh                       # thesis/LUAN_VAN.md → thesis/LUAN_VAN.docx
+bash run/export_thesis_docx.sh REBUILD_REF=1         # regenerate the style template first
+bash run/export_thesis_docx.sh SRC=thesis/PHU_LUC_B_cau_hinh_sieu_tham_so.md OUT=thesis/PHU_LUC_B.docx
+```
+
+Build artifacts land in `thesis/_build/` (gitignored): the preprocessed markdown and
+the generated `reference.docx`.
+
+**Two source constructs pandoc drops SILENTLY — both are preprocessed away, and both
+would have cost content if the script just called pandoc directly:**
+
+1. **An ATX heading with no blank line before it.** Pandoc's markdown requires one
+   (`blank_before_header`); GitHub's CommonMark does not. So the heading renders
+   correctly in every Markdown preview and is swallowed into the previous paragraph
+   in Word. This hit `# Chương 5. KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN` — a whole chapter
+   title turned into body text, exit code 0, no warning.
+2. **`\tag{3.2}` in display math.** Pandoc's `texmath` does not implement `\tag` and
+   discards the number, again with no warning. All 24 display formulas in the thesis
+   carry one, and [§4 of the presentation rules](../docs/QUY_DINH_TRINH_BAY_LUAN_VAN.md)
+   requires formulas to be numbered by chapter — so the script rewrites each `\tag{3.2}`
+   to `\qquad (3.2)` before conversion. (The body does *not* cross-reference formula
+   numbers; it refers to sections. The rule is what makes the numbers load-bearing.)
+
+Because pandoc exits 0 on both, the script ends with a **fidelity gate** comparing the
+`.docx` against the source — figures, tables, headings at levels 1/2/3, and equations
+(total `<m:oMath>` and display `<m:oMathPara>`) — and exits non-zero if any count
+dropped. Treat a `FAIL` line as "do not submit this file". Note the `|| true` on every
+count in that block is load-bearing: under `pipefail` a zero-match `grep` would
+otherwise abort the script at the assignment, before it could name what went missing.
+
+The style template is generated by patching pandoc's own default `reference.docx`
+(no Word needed) toward
+[docs/QUY_DINH_TRINH_BAY_LUAN_VAN.md §3](../docs/QUY_DINH_TRINH_BAY_LUAN_VAN.md):
+Times New Roman 13, line spacing 1.5, A4, margins 3.5 / 2 / 2.5 / 2.5 cm, and headings
+forced to Times New Roman at 15 / 14 / 14 pt in black (pandoc's default gives them the
+theme's sans face in accent blue at 20 / 16 / 14 pt). It does **not** cover all of §3 —
+footnotes are not set to 11 pt, and the running header is not built at all.
+
+Three things pandoc cannot do from markdown and you must finish in Word:
+the real Table of Contents field (the hand-written `MỤC LỤC` carries no page numbers),
+page numbers bottom-centre, and the per-chapter header line at TNR 11.
 
 ## Long runs survive SSH drops
 

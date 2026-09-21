@@ -57,7 +57,7 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | | `dataset.py` | `SkinLesionDataset` (đọc cột `image_path`, `label`) |
 | | `datamodule.py` | `SkinLesionDataModule` — build DataLoader; `set_epoch()` reshuffle sampler |
 | | `sampler.py` | `DynamicUndersampledSampler` — giữ tỉ lệ ~1:5 malignant:benign, reshuffle mỗi epoch |
-| | `transforms.py` | `build_transforms` — Albumentations **từ config** `augmentation/{light,heavy}.yaml`; MixUp/CutMix/CutOut bị cấm (`_FORBIDDEN_OPS`) |
+| | `transforms.py` | `build_transforms` — Albumentations **từ config** `augmentation/{light,heavy,domain}.yaml`; MixUp/CutMix/CutOut bị cấm (`_FORBIDDEN_OPS`) |
 | `src/models/` | `registry.py` | `MODEL_REGISTRY` (string→class) + `build_model` / `build_model_from_name` |
 | | `base_model.py` | `BaseModel` (ABC): `forward(x)->Tensor(B,)`, `forward_features(x)->(feat(B,C), logit(B,))` cho feature-KD, `freeze_backbone()`, `unfreeze()` |
 | | `heads.py` | `build_head()` = `Dropout→Linear(in,1)`; dùng `infer_backbone_out_dim()`, **không** dùng `num_features` |

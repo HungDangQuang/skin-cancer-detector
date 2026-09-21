@@ -397,7 +397,7 @@ val/test get Resize + Normalize + ToTensorV2 (✅ already correct).
 ### 4.1 Augmentation is config-driven (since 2026-06-21)
 
 `build_transforms` ([src/data/transforms.py](../src/data/transforms.py)) builds the
-pipeline **from `configs/augmentation/{light,heavy}.yaml`**, not from a hard-coded
+pipeline **from `configs/augmentation/{light,heavy,domain}.yaml`**, not from a hard-coded
 list (it previously ignored those YAMLs entirely — switching presets did nothing).
 `Resize` is always prepended and `ToTensorV2` always appended; `Normalize`
 defaults to ImageNet stats if omitted.
@@ -407,14 +407,33 @@ defaults to ImageNet stats if omitted.
 - **`heavy`** is a *strictly stronger* anti-overfit variant (higher p, wider
   ColorJitter, + `GaussNoise`) for the rare-class manifold. Enable per-run with
   `augmentation=heavy` (requires retraining).
+- **`domain`** (added 2026-09-21) is *not* "heavy, but more" — it is the only
+  preset that moves the **field of view**. Both `light` and `heavy` pin
+  `ShiftScaleRotate.scale_limit` at **0.2**, so that axis had never been touched;
+  `domain` raises it to **0.5** (with `shift_limit` 0.3, `p` 0.9) and widens
+  lighting/white balance (`ColorJitter` 0.4, `CLAHE` clip 4.0, `+RandomGamma`).
+  It is the train-time counterpart to the inference-time crop70 result in §1.2
+  (positive 19/19, ~6 % of the gap recovered) — so its expected ceiling is low by
+  construction. `RandomResizedCrop` is deliberately absent: `Resize` is always
+  prepended, so a crop would cut into the already-squashed 224 square (§1.2). A
+  dermatoscope vignette is also absent — the only vignetted data is HAM10000, a
+  cross-domain *test* set. Enable per-run with `augmentation=domain`; plan and
+  decision record in [docs/domain_aug_plan.md](domain_aug_plan.md).
+- **The `val` block is byte-for-byte identical across all three presets.** An
+  augmentation arm may only move the *training* input; moving the evaluation path
+  would make it incomparable with the existing 140 fold-run matrix.
 - **MixUp / CutMix / CoarseDropout(CutOut) stay excluded and are now ENFORCED in
   code**: `build_transforms` raises `ValueError` if any appears in the config
   (`_FORBIDDEN_OPS`), so the design decision above can't be silently undone via
   YAML. To revisit, update this doc first, then add a builder + remove from the
   forbidden set.
 - Supported ops: `HorizontalFlip, VerticalFlip, RandomRotate90, ShiftScaleRotate,
-  RandomScale, Rotate, ColorJitter, CLAHE, GaussianBlur, GaussNoise, Normalize`.
-  Any other name raises (typo-safe).
+  RandomScale, Rotate, ColorJitter, CLAHE, GaussianBlur, GaussNoise, RandomGamma,
+  Normalize`. Any other name raises (typo-safe). `_TRANSFORM_BUILDERS` is an
+  **allowlist**, not a passthrough to albumentations: adding an op to a YAML is
+  not enough — it needs a builder entry in `transforms.py` first, or
+  `build_transforms` raises `Unknown augmentation`. (`RandomGamma` was added
+  2026-09-21 for the `domain` preset for exactly this reason.)
 
 ### 4.2 Stochastic depth (`drop_path_rate`) — model-side anti-overfit knob
 

@@ -68,7 +68,7 @@ If `src/<pkg>/__init__.py` re-exports a symbol, the name has to match the actual
 
 ### Augmentation is config-driven; don't edit ops in `transforms.py` alone (added 2026-06-21)
 
-`build_transforms` builds the pipeline **from `configs/augmentation/{light,heavy}.yaml`** via an internal `name → Albumentations` registry — it no longer hard-codes the op list (it used to, and silently ignored those YAMLs). Consequences:
+`build_transforms` builds the pipeline **from `configs/augmentation/{light,heavy,domain}.yaml`** via an internal `name → Albumentations` registry — it no longer hard-codes the op list (it used to, and silently ignored those YAMLs). Consequences:
 
 - To change augmentation, edit the **YAML**, not `transforms.py`. Adding a new op also needs a builder entry in `_TRANSFORM_BUILDERS`; an unknown `name` raises.
 - `augmentation=light` (default) reproduces the original hard-coded pipeline → the 30-run baseline is reproducible. `augmentation=heavy` is the stronger anti-overfit variant.

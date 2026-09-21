@@ -7,7 +7,7 @@
 #              choices: efficientnetv2_m | convnextv2_base | maxvit_base | panderm
 #              (panderm needs the PanDerm checkpoint — pass it via EXTRA, see below)
 #   FOLDS      space-separated fold list (default "0 1 2 3 4")
-#   AUG        light | heavy                (default light)
+#   AUG        light | heavy | domain                (default light)
 #   DROP_PATH  stochastic depth rate        (default 0.0)
 #   GPU        physical GPU id / "auto" / "cpu"  (default auto — freest GPU)
 #   EXTRA      extra Hydra overrides, space-separated & verbatim, e.g.

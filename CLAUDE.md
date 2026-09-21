@@ -33,6 +33,44 @@ Every edit to project source must be **reviewed, verified, and documented before
 4. **Verify.** Run the **`code-change`** skill's **validate-pipeline** checks (`reference/validate-pipeline.md` — static checks, the only verification possible on the Mac). Real correctness (`bash run/validate.sh`, pytest, the `reference/poc-smoke-test.md` smoke test) is a server step; state explicitly that it's deferred to the server rather than claiming it passed.
 5. **Document.** Keep the docs and knowledge current: `CLAUDE.md` "Recurring gotchas" for anything non-obvious, the relevant `docs/*.md`, and auto-memory (`MEMORY.md` + the matching memory file). The end state of every task is up-to-date docs, not a TODO to update them later.
 
+## Cross-check gate (mandatory before handing over an answer that makes claims)
+
+Author's rule, **2026-09-14**: an answer that asserts numbers, cites `file:line`, or proposes a
+patch **does not reach the author until it has been cross-checked once by sub-agents**. Reading
+your own draft a second time does not count — the errors sit exactly where you already believe
+you are right.
+
+Write the draft to the session scratchpad (never into `thesis/` or `reports/`), then spawn **two**
+[`review-verifier`](.claude/agents/review-verifier.md) instances **in parallel, in one message**:
+
+- **`REMIT=FACTS`** — every number, verbatim quote, `file:line` and *negative* claim ("X does not
+  exist") → `ĐÚNG` / `SAI` / `KHÔNG VERIFY ĐƯỢC` / `BỊA`, each with the source it actually opened.
+  It does not trust the draft's own citations; it re-opens them.
+- **`REMIT=PATCH`** — is each patch paste-ready, does it fix the defect it claims to fix, does it
+  smuggle in a *new* unverified claim, does it list every ripple (MỤC LỤC, danh mục bảng/hình,
+  back-references), and is the report **transparent** about what it could not verify.
+
+Rules:
+- **Exactly one pass.** No re-spawn on the corrected draft — therefore lines fixed *after* the
+  cross-check must be flagged in the answer as not-yet-agent-checked.
+- A proven `BỊA`/`SAI` **blocks** the answer until fixed. `KHÔNG VERIFY ĐƯỢC` goes into a visible
+  "chưa verify được" list — never silently dropped, and never upgraded to "correct".
+- If the verifier is wrong, say so **with `file:line`** and tell the author there was a
+  disagreement; do not overrule it silently.
+- The verifier is **read-only and Mac-only**: a number that exists only on the GPU server is
+  `KHÔNG VERIFY ĐƯỢC` for both sides, and the answer must say that.
+- Purely operational answers (where a file is, which command to run, listing a directory) skip the
+  gate — but say that it was skipped.
+
+The spawn prompt must state which KIND of draft it is: **A** = a thesis-section review (measured against
+the six criteria + `criteria.md`), **B** = a code/docs/workflow patch or a results answer (measured
+against the user’s request quoted verbatim + the hard rules in this file; the verifier may use
+read-only git to separate this turn’s changes from work already in the tree). Full contract:
+[.claude/skills/review-thesis/reference/cross-check.md](.claude/skills/review-thesis/reference/cross-check.md).
+Thesis reviews additionally log the verdict in `thesis/REVIEW_LOG.md` (column "Kiểm chéo") and in
+the report's `### Kiểm chéo` block. **Never fabricate** — with or without the gate; the gate is the
+second net, not a licence for a sloppy first pass.
+
 ## Commands
 
 ```bash
@@ -139,7 +177,7 @@ Override at the CLI: `python scripts/train_student.py student=fastvit_sa12 train
 1. `scripts/prepare_data.py` creates fold CSVs via `StratifiedGroupKFold` (grouped by `patient_id` to prevent leakage) under `splits_dir/fold_{0..4}/train_split.csv` and `val_split.csv`, plus an **independent** `test_split.csv` — carved patient-disjoint + stratified *before* the CV (`test_holdout_splits`, default 6 ≈ 17%), so no fold trains on test patients. (Pre-2026-06-06 this was fold 0's val set → folds 1–4 leaked; see "Recurring gotchas".)
 2. `SkinLesionDataModule` reads those CSVs and wraps them in `SkinLesionDataset` (expects columns `image_path`, `label`).
 3. `DynamicUndersampledSampler` maintains a ~1:5 malignant:benign ratio, reshuffled each epoch via `datamodule.set_epoch(epoch)`.
-4. `build_transforms` returns Albumentations pipelines built **from `configs/augmentation/{light,heavy}.yaml`** (not hard-coded); PIL images are converted to numpy internally before being passed to Albumentations. `light` (default) = the original pipeline; `heavy` = a stronger anti-overfit variant. MixUp/CutMix/CutOut are forbidden in-code (`_FORBIDDEN_OPS` → `raise`). Optional `drop_path_rate` (stochastic depth) per model config, default 0.0/off. See `docs/PREPROCESSING.md §4.1–4.2`.
+4. `build_transforms` returns Albumentations pipelines built **from `configs/augmentation/{light,heavy,domain}.yaml`** (not hard-coded); PIL images are converted to numpy internally before being passed to Albumentations. `light` (default) = the original pipeline; `heavy` = a stronger anti-overfit variant; `domain` = the cross-domain arm (the only preset that moves field of view — `scale_limit` 0.5 vs 0.2 in BOTH light and heavy; see `docs/domain_aug_plan.md`). MixUp/CutMix/CutOut are forbidden in-code (`_FORBIDDEN_OPS` → `raise`). Optional `drop_path_rate` (stochastic depth) per model config, default 0.0/off. See `docs/PREPROCESSING.md §4.1–4.2`.
 
 ### Model registry
 
@@ -222,7 +260,7 @@ These have all bitten this repo at least once. Run the `code-change` skill's `va
 - **timm `num_features` is unreliable** as the head input dim — always use `infer_backbone_out_dim(backbone)`.
 - **`cfg.data.label_col` is the raw name (`target`)** — the processed dataframe uses `label`; pass `label_col="label"` to `generate_group_kfold_splits()`.
 - **`patient_id` must be namespaced** (`pad_{id}`) when concatenating datasets, or groups collide and leak across folds.
-- **Augmentation is config-driven** — edit `configs/augmentation/{light,heavy}.yaml`, not `transforms.py`; MixUp/CutMix/CutOut are forbidden in code.
+- **Augmentation is config-driven, but `_TRANSFORM_BUILDERS` is an ALLOWLIST** — edit `configs/augmentation/{light,heavy,domain}.yaml`, not `transforms.py`, to change *strength*; but a brand-new op also needs a builder entry in `transforms.py` or `_build_op` raises `Unknown augmentation`. MixUp/CutMix/CutOut are forbidden in code.
 - **External test sets filter in TWO tiers** — on HAM10000/Fitzpatrick17k, only integrity failures may be dropped; `is_uninformative`/duplicates just flag. Dropping changes the benchmark, and `is_uninformative`'s ISIC-tuned `std<8` can fire on flat clinical photos — which is not independent of skin tone. Don't "fix" this by reusing the ISIC/PAD drop logic (`docs/PREPROCESSING.md §1.1`).
 - **A crop/framing variant needs its OWN `data/processed/` tree** — `_clean_external_image`'s
   `dst.exists()` fast-path reloads whatever file is already there, so pointing two
