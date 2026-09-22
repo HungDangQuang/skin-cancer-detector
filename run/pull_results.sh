@@ -27,7 +27,8 @@
 #               (default /workspace/skin-cancer-detector — the vast.ai layout)
 #   ROOTS       run roots to compare, relative to the repo root
 #               (default "experiments/runs experiments/runs_isic_only
-#                experiments/runs_aug_domain" — a root that does not exist is skipped)
+#                experiments/runs_newsplit_light experiments/runs_newsplit_domain"
+#                — a root that does not exist is skipped)
 #   MODE        check | pull        (default check)
 #   ONLY        space-separated globs filtering the run-dir path (default: all)
 #   STALE       1 = also pull folds whose remote test_metrics.json is newer
@@ -91,7 +92,7 @@ fi
 
 HOSTS="${HOSTS:-${HOSTS_ARG:-${HOSTS_DEFAULT}}}"
 REMOTE_DIR="${REMOTE_DIR:-/workspace/skin-cancer-detector}"
-ROOTS="${ROOTS:-experiments/runs experiments/runs_isic_only experiments/runs_aug_domain}"
+ROOTS="${ROOTS:-experiments/runs experiments/runs_isic_only experiments/runs_newsplit_light experiments/runs_newsplit_domain}"
 SSH_OPTS="${SSH_OPTS:--o BatchMode=yes -o ConnectTimeout=10}"
 STAMP="$(date +%Y%m%d_%H%M%S)"
 BACKUP_ROOT="experiments/_replaced/${STAMP}"

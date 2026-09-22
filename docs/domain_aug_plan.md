@@ -61,16 +61,17 @@ mở rộng 4 student × 2 nhánh · chạy lại `prepare` · train lại ma tr
 
 | # | File | Thay đổi | Xong |
 |---|---|---|:--:|
-| 1.1 | `configs/augmentation/domain.yaml` | **Tạo mới** — bảng op ở §3 | ☐ |
-| 1.2 | `run/train_teacher.sh` | Docstring `AUG light \| heavy` → `light \| heavy \| domain` | ☐ |
-| 1.3 | `run/train_student.sh` | Y như trên | ☐ |
-| 1.4 | `run/README.md` | Ghi nhận biến thể thứ ba + lý do thiết kế | ☐ |
-| 1.5 | `docs/PREPROCESSING.md §4.1–4.2` | Bổ sung `domain` vào mô tả aug config-driven | ☐ |
-| 1.6 | — | Chạy **`validate-pipeline`** (AST + Hydra compose + runner lint) | ☐ |
-| 1.7 | `MEMORY.md` + memory file | Ghi arm mới | ☐ |
+| 1.1 | `configs/augmentation/domain.yaml` | **Tạo mới** — bảng op ở §3 | ✅ |
+| 1.2 | `run/train_teacher.sh` | Docstring `AUG light \| heavy` → `light \| heavy \| domain` | ✅ |
+| 1.3 | `run/train_student.sh` | Y như trên | ✅ |
+| 1.4 | `run/README.md` | Ghi nhận biến thể thứ ba + lý do thiết kế | ✅ |
+| 1.5 | `docs/PREPROCESSING.md §4.1–4.2` | Bổ sung `domain` vào mô tả aug config-driven | ✅ |
+| 1.6 | — | Chạy **`validate-pipeline`** (AST + Hydra compose + runner lint) | ✅ |
+| 1.7 | `MEMORY.md` + memory file | Ghi arm mới | ✅ |
 
-Việc 1 **không** sửa `src/`. Không cần entry mới trong `MODEL_REGISTRY`, không cần config teacher mới
-— xem §4 vì sao.
+**XONG 2026-09-21** (commit `0c308b5`). Đính chính: Việc 1 **CÓ** phải sửa `src/` — xem đính chính ở §3
+(`_TRANSFORM_BUILDERS` là allowlist, `RandomGamma` phải thêm builder). Không cần entry mới trong
+`MODEL_REGISTRY`, không cần config teacher mới — xem §4 vì sao.
 
 ---
 
@@ -124,34 +125,40 @@ Cả arm ghi vào **`experiments/runs_aug_domain/`**, theo tiền lệ `experime
 
 ```bash
 export TMPDIR="$(pwd)/.tmp"          # / trên server đã từng đầy 100%
-
-# (1) Teacher — phải xong đủ 5 fold TRƯỚC khi chạy (3)
-bash run/train_teacher.sh TEACHER=efficientnetv2_m AUG=domain GPU=0 \
-     EXTRA="output_dir=experiments/runs_aug_domain"
-
-# (2) Baseline student (không KD) — độc lập với (1), chạy song song được nếu pin GPU khác
-bash run/train_student.sh STUDENT=mobilenetv4_conv_medium TRAINING=baseline AUG=domain GPU=1 \
-     EXTRA="output_dir=experiments/runs_aug_domain"
-
-# (3) KD student — sau (1)
-bash run/train_student.sh STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m \
-     TRAINING=distillation AUG=domain GPU=0 \
-     EXTRA="output_dir=experiments/runs_aug_domain"
-
-# Sau mỗi run-dir xong đủ 5 fold:
-bash run/aggregate.sh RUN_DIR=experiments/runs_aug_domain/<run>
 ```
 
-Launch dưới `tmux`/`nohup`. **Pin `GPU=<id>`** khi chạy hai job — `GPU=auto` chọn card rảnh nhất nên
-hai lệnh phóng cùng lúc có thể đâm nhau. Kéo về Mac: `bash run/pull_results.sh pull`.
+⚠️ **HAI nhánh ⇒ HAI `output_dir`, bắt buộc.** `train_teacher.py` hardwire
+`<output_dir>/teacher/<name>/fold_N` và **không đọc `AUG`** — để chung một `output_dir` thì
+teacher `domain` **ghi đè** teacher `light`, mất luôn đối chứng.
 
-| ☐ | Bước |
+```
+experiments/runs_newsplit_light/     ← AUG=light   (đối chứng, phải train lại)
+experiments/runs_newsplit_domain/    ← AUG=domain
+```
+
+Driver chạy tuần tự cả 6 bước: `.tmp/arm_driver.sh` (tmux `newsplit_arm`). Thứ tự được xếp để
+**sau hai baseline đã có một so sánh light-vs-domain hợp lệ**, không phải đợi hết 30 fold:
+
+| # | Job | Cây |
+|---|---|---|
+| 1 | teacher `light` | `runs_newsplit_light` |
+| 2 | teacher `domain` | `runs_newsplit_domain` |
+| 3 | baseline student `light` | `runs_newsplit_light` |
+| 4 | baseline student `domain` | `runs_newsplit_domain` |
+| 5 | KD student `light` (sau 1) | `runs_newsplit_light` |
+| 6 | KD student `domain` (sau 2) | `runs_newsplit_domain` |
+
+**Một GPU ⇒ chạy tuần tự.** CLAUDE.md đã đo: một job KD đã bão hoà card, thêm job chỉ thêm rủi ro OOM.
+Theo dõi: `OUTPUT_DIR_DEFAULT=experiments/runs_newsplit_light bash run/progress.sh`.
+Kéo về Mac: `bash run/pull_results.sh pull` (hai cây mới **chưa** nằm trong `ROOTS` mặc định — xem 2.5).
+
+| ☐ | Bước (30 fold-run) |
 |:--:|---|
-| ☐ | 2.1 Teacher, 5 fold |
-| ☐ | 2.2 Baseline student, 5 fold |
-| ☐ | 2.3 KD student, 5 fold (sau 2.1) |
-| ☐ | 2.4 `aggregate.sh` × 3 |
-| ☐ | 2.5 `pull_results.sh pull` |
+| 🔄 | 2.1 Teacher × 2 nhánh (light + domain), 5 fold mỗi nhánh — **ĐANG CHẠY** từ 22/09 13:48 |
+| ☐ | 2.2 Baseline student × 2 nhánh, 5 fold mỗi nhánh |
+| ☐ | 2.3 KD student × 2 nhánh, 5 fold mỗi nhánh (sau 2.1) |
+| ☐ | 2.4 `aggregate.sh` × **6** run-dir |
+| ☐ | 2.5 `pull_results.sh pull` — **phải thêm** `experiments/runs_newsplit_{light,domain}` vào `ROOTS` (mặc định hiện chỉ có `runs_aug_domain`) |
 
 ---
 
@@ -160,12 +167,15 @@ hai lệnh phóng cùng lúc có thể đâm nhau. Kéo về Mac: `bash run/pull
 | ☐ | Tầng | Cách |
 |:--:|---|---|
 | ☐ | In-domain | `test_metrics.json` tự sinh khi train xong |
-| ☐ | Cross-domain | `bash run/evaluate_external.sh DATASET=ham10000 RUNS="<3 run-dir mới>"` |
+| ☐ | Cross-domain | `bash run/evaluate_external.sh DATASET=ham10000 RUNS="<6 run-dir mới>"` |
 | ☐ | Công bằng theo tông da | `bash run/evaluate_external.sh DATASET=fitzpatrick17k VARIANTS=all` |
 | ☐ | **Paired CI** | `run/bootstrap_ci.sh` — **phải dựng tree tạm trước**, xem dưới |
 
+⚠️ **Đối chứng đã ĐỔI (22/09):** so sánh giờ là `runs_newsplit_light` vs `runs_newsplit_domain` —
+**không** còn so với ma trận 140 fold cũ (splits khác, và splits cũ rò rỉ bệnh nhân).
+
 ⚠️ **Bẫy phải xử lý:** `bootstrap_ci.sh` §3 chỉ tự ghép cặp `__<suffix>` với run cùng tên không suffix
-**trong cùng một `RESULTS_DIR`**. Arm mới nằm ở tree khác và **trùng tên** ⇒ auto-pairing **không kích hoạt**.
+**trong cùng một `RESULTS_DIR`**. Hai nhánh nằm ở hai tree khác và **trùng tên** ⇒ auto-pairing **không kích hoạt**.
 Cách đúng đã có tiền lệ: `reports/framing_crop_ci19.md` được sinh từ `.tmp/framing_ci19` với run-dir
 **đổi tên** (`x_baseline_..._crop70`). Làm y vậy — symlink hai nhánh vào một tree tạm, đặt tên
 `..._light` / `..._aug_domain`, rồi chạy CI trên tree đó. Script chỉ đọc `fold_*/predictions.csv`.
