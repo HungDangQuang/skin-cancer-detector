@@ -2,9 +2,20 @@
 
 > Tài liệu này trả lời: *"mô hình sụp khi đổi miền ảnh — huấn luyện lại với tăng cường
 > nhắm đúng nguyên nhân đã chẩn đoán thì thu hồi được bao nhiêu?"*
-> **Trạng thái: PLANNED (chưa code).** Viết 2026-09-21, sau feedback GVHD về câu hỏi nghiên cứu.
-> Ràng buộc bất biến: **không chạy lại `prepare`** → splits không đổi → ma trận 140 fold-run hiện có
-> vẫn so sánh được và vẫn là kết quả chính. Arm này là **một mục ablation**, không phải bản thay thế.
+> **Trạng thái: Việc 1 XONG (21/09). Việc 2 CHƯA chạy — phạm vi đã ĐỔI, xem cảnh báo dưới.**
+>
+> ⚠️ **RÀNG BUỘC BẤT BIẾN CŨ ĐÃ VÔ HIỆU (22/09).** Tài liệu này ban đầu ghi *"không chạy lại
+> `prepare` → splits không đổi → ma trận 140 fold-run vẫn so sánh được"*. Điều đó **không còn
+> đúng**: `data/splits/` đã **mất** trên box, và khi dựng lại mới phát hiện splits gốc
+> **không gom theo bệnh nhân** — dấu vân tay kích thước fold là bằng chứng (gom theo bệnh nhân
+> cho độ lệch 24.270 dòng; splits gốc lệch **1 dòng**, tức phân hoạch theo từng dòng). Ma trận
+> 140 fold-run vì thế có **rò rỉ bệnh nhân** giữa train và test.
+>
+> Quyết định của tác giả 2026-09-22: **sinh splits MỚI gom nhóm đúng** (`scripts/rebuild_splits.py`,
+> đã verify tách biệt bệnh nhân 5/5 fold). Hệ quả bắt buộc phải chấp nhận:
+> **arm này KHÔNG so sánh được với 140 fold-run cũ** ⇒ phải **tự chứa**: train lại cả nhánh
+> `light` làm đối chứng trên splits mới. **Khối lượng 15 → 30 fold-run.**
+> Chi tiết sự cố: memory `project_splits_lost_incident`.
 > Mọi `file:line` dưới đây đã đối chiếu với code thực.
 
 ---
@@ -37,8 +48,8 @@
 | **Cặp chọn** | `efficientnetv2_m` → `mobilenetv4_conv_medium` |
 | **Lý do** | Nhanh nhất cả hai vai: teacher **678 img/s** (vs convnextv2_base 238, maxvit_base 143); student **3.255 img/s** (vs repvit 2.151, fastvit 1.438). Nguồn: `reports/benchmark/*.json`, batch 32, RTX 3090 |
 | **Cường độ** | **Một** arm, `scale_limit: 0.5` (phương án a) |
-| **Khối lượng** | **15 fold-run** = 5 teacher + 5 baseline student + 5 KD student |
-| **Đối chứng** | Đã có đủ 5/5 fold, **không train lại**: `teacher/efficientnetv2_m`, `baseline_mobilenetv4_conv_medium`, `kd_efficientnetv2_m_to_mobilenetv4_conv_medium` |
+| **Khối lượng** | ~~15~~ → **30 fold-run** = (5 teacher + 5 baseline + 5 KD) × **2 nhánh aug** (`light` đối chứng + `domain`) |
+| **Đối chứng** | ~~Đã có sẵn, không train lại~~ — **KHÔNG còn dùng được.** Các run cũ nằm trên splits đã rò rỉ bệnh nhân; nhánh `light` phải train LẠI trên splits mới thì cặp so sánh mới hợp lệ |
 
 **KHÔNG làm trong arm này:** MIDAS (đã loại vì phình scope) · arm thứ hai `scale_limit: 0.35` ·
 mở rộng 4 student × 2 nhánh · chạy lại `prepare` · train lại ma trận 140 fold · thêm dataset mới

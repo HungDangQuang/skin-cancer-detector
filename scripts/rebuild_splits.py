@@ -29,27 +29,43 @@ without decoding a single pixel:
   for each row of the ORIGINAL metadata CSV, in its ORIGINAL order:
       include it iff its processed .jpg exists on disk
 
-That reproduces `df_combined` — same rows, same order, same `patient_id`
-grouping — and `generate_group_kfold_splits` is deterministic given that
-dataframe plus `cfg.seed`. Row order matters: the splitter runs
-`StratifiedGroupKFold(shuffle=True, random_state=seed)` and then indexes with
-`df.iloc[...]`.
+That reproduces the POPULATION exactly: 372,242 rows, confirmed against the
+surviving runs (62,040 test + 310,202 dev summed over the five
+`val_predictions.csv`).
+
+WHAT IT DELIBERATELY DOES *NOT* REPRODUCE (decision 2026-09-22)
+---------------------------------------------------------------
+The original splits were **not patient-grouped**, and this script does not
+recreate that. The fold-size fingerprint settles it:
+
+    patient-grouped   val sizes 59,722 / 67,041 / 75,117 / 50,847 / 60,422  (spread 24,270)
+    per-row           val sizes 62,040 / 62,041 / 62,040 / 62,040 / 62,040  (spread 1)
+    ORIGINAL          val sizes 62,041 / 62,040 / 62,041 / 62,040 / 62,040  (spread 1)
+
+Grouping 1,042 ISIC patients of ~355 images each cannot yield folds that differ
+by one row. So `patient_id` was effectively unique per row when the original
+splits were generated, and the same patient's lesions sat on both sides of every
+train/test comparison — the 140 fold-run matrix's in-domain metrics are inflated
+by patient leakage. (Cross-domain HAM10000/Fitzpatrick17k results are unaffected:
+separate datasets, no shared patients.)
+
+This script therefore writes CORRECT, patient-grouped splits and verifies the
+disjointness it asserts. The consequence is accepted, not hidden: runs on these
+splits are **not** comparable with the existing 140 — any new arm must retrain
+its own control.
 
 This script NEVER opens, writes or deletes an image. It only calls `Path.exists()`.
 
 USAGE
 -----
-    # 1. verify the reconstruction WITHOUT writing anything
-    python scripts/rebuild_splits.py --dry-run
+    python scripts/rebuild_splits.py --dry-run   # report only, write nothing
+    python scripts/rebuild_splits.py             # write + verify disjointness
+    python scripts/rebuild_splits.py --force     # replace a non-empty splits_dir
 
-    # 2. write data/splits/ once the counts match the expected anchor
-    python scripts/rebuild_splits.py
-
-The default anchor comes from the surviving `predictions.csv` of the existing
-runs (any fold of any run-dir — they all share one test set):
-62,040 test rows | 241 positives | isic2024 61,663 + pad_ufes_20 377.
-A mismatch means the reconstruction is NOT the original split — the script exits
-non-zero and writes nothing.
+It refuses to run if the group column turns out near-unique per row (that would
+silently recreate the leaked split), and refuses to overwrite a non-empty
+splits_dir without --force. Back the result up immediately: with the raw HDF5
+gone, data/splits/ cannot be regenerated once data/processed/ drifts.
 """
 import argparse
 import sys
@@ -160,17 +176,57 @@ def build_pad_df(raw_dir: Path, processed_dir: Path) -> pd.DataFrame:
     return df
 
 
+def check_patient_disjoint(splits_dir: Path, n_folds: int) -> bool:
+    """
+    The whole point of the regeneration: assert no patient_id is shared between
+    the held-out test set and the dev pool, or between a fold's train and val.
+
+    This is what the ORIGINAL splits silently failed to do — their folds differed
+    by 1 row (a per-row split), not by thousands as patient grouping forces, so
+    the same patient's ~355 lesions sat on both sides of every comparison.
+    """
+    test = pd.read_csv(splits_dir / "test_split.csv", usecols=["patient_id"])
+    test_pat = set(test["patient_id"])
+    ok = True
+
+    for fold in range(n_folds):
+        fd = splits_dir / f"fold_{fold}"
+        tr = pd.read_csv(fd / "train_split.csv", usecols=["patient_id"])
+        va = pd.read_csv(fd / "val_split.csv", usecols=["patient_id"])
+        tr_pat, va_pat = set(tr["patient_id"]), set(va["patient_id"])
+
+        for name, other in (("train", tr_pat), ("val", va_pat)):
+            shared = test_pat & other
+            if shared:
+                ok = False
+                logger.error(
+                    f"LEAK fold_{fold}: {len(shared)} patient(s) in BOTH test and {name} "
+                    f"(e.g. {sorted(shared)[:3]})"
+                )
+        shared = tr_pat & va_pat
+        if shared:
+            ok = False
+            logger.error(
+                f"LEAK fold_{fold}: {len(shared)} patient(s) in BOTH train and val "
+                f"(e.g. {sorted(shared)[:3]})"
+            )
+        logger.info(
+            f"  fold_{fold}: train {len(tr):>7} rows / {len(tr_pat):>5} patients | "
+            f"val {len(va):>6} rows / {len(va_pat):>5} patients | disjoint: "
+            f"{'yes' if not (tr_pat & va_pat) and not (test_pat & tr_pat) and not (test_pat & va_pat) else 'NO'}"
+        )
+
+    logger.info(f"  test: {len(test):>7} rows / {len(test_pat):>5} patients")
+    return ok
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--dry-run", action="store_true", help="verify only; write nothing")
-    p.add_argument("--expect-test-rows", type=int, default=62040)
-    p.add_argument("--expect-test-pos", type=int, default=241)
-    p.add_argument("--expect-test-isic", type=int, default=61663)
-    p.add_argument("--expect-test-pad", type=int, default=377)
+    p.add_argument("--dry-run", action="store_true", help="report the reconstruction; write no splits")
     p.add_argument(
-        "--no-verify",
+        "--force",
         action="store_true",
-        help="skip the anchor check (ONLY if you have no surviving predictions.csv to anchor against)",
+        help="overwrite an existing splits_dir (refused by default — splits are irreplaceable)",
     )
     args = p.parse_args()
 
@@ -180,6 +236,7 @@ def main() -> None:
     isic_raw = Path(cfg.data.raw_dir)
     isic_processed = Path(cfg.data.processed_dir)
     splits_dir = Path(cfg.data.splits_dir)
+    group_col = cfg.data.get("group_col", "patient_id")
 
     df_isic = build_isic_df(isic_raw, isic_processed, cfg.data.image_id_col, cfg.data.label_col)
 
@@ -187,76 +244,63 @@ def main() -> None:
     pad_raw = Path("data/raw/pad_ufes_20")
     if not pad_processed.exists():
         logger.error(
-            "data/processed/pad_ufes_20 is missing. The original splits DID include "
-            "PAD (377 of the 62,040 test rows). Rebuilding without it would produce a "
-            "different population and silently invalidate every existing run. Refusing."
+            "data/processed/pad_ufes_20 is missing. PAD contributes the bulk of the "
+            "malignant signal (1,077 of 1,448 positives). Refusing to build an "
+            "ISIC-only split under the same name."
         )
         sys.exit(1)
     df_pad = build_pad_df(pad_raw, pad_processed)
 
-    # Concat order must match prepare_data.py: ISIC first, then PAD.
+    # Concat order matches prepare_data.py: ISIC first, then PAD.
     df_combined = pd.concat([df_isic, df_pad], ignore_index=True)
-    logger.info(f"Combined: {len(df_combined)} images | patients: {df_combined['patient_id'].nunique()}")
-
-    # --- Verify against the anchor BEFORE writing anything ---------------
-    # generate_group_kfold_splits writes as it goes, so the test split is
-    # recomputed here first, in memory, and compared to the known-good numbers.
-    from sklearn.model_selection import StratifiedGroupKFold
-
-    holdout = StratifiedGroupKFold(
-        n_splits=cfg.data.get("test_holdout_splits", 6), shuffle=True, random_state=cfg.seed
-    )
-    _, test_idx = next(
-        holdout.split(df_combined, df_combined["label"].values, df_combined["patient_id"].values)
-    )
-    test_preview = df_combined.iloc[test_idx]
-    by_source = test_preview["source"].value_counts().to_dict()
-    n_rows, n_pos = len(test_preview), int((test_preview["label"] == 1).sum())
-
+    n_pat = df_combined[group_col].nunique()
+    n_pos = int((df_combined["label"] == 1).sum())
     logger.info(
-        f"RECONSTRUCTED test split — rows: {n_rows} | positives: {n_pos} | by source: {by_source}"
+        f"Combined: {len(df_combined)} images | {group_col}: {n_pat} | "
+        f"positives: {n_pos} ({100*n_pos/len(df_combined):.3f}%)"
     )
 
-    if not args.no_verify:
-        expected = {
-            "rows": args.expect_test_rows,
-            "positives": args.expect_test_pos,
-            "isic2024": args.expect_test_isic,
-            "pad_ufes_20": args.expect_test_pad,
-        }
-        actual = {
-            "rows": n_rows,
-            "positives": n_pos,
-            "isic2024": by_source.get("isic2024", 0),
-            "pad_ufes_20": by_source.get("pad_ufes_20", 0),
-        }
-        if actual != expected:
-            logger.error("ANCHOR MISMATCH — the reconstruction is NOT the original split.")
-            for k in expected:
-                mark = "ok" if actual[k] == expected[k] else "MISMATCH"
-                logger.error(f"  {k:12s} expected {expected[k]:>7} | got {actual[k]:>7}  [{mark}]")
-            logger.error(
-                "Nothing was written. Do NOT train on a mismatched split: every metric "
-                "would be incomparable with the existing runs. Investigate first."
-            )
-            sys.exit(2)
-        logger.info("Anchor check PASSED — reconstruction matches the original test set exactly.")
+    # A per-row group column would silently reproduce the leaked split this
+    # regeneration exists to replace, so refuse it outright.
+    if n_pat > 0.5 * len(df_combined):
+        logger.error(
+            f"'{group_col}' is near-unique per row ({n_pat} groups for {len(df_combined)} rows). "
+            f"Grouping would be a no-op and the split would leak patients — exactly the "
+            f"defect found on 2026-09-22. Refusing."
+        )
+        sys.exit(2)
 
     if args.dry_run:
-        logger.info("--dry-run: verified only, no files written.")
+        logger.info("--dry-run: nothing written.")
         return
 
-    logger.info(f"Writing splits to {splits_dir} ...")
+    if splits_dir.exists() and any(splits_dir.iterdir()) and not args.force:
+        logger.error(
+            f"{splits_dir} already exists and is not empty. Splits are irreplaceable — "
+            f"back them up, then re-run with --force if you really mean to replace them."
+        )
+        sys.exit(3)
+
+    logger.info(f"Writing patient-grouped splits to {splits_dir} ...")
     generate_group_kfold_splits(
         df=df_combined,
         splits_dir=splits_dir,
         n_splits=cfg.data.get("num_folds", 5),
-        group_col=cfg.data.get("group_col", "patient_id"),
+        group_col=group_col,
         label_col="label",
         seed=cfg.seed,
         test_holdout_splits=cfg.data.get("test_holdout_splits", 6),
     )
-    logger.info("Splits rebuilt.")
+
+    logger.info("Verifying patient disjointness ...")
+    if not check_patient_disjoint(splits_dir, int(cfg.data.get("num_folds", 5))):
+        logger.error("LEAKAGE DETECTED in the splits just written. Do not train on them.")
+        sys.exit(4)
+    logger.info("Patient disjointness verified — no patient spans test/dev or train/val.")
+    logger.info(
+        "BACK THESE UP NOW: data/splits/ cannot be regenerated once data/processed/ drifts "
+        "(the raw HDF5 is gone). rsync them to the Mac before launching any job."
+    )
 
 
 if __name__ == "__main__":
