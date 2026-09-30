@@ -1,0 +1,59 @@
+{
+  "_meta": {
+    "label": "mobile",
+    "runtime": "executorch-android-1.4.0(threads=4)",
+    "device": "Pixel 6a (Tensor G1)",
+    "batch_size": 1,
+    "threshold": 0.158256247639656,
+    "threshold_source": "explicit",
+    "manifest": "/private/tmp/claude-501/-Users-hungdang-Documents-android-projects-SkinDetector/3d78975a-6f10-4e4e-9acc-623cf1968071/scratchpad/real/mobile_eval_bundle/manifest.csv",
+    "manifest_sha": "2128e9acc05788b9",
+    "logits": "/Users/hungdang/Documents/android-projects/SkinDetector-eval/eval-results/2026-09-29-pixel6a/processed224/mobilenetv4_ddi_fold0.csv",
+    "spec": "docs/MOBILE_EVAL_PIPELINE.md"
+  },
+  "indomain": {
+    "prevalence": 0.00448445670383971,
+    "auprc": 0.6181740984199388,
+    "pauc_at_tpr80": 0.1842824171778039,
+    "auc_roc": 0.9833597401314481,
+    "sens_at_90spec": 0.9584905660377359,
+    "sens_at_95spec": 0.9283018867924528,
+    "sensitivity": 0.9509433962264151,
+    "specificity": 0.9365608213775753,
+    "f1_score": 0.1186161449752883,
+    "brier": 0.00945516621741037,
+    "ece": 0.04360047517016254,
+    "n": 59093,
+    "n_unscored": 0
+  },
+  "ham10000_headline": {
+    "prevalence": 0.15649263721552878,
+    "auprc": 0.40435290558046355,
+    "pauc_at_tpr80": 0.09564207563289542,
+    "auc_roc": 0.8049324526406865,
+    "sens_at_90spec": 0.41916167664670656,
+    "sens_at_95spec": 0.23353293413173654,
+    "sensitivity": 0.9957228400342173,
+    "specificity": 0.06205364227900333,
+    "f1_score": 0.28242144850175904,
+    "brier": 0.32695468511134457,
+    "ece": 0.44701231347014136,
+    "n": 7470,
+    "n_unscored": 0
+  },
+  "fitzpatrick17k_headline": {
+    "prevalence": 0.5,
+    "auprc": 0.596267399667276,
+    "pauc_at_tpr80": 0.04072573731138546,
+    "auc_roc": 0.6176185270919067,
+    "sens_at_90spec": 0.17777777777777778,
+    "sens_at_95spec": 0.10416666666666667,
+    "sensitivity": 1.0,
+    "specificity": 0.000925925925925926,
+    "f1_score": 0.6668724915097253,
+    "brier": 0.3214004870610029,
+    "ece": 0.2862397306354494,
+    "n": 4320,
+    "n_unscored": 0
+  }
+}

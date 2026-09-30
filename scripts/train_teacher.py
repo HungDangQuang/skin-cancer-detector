@@ -44,6 +44,14 @@ def main(cfg: DictConfig) -> None:
 
     datamodule = SkinLesionDataModule(teacher_cfg)
     model = build_model(teacher_cfg)
+    # A privileged (LUPI) teacher must actually receive metadata in the batch,
+    # else it trains with an all-zero tabular branch (silently image-only).
+    if getattr(model, "accepts_metadata", False) and not teacher_cfg.data.get("metadata_as_input", False):
+        raise ValueError(
+            f"Teacher {cfg.teacher.name} is privileged but data.metadata_as_input is not true. "
+            "Set data.metadata_as_input=true and a non-empty data.metadata_cols "
+            "(see docs/metadata_training_plan.md §A)."
+        )
     logger.info(f"Teacher parameters: {model.num_parameters():,}")
 
     trainer = Trainer(teacher_cfg, model, datamodule, run_dir=run_dir)
@@ -62,8 +70,13 @@ def main(cfg: DictConfig) -> None:
         logger.info(f"Evaluating best checkpoint on held-out test set: {best_ckpt}")
         load_checkpoint(str(best_ckpt), model, device=cfg.device)
         evaluator = Evaluator(model, device=cfg.device)
+        # metadata (site/sex) is recorded into predictions.csv only when
+        # data.metadata_cols is set (direction D); null -> None -> unchanged CSV.
+        test_meta = datamodule.test_metadata(teacher_cfg.data.get("metadata_cols", None))
         test_metrics = evaluator.evaluate(
-            datamodule.test_dataloader(), sources=datamodule.test_sources()
+            datamodule.test_dataloader(),
+            sources=datamodule.test_sources(),
+            metadata=test_meta,
         )
         evaluator.save_metrics(test_metrics, run_dir / "test_metrics.json")
         evaluator.save_predictions(test_metrics, run_dir / "predictions.csv")

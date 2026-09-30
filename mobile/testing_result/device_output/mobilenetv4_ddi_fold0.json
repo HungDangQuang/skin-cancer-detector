@@ -1,0 +1,104 @@
+{
+  "model_id": "mobilenetv4_ddi_fold0",
+  "arm": "processed224",
+  "resample_filter": null,
+  "status": "done",
+  "n_attempted": 70883,
+  "n_succeeded": 70883,
+  "n_errored": 0,
+  "error_rate": 0,
+  "max_error_rate": 0.001,
+  "error_reasons": {},
+  "subset": {
+    "is_subset": false,
+    "limit_per_dataset": null,
+    "n_target": 70883,
+    "n_manifest": 70883
+  },
+  "gate": {
+    "passed": true,
+    "bin_path_max_abs_logit_delta": 3.337860107421875E-6,
+    "bin_path_worst_id": "000082",
+    "bin_path_passed": true,
+    "image_path_max_abs_logit_delta": 3.337860107421875E-6,
+    "image_path_worst_id": "000082",
+    "image_path_errors": 0,
+    "tolerance": 0.001,
+    "n_samples": 100,
+    "thread_check": {
+      "threads": 4,
+      "compared_with_threads": 1,
+      "bit_identical": true,
+      "n_mismatched": 0,
+      "max_abs_delta": 0
+    },
+    "reused_from_previous_session": true
+  },
+  "model_catalog": {
+    "backend": "xnnpack",
+    "required": true,
+    "parity_tolerance": 0.001,
+    "expected_max_abs_logit_delta_host": 1.2E-5
+  },
+  "vs_reference": {
+    "reference_file": "refs\/ref_mobilenetv4_ddi_fold0_full.csv",
+    "reference_sha256": "4a71ba98c3ff69bd9fa0edeed158dcad3e48500157cdf1cc81dc9e6ce3f7caa0",
+    "gate_reference_file": "refs\/ref_mobilenetv4_ddi_fold0_gate100.csv",
+    "gate_reference_sha256": "eae0effd7f5d4cfcf52d918f350e5cb87dd34ca5c1fc46908be92660ef7ef73d",
+    "tolerance": 0.001,
+    "reference_rows": 70883,
+    "reference_errored_rows": 0,
+    "n_compared": 70883,
+    "n_without_reference": 0,
+    "max_abs_logit_delta": 6.67572021484375E-6,
+    "worst_id": "020233",
+    "n_over_tolerance": 0
+  },
+  "determinism": {
+    "n_rechecked": 500,
+    "bit_identical": true,
+    "n_mismatched": 0
+  },
+  "runtime": {
+    "executorch_dependency": "org.pytorch:executorch-android:1.4.0",
+    "threads": 4,
+    "load_mode": "LOAD_MODE_FILE",
+    "batch_size": 1,
+    "pte_bytes": 33669764,
+    "pte_sha256": "0f7f37dd16bde54b4056972d18ebc5e502bca78439db16cf4297f38d1e0c7967"
+  },
+  "device": {
+    "model": "Google Pixel 6a",
+    "soc": "Tensor",
+    "abi": "arm64-v8a",
+    "android_version": "16",
+    "sdk_int": 36
+  },
+  "preprocessing": {
+    "decoder": "BitmapFactory ARGB_8888, inScaled=false, inSampleSize=1, inPremultiplied=false",
+    "pixel_read": "copyPixelsToBuffer (raw decoded bytes, no colour-space conversion)",
+    "resize": "none",
+    "image_size": 224,
+    "mean": [
+      0.48500001430511475,
+      0.4560000002384186,
+      0.4059999883174896
+    ],
+    "std": [
+      0.2290000021457672,
+      0.2240000069141388,
+      0.22499999403953552
+    ],
+    "non_srgb_colorspaces_this_session": {}
+  },
+  "bundle": {
+    "dir": "mobile_eval_bundle",
+    "bundle_version": "1",
+    "manifest_sha256": "2128e9acc05788b96f0ce3940e2c06d55701a9efefba63a8c4ad4a7f5855aa2f",
+    "key_column": "sample_id"
+  },
+  "wall_clock_seconds": 3643,
+  "resumed_from_row": 0,
+  "logit_format": "%.9g",
+  "written_at": "2026-09-29T21:10:47+0700"
+}

@@ -1,0 +1,26 @@
+{
+  "model_name": "efficientformerv2_s2",
+  "pte_path": "exports/executorch/efficientformerv2_s2__efficientnetv2_m_fold4.pte",
+  "pte_size_mb": 47.98,
+  "executorch_api": "executorch.runtime.Runtime",
+  "reference_csv": "data/benchmark_set_ef/ref_efficientformerv2_s2.csv",
+  "n_samples": 100,
+  "input_shape": [
+    3,
+    224,
+    224
+  ],
+  "tolerance": 0.001,
+  "max_abs_logit_delta": 6.528375244130302e-05,
+  "mean_abs_logit_delta": 9.3095259189694e-06,
+  "p99_abs_logit_delta": 3.7325134887789136e-05,
+  "max_abs_prob_delta": 6.512011731407696e-06,
+  "n_over_tolerance": 0,
+  "worst_sample": {
+    "id": "0036",
+    "pytorch_logit": -3.526401,
+    "pte_logit": -3.5263357162475586,
+    "abs_delta": 6.528375244130302e-05
+  },
+  "passed": true
+}

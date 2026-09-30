@@ -8,6 +8,10 @@
 use_kd: true        # POC student exercises the KD path
 epochs: 2
 batch_size: 16
+# Batch size for val/test only (0 = same as batch_size). Eval runs under
+# no_grad, so a larger batch fits and cuts per-batch overhead; eval-mode
+# BatchNorm uses running stats, so per-sample outputs are unchanged.
+eval_batch_size: 0
 grad_clip: 1.0
 
 optimizer:
@@ -45,3 +49,8 @@ callbacks:
     monitor: val_pauc_at_tpr80
     mode: max
     save_last: true
+
+# Declared so the POC can A/B it under Hydra struct mode (the code defaults it to
+# true via .get(), but an undeclared key cannot be OVERRIDDEN). See
+# src/training/kd_trainer.py::_val_epoch.
+cache_val_teacher_logits: true

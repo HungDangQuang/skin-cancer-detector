@@ -2,6 +2,10 @@
 use_kd: true        # KDTrainer + frozen teacher + BinaryDistillationLoss
 epochs: 50
 batch_size: 64
+# Batch size for val/test only (0 = same as batch_size). Eval runs under
+# no_grad, so a larger batch fits and cuts per-batch overhead; eval-mode
+# BatchNorm uses running stats, so per-sample outputs are unchanged.
+eval_batch_size: 0
 grad_clip: 1.0
 
 optimizer:
@@ -41,3 +45,11 @@ callbacks:
     monitor: val_pauc_at_tpr80
     mode: max
     save_last: true
+
+# Cache the frozen teacher's val-set logits after the first val epoch and replay
+# them (src/training/kd_trainer.py::_val_epoch). Exact, not an approximation:
+# the val pipeline is Resize+Normalize only and val_dataloader is shuffle=False,
+# so the teacher's logits are identical every epoch. Removes the dominant cost of
+# validation (maxvit_base 47.8 GFLOPs vs fastvit_sa12 3.0 => ~94% of the val
+# forward). Set false only to debug.
+cache_val_teacher_logits: true

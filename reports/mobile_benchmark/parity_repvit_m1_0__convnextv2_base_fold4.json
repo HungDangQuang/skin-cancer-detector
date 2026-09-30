@@ -1,0 +1,26 @@
+{
+  "model_name": "repvit_m1_0",
+  "pte_path": "exports/executorch/repvit_m1_0__convnextv2_base_fold4.pte",
+  "pte_size_mb": 24.462,
+  "executorch_api": "executorch.runtime.Runtime",
+  "reference_csv": "data/benchmark_set/ref_repvit_m1_0.csv",
+  "n_samples": 100,
+  "input_shape": [
+    3,
+    224,
+    224
+  ],
+  "tolerance": 0.001,
+  "max_abs_logit_delta": 6.672973632770862e-06,
+  "mean_abs_logit_delta": 1.2975032806555875e-06,
+  "p99_abs_logit_delta": 5.047893829486236e-06,
+  "max_abs_prob_delta": 1.0087006807046883e-06,
+  "n_over_tolerance": 0,
+  "worst_sample": {
+    "id": "0097",
+    "pytorch_logit": -1.478755,
+    "pte_logit": -1.4787616729736328,
+    "abs_delta": 6.672973632770862e-06
+  },
+  "passed": true
+}

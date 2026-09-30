@@ -1,0 +1,26 @@
+{
+  "model_name": "repvit_m1_0",
+  "pte_path": "exports/executorch/repvit_m1_0__efficientnetv2_m_fold0.pte",
+  "pte_size_mb": 24.462,
+  "executorch_api": "executorch.runtime.Runtime",
+  "reference_csv": "data/benchmark_set/ref_repvit_m1_0.csv",
+  "n_samples": 100,
+  "input_shape": [
+    3,
+    224,
+    224
+  ],
+  "tolerance": 0.001,
+  "max_abs_logit_delta": 8.754302978530859e-06,
+  "mean_abs_logit_delta": 1.8610899758336047e-06,
+  "p99_abs_logit_delta": 5.656716003130685e-06,
+  "max_abs_prob_delta": 8.875973086519551e-07,
+  "n_over_tolerance": 0,
+  "worst_sample": {
+    "id": "0028",
+    "pytorch_logit": -5.002402,
+    "pte_logit": -5.0023932456970215,
+    "abs_delta": 8.754302978530859e-06
+  },
+  "passed": true
+}

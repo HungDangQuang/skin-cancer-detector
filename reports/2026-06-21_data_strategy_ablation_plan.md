@@ -21,17 +21,17 @@ the AUC 0.987 to them. See [docs/PREPROCESSING.md §7](../docs/PREPROCESSING.md)
   bootstrap CIs all recomputable offline.
 - `aggregate_folds.py` lists the new metrics in the headline table.
 
-## 2. Ablation A — Sampler  (`slurm/13_ablation_sampler.slurm`)
+## 2. Ablation A — Sampler  (`run/ablation_sampler.sh`)
 
 Best student (KD `efficientnet_b4 → mobilenetv3_large`); **teacher reused**;
 seed/folds/hparams/loss fixed; vary ONLY the undersampler.
 
 ```bash
-bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=off    # natural ~1018:1
-bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=3      # 1:3
-bash slurm/submit.sh slurm/13_ablation_sampler.slurm SAMP=10     # 1:10
+bash run/ablation_sampler.sh SAMP=off    # natural ~1018:1
+bash run/ablation_sampler.sh SAMP=3      # 1:3
+bash run/ablation_sampler.sh SAMP=10     # 1:10
 # SAMP=5 == the existing main run kd_…_to_mobilenetv3_large (reuse it)
-bash slurm/submit.sh slurm/22_aggregate_folds.slurm RUN_DIR=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large__samp_off
+bash run/aggregate.sh RUN_DIR=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large__samp_off
 ```
 
 | Arm | pAUC | AUC-ROC | AUPRC | Sens | Spec | Sens@95spec | verdict |
@@ -44,16 +44,16 @@ bash slurm/submit.sh slurm/22_aggregate_folds.slurm RUN_DIR=experiments/runs/kd_
 > Existing 1:5 AUPRC/operating-points are blank until the main run is re-evaluated
 > with the new evaluator (cheap inference on the existing checkpoint).
 
-## 3. Ablation B — PAD mixing  (`slurm/14_ablation_pad.slurm`)
+## 3. Ablation B — PAD mixing  (`run/ablation_pad.sh`)
 
 **Baseline (no KD)** so the teacher can't leak PAD via soft labels. Train ISIC-only
 vs ISIC+PAD; **identical combined held-out test**; `train_sources` filters
 train+val only.
 
 ```bash
-bash slurm/submit.sh slurm/14_ablation_pad.slurm ARM=isic_only
-bash slurm/submit.sh slurm/14_ablation_pad.slurm ARM=isic_pad
-bash slurm/submit.sh slurm/22_aggregate_folds.slurm RUN_DIR=experiments/runs/baseline_mobilenetv3_large__train_isic_only
+bash run/ablation_pad.sh ARM=isic_only
+bash run/ablation_pad.sh ARM=isic_pad
+bash run/aggregate.sh RUN_DIR=experiments/runs/baseline_mobilenetv3_large__train_isic_only
 ```
 
 Per-domain breakdown (the key table) — split `predictions.csv` by `source`:

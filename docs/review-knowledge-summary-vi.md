@@ -152,10 +152,11 @@ và số liệu thật ở [report_phase_1/](../report_phase_1/).
 - **Hydra** — compose config từ nhóm data/teacher/student/training/augmentation; override ở CLI.
 - **Run-dir theo fold** — `experiments/runs/<arch>/fold_{0..4}/...`; `test_metrics.json` tự ghi cuối
   train.
-- **Slurm cluster UIT** — luôn submit qua `slurm/submit.sh`; GPU phải xin `--gres=mps:l40:N` (không
-  phải `gpu`); **không bao giờ kill/preempt job người khác** — hết tài nguyên thì xếp hàng (PD).
-- **Mac ≠ runtime cluster** — không pip/torch trên Mac; kiểm bằng `validate-pipeline` (tĩnh) rồi mới
-  chạy cluster.
+- **Tầng thực thi `run/`** — mọi job chạy bằng `bash run/<script>.sh KEY=VALUE`; `run/common.sh` lo
+  strict mode, venv `./.venv-linux`, chọn GPU (`GPU=auto|<id>|cpu`) và log `logs/<name>_<ts>.log`.
+  Server dùng chung: **mọi thứ nằm trong thư mục project** — không sudo/apt/system-python.
+- **Mac ≠ runtime server** — không pip/torch trên Mac; kiểm bằng `validate-pipeline` (tĩnh) rồi mới
+  chạy trên server.
 
 ---
 

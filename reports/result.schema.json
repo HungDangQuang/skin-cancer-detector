@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Android on-device benchmark result",
+  "description": "One object per (model, thread-count). See README.md section 7.1.",
+  "type": "object",
+  "required": [
+    "pte_file", "architecture", "backend", "executorch_version",
+    "device", "soc", "abi", "android_sdk",
+    "threads", "warmup_iters", "measured_iters", "batch_size",
+    "parity", "latency_ms", "cold_start_ms", "peak_pss_mb", "model_size_mb"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "pte_file": {
+      "type": "string",
+      "description": "Exact filename from catalog.json, e.g. repvit_m1_0__maxvit_base_fold1.pte"
+    },
+    "architecture": {
+      "type": "string",
+      "enum": ["mobilenetv4_conv_medium", "fastvit_sa12", "repvit_m1_0", "efficientformerv2_s2"]
+    },
+    "backend": { "type": "string", "enum": ["xnnpack", "portable"] },
+    "executorch_version": {
+      "type": "string",
+      "description": "Must be 1.4.1 unless we agreed otherwise in writing."
+    },
+    "executorch_dependency": {
+      "type": "string",
+      "description": "The exact Gradle coordinate used, e.g. group:artifact:version."
+    },
+
+    "device": { "type": "string", "description": "Manufacturer + model, e.g. 'Google Pixel 7a'" },
+    "soc": { "type": "string", "description": "Chipset, e.g. 'Google Tensor G2'" },
+    "abi": { "type": "string", "enum": ["arm64-v8a"] },
+    "android_release": { "type": "string", "description": "User-visible version, e.g. '14'" },
+    "android_sdk": { "type": "integer", "minimum": 21 },
+
+    "threads": {
+      "type": ["integer", "null"],
+      "description": "Null ONLY if thread count proved uncontrollable; then say so in notes and record the observed default in threads_note."
+    },
+    "threads_note": { "type": "string" },
+    "warmup_iters": { "type": "integer", "minimum": 30 },
+    "measured_iters": { "type": "integer", "minimum": 100 },
+    "batch_size": { "type": "integer", "const": 1 },
+
+    "parity": {
+      "type": "object",
+      "description": "Section 6.3. Must be run BEFORE any timing; if passed is false, latency fields are meaningless and should be omitted or null.",
+      "required": ["tolerance", "max_abs_logit_delta", "n_over_tolerance", "n_samples", "passed"],
+      "properties": {
+        "tolerance": { "type": "number", "const": 0.001 },
+        "max_abs_logit_delta": { "type": "number", "minimum": 0 },
+        "mean_abs_logit_delta": { "type": "number", "minimum": 0 },
+        "n_over_tolerance": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "n_samples": { "type": "integer", "const": 100 },
+        "reference_csv": { "type": "string" },
+        "worst_sample": {
+          "type": "object",
+          "required": ["id", "device_logit", "reference_logit"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^[0-9]{4}$" },
+            "device_logit": { "type": "number" },
+            "reference_logit": { "type": "number" }
+          }
+        },
+        "passed": { "type": "boolean" }
+      }
+    },
+
+    "latency_ms": {
+      "type": "object",
+      "description": "Steady state only. Cold start goes in its own field. Mean alone is not acceptable.",
+      "required": ["median", "p90", "p95", "p99", "mean"],
+      "properties": {
+        "mean": { "type": "number", "exclusiveMinimum": 0 },
+        "median": { "type": "number", "exclusiveMinimum": 0 },
+        "p90": { "type": "number", "exclusiveMinimum": 0 },
+        "p95": { "type": "number", "exclusiveMinimum": 0 },
+        "p99": { "type": "number", "exclusiveMinimum": 0 },
+        "min": { "type": "number" },
+        "max": { "type": "number" }
+      }
+    },
+
+    "cold_start_ms": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Module.load + first forward, in a FRESH process. Not included in latency_ms."
+    },
+
+    "sustained": {
+      "type": "object",
+      "description": "Section 6.4. Required for one representative model per architecture; use {\"measured\": false} for the rest.",
+      "required": ["measured"],
+      "properties": {
+        "measured": { "type": "boolean" },
+        "duration_s": { "type": "number" },
+        "median_first_min_ms": { "type": "number" },
+        "median_last_min_ms": { "type": "number" },
+        "throttle_ratio": {
+          "type": "number",
+          "description": "median_last_min_ms / median_first_min_ms. >1 means the device throttled."
+        }
+      }
+    },
+
+    "peak_pss_mb": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Peak proportional set size during the steady-state loop."
+    },
+    "model_size_mb": { "type": "number", "exclusiveMinimum": 0 },
+
+    "conditions": {
+      "type": "object",
+      "description": "Section 6.1. Deviations from the required conditions must be recorded here.",
+      "properties": {
+        "airplane_mode": { "type": "boolean" },
+        "charging": { "type": "boolean" },
+        "battery_pct_start": { "type": "number" },
+        "battery_pct_end": { "type": "number" },
+        "model_order_randomized": { "type": "boolean" },
+        "deviations": { "type": "string" }
+      }
+    },
+    "notes": { "type": "string" }
+  }
+}

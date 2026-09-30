@@ -1,0 +1,25 @@
+# On-device latency per ARCHITECTURE, Pixel 6a (Tensor G1), 4 threads.
+#
+# SOURCE: reports/BENCHMARK_RESULTS.md sections 5.1 / 5.2 / 5.3 — handover run
+# 2026-08-27 19:16, fully compliant with brief section 6.1 (charging=0 verified on
+# every row, airplane mode, 30 warmup + 200 measured iterations, seeded shuffle).
+# Transcribed by hand because the 32 per-model JSONs (benchmark-2026-08-27-19-16/)
+# are not in this repo — only the written handover is. Re-generate from the JSONs
+# if they land here.
+#
+# ONE ROW PER ARCHITECTURE, NOT PER VARIANT — deliberate. The four KD variants of an
+# architecture share the same graph and parameter count and differ only in weights;
+# BENCHMARK_RESULTS.md section 5.4 shows the 24-149% spread between variants tracks
+# TEMPERATURE (~14% per degree C), not the weights. Per-variant latency would be
+# plotting thermal noise.
+#
+# best_ms      = steady-state median at 4 threads, coolest measurement (section 5.2)
+# sustained_ms = last minute of a 300 s continuous run at 4 threads (section 5.3)
+# cold_ms      = cold start median at 4 threads (section 5.1)
+# QUOTE sustained_ms: thermal throttling costs 45-49% and a screening app doing
+# repeated inference sees that number, not the best case.
+architecture,backend,size_mib,best_ms,sustained_ms,cold_ms,throttle_ratio
+mobilenetv4_conv_medium,xnnpack,32.11,21.6,39.5,69.3,1.475
+repvit_m1_0,xnnpack,24.46,34.4,57.2,81.6,1.494
+fastvit_sa12,xnnpack,40.35,73.3,113.9,128.6,1.448
+efficientformerv2_s2,portable,47.98,3906.9,3908.2,3241.2,1.000

@@ -1,0 +1,64 @@
+{
+  "model_name": "convnextv2_base",
+  "checkpoint": "experiments/runs/teacher/convnextv2_base/fold_0/checkpoints/best_model.pth",
+  "image_size": 224,
+  "params_millions": 87.694,
+  "trainable_params_millions": 87.694,
+  "fp32_size_mb": 334.525,
+  "gflops": 30.707,
+  "gmacs": 15.354,
+  "iters": 100,
+  "warmup": 10,
+  "device_info": {
+    "platform": "Linux-5.15.0-187-generic-x86_64-with-glibc2.35",
+    "processor": "x86_64",
+    "torch_version": "2.5.1+cu121",
+    "cuda_available": true,
+    "gpu_name": "NVIDIA GeForce RTX 3090"
+  },
+  "latency_batch1": {
+    "cpu": {
+      "mean": 615.472,
+      "std": 6.095,
+      "median": 614.212,
+      "p90": 624.039,
+      "p95": 625.146,
+      "p99": 628.888,
+      "min": 606.367,
+      "max": 633.092,
+      "threads": 1
+    },
+    "cuda": {
+      "mean": 13.221,
+      "std": 0.693,
+      "median": 13.304,
+      "p90": 13.923,
+      "p95": 14.06,
+      "p99": 15.761,
+      "min": 12.24,
+      "max": 15.89
+    }
+  },
+  "throughput": {
+    "cuda": [
+      {
+        "batch_size": 1,
+        "images_per_sec": 76.5,
+        "ms_per_batch": 13.072,
+        "peak_mem_mb": 367.24
+      },
+      {
+        "batch_size": 8,
+        "images_per_sec": 230.9,
+        "ms_per_batch": 34.647,
+        "peak_mem_mb": 532.6
+      },
+      {
+        "batch_size": 32,
+        "images_per_sec": 238.01,
+        "ms_per_batch": 134.449,
+        "peak_mem_mb": 1096.73
+      }
+    ]
+  }
+}

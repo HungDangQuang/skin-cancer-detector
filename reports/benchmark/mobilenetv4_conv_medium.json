@@ -10,53 +10,53 @@
   "iters": 100,
   "warmup": 10,
   "device_info": {
-    "platform": "Linux-6.8.0-90-generic-x86_64-with-glibc2.39",
+    "platform": "Linux-5.15.0-187-generic-x86_64-with-glibc2.35",
     "processor": "x86_64",
     "torch_version": "2.5.1+cu121",
     "cuda_available": true,
-    "gpu_name": "NVIDIA L40"
+    "gpu_name": "NVIDIA GeForce RTX 3090"
   },
   "latency_batch1": {
     "cpu": {
-      "mean": 27.444,
-      "std": 1.818,
-      "median": 27.088,
-      "p90": 28.522,
-      "p95": 28.785,
-      "p99": 37.731,
-      "min": 26.159,
-      "max": 39.708,
+      "mean": 37.963,
+      "std": 0.931,
+      "median": 37.671,
+      "p90": 38.93,
+      "p95": 39.567,
+      "p99": 41.824,
+      "min": 37.099,
+      "max": 42.79,
       "threads": 1
     },
     "cuda": {
-      "mean": 0.906,
-      "std": 0.622,
-      "median": 0.75,
-      "p90": 0.755,
-      "p95": 3.34,
-      "p99": 3.394,
-      "min": 0.744,
-      "max": 3.395
+      "mean": 6.846,
+      "std": 0.254,
+      "median": 6.682,
+      "p90": 7.207,
+      "p95": 7.237,
+      "p99": 7.34,
+      "min": 6.621,
+      "max": 7.402
     }
   },
   "throughput": {
     "cuda": [
       {
         "batch_size": 1,
-        "images_per_sec": 371.01,
-        "ms_per_batch": 2.695,
+        "images_per_sec": 139.5,
+        "ms_per_batch": 7.169,
         "peak_mem_mb": 49.07
       },
       {
         "batch_size": 8,
-        "images_per_sec": 2722.39,
-        "ms_per_batch": 2.939,
+        "images_per_sec": 1161.81,
+        "ms_per_batch": 6.886,
         "peak_mem_mb": 104.22
       },
       {
         "batch_size": 32,
-        "images_per_sec": 3828.27,
-        "ms_per_batch": 8.359,
+        "images_per_sec": 3255.2,
+        "ms_per_batch": 9.83,
         "peak_mem_mb": 294.34
       }
     ]

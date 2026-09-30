@@ -44,8 +44,13 @@ def main():
     datamodule.setup()
 
     evaluator = Evaluator(model, device=cfg.device)
+    # metadata (site/sex) recorded into predictions.csv only when
+    # data.metadata_cols is set (direction D); null -> None -> unchanged CSV.
+    test_meta = datamodule.test_metadata(model_cfg.data.get("metadata_cols", None))
     metrics = evaluator.evaluate(
-        datamodule.test_dataloader(), sources=datamodule.test_sources()
+        datamodule.test_dataloader(),
+        sources=datamodule.test_sources(),
+        metadata=test_meta,
     )
     evaluator.save_metrics(metrics, args.output)
     evaluator.save_predictions(

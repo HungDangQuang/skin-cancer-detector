@@ -1,3 +1,11 @@
+> ⛔ **SUPERSEDED — 2026-08-26. KHÔNG trích số từ file này.**
+>
+> Bản thay thế duy nhất: [`reports/BAO_CAO_TONG_HOP.md`](../reports/BAO_CAO_TONG_HOP.md).
+>
+> Lý do: thuộc thế hệ tiền xử lý CŨ — ví dụ ghi teacher `maxvit_base` AUPRC 0,6878 / pAUC 0,1869 trong khi số hiện tại là 0,6566 / 0,1830; hai bộ số không so được với nhau. Còn chứa họ model đã xoá khỏi registry 15/07/2026.
+
+---
+
 # Benchmark & Kết quả tổng hợp (tài liệu luận văn)
 
 *Cập nhật: 2026-07-04. Nguồn số liệu: `experiments/runs/**/test_metrics.json`,
@@ -5,7 +13,7 @@
 và benchmark on-device Pixel 6a (2026-07-03).*
 
 Tài liệu gồm 4 phần: (1) giải thích từng độ đo, (2) bảng kết quả accuracy,
-(3) bảng benchmark hiệu năng, (4) phần còn thiếu + lệnh slurm để hoàn thiện.
+(3) bảng benchmark hiệu năng, (4) phần còn thiếu + lệnh `run/` để hoàn thiện.
 
 > **⚠️ Lưu ý scope (cập nhật 2026-07-15):** bộ **baseline** (`efficientnet_b4` teacher; `efficientnet_b0`,
 > `mobilenetv3_large`, `mobilevit_s` students) đã được **gỡ khỏi codebase** — dự án giờ chỉ còn bộ SOTA
@@ -203,9 +211,9 @@ nhanh gấp 2.6× và nhẹ nửa. Bản KD mobilenetv3 (đang deploy trên phon
 
 ---
 
-## PHẦN 4 — Phần còn thiếu & lệnh slurm để hoàn thiện
+## PHẦN 4 — Phần còn thiếu & lệnh `run/` để hoàn thiện
 
-Chạy trên cluster (VPN → `ssh keg@slurm.uit.edu.vn` → `cd /datastore/keg/hungdang/skin-cancer-detector`).
+Chạy trên cluster (VPN → `ssh islabworker2@islab-server2` → `cd /mnt/sharednas/binhnt/hungdang/skin-cancer-detector`).
 
 ### GAP-1 ✅ ĐÃ XONG (2026-07-04) — baseline fastvit + mobilenetv4 đã có
 `baseline_fastvit_sa12` và `baseline_mobilenetv4_conv_medium` đã train đủ 5 fold → Δ KD đã tính
@@ -214,25 +222,25 @@ Chạy trên cluster (VPN → `ssh keg@slurm.uit.edu.vn` → `cd /datastore/keg/
 **GAP-1b 🔴 còn lại — chạy nốt fold cho các run KD dở dang:**
 ```bash
 # maxvit-KD mới 1 fold, efficientformerv2_s2 mới 2–4 fold → chạy nốt các fold còn thiếu
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium TEACHER=maxvit_base FOLDS="1 2 3 4"
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=fastvit_sa12 TEACHER=maxvit_base FOLDS="1 2 3 4"
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2 TEACHER=convnextv2_base FOLDS="4"
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2 TEACHER=efficientnetv2_m FOLDS="2 3 4"
+bash run/train_student.sh STUDENT=mobilenetv4_conv_medium TEACHER=maxvit_base FOLDS="1 2 3 4"
+bash run/train_student.sh STUDENT=fastvit_sa12 TEACHER=maxvit_base FOLDS="1 2 3 4"
+bash run/train_student.sh STUDENT=efficientformerv2_s2 TEACHER=convnextv2_base FOLDS="4"
+bash run/train_student.sh STUDENT=efficientformerv2_s2 TEACHER=efficientnetv2_m FOLDS="2 3 4"
 # (tham chiếu: lệnh train baseline gốc, nếu cần train lại)
-# bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=fastvit_sa12 TRAINING=baseline
-bash slurm/submit.sh slurm/22_aggregate_folds.slurm RUN_DIR=experiments/runs/baseline_fastvit_sa12
-bash slurm/submit.sh slurm/22_aggregate_folds.slurm RUN_DIR=experiments/runs/baseline_mobilenetv4_conv_medium
+# bash run/train_student.sh STUDENT=fastvit_sa12 TRAINING=baseline
+bash run/aggregate.sh RUN_DIR=experiments/runs/baseline_fastvit_sa12
+bash run/aggregate.sh RUN_DIR=experiments/runs/baseline_mobilenetv4_conv_medium
 ```
 
 ### GAP-2 ✅ ĐÃ XONG (2026-07-04) — AUPRC đã re-eval cho 7 run cũ
-Đã chạy `slurm/20_evaluate.slurm` (35 job) để sinh lại `test_metrics.json` + `predictions.csv`
+Đã chạy `run/evaluate.sh` (35 job) để sinh lại `test_metrics.json` + `predictions.csv`
 có AUPRC cho `baseline_{efficientnet_b0,mobilenetv3_large,mobilevit_s}`,
 `kd_efficientnet_b4_to_{efficientnet_b0,mobilenetv3_large,mobilevit_s}`, `teacher/efficientnet_b4`.
 Lệnh tham chiếu (nếu cần lặp lại cho run khác):
 
 ```bash
 for F in 0 1 2 3 4; do
-  bash slurm/submit.sh slurm/20_evaluate.slurm \
+  bash run/evaluate.sh \
     MODEL=<arch> \
     CKPT=experiments/runs/<run>/fold_${F}/checkpoints/best_model.pth \
     OUT=experiments/runs/<run>/fold_${F}/test_metrics.json
@@ -243,11 +251,11 @@ done
 *Vì sao:* `reports/benchmark/` mới có fastvit + mobilenetv4 → thiếu FLOPs của các model nhẹ.
 
 ```bash
-bash slurm/submit.sh slurm/24_benchmark.slurm MODEL=mobilenetv3_large \
+bash run/benchmark.sh MODEL=mobilenetv3_large \
     CKPT=experiments/runs/kd_efficientnet_b4_to_mobilenetv3_large/fold_0/checkpoints/best_model.pth
-bash slurm/submit.sh slurm/24_benchmark.slurm MODEL=efficientnet_b0 \
+bash run/benchmark.sh MODEL=efficientnet_b0 \
     CKPT=experiments/runs/kd_efficientnet_b4_to_efficientnet_b0/fold_0/checkpoints/best_model.pth
-bash slurm/submit.sh slurm/24_benchmark.slurm MODEL=mobilevit_s \
+bash run/benchmark.sh MODEL=mobilevit_s \
     CKPT=experiments/runs/kd_efficientnet_b4_to_mobilevit_s/fold_0/checkpoints/best_model.pth
 ```
 
@@ -255,18 +263,47 @@ bash slurm/submit.sh slurm/24_benchmark.slurm MODEL=mobilevit_s \
 *Vì sao:* hai thứ này chỉ đo được **trong app Android**, không có trên cluster.
 - Peak RAM: `Debug.getMemoryInfo()` / `Runtime` quanh vòng inference.
 - End-to-end: bọc thời gian cả `resize + normalize + forward + sigmoid`, không chỉ `forward`.
-(Không có lệnh slurm — làm trong app; xem `SkinDetector/docs/MODEL_HANDOFF.md`.)
+(Không có lệnh `run/` — làm trong app; xem `SkinDetector/docs/MODEL_HANDOFF.md`.)
 
 ### GAP-5 ⚪ — efficientformerv2_s2 (student mobile-SOTA thứ 3) chưa train
 *Vì sao:* để bộ mobile-SOTA đủ 3 kiến trúc. Tốn 1 lượt train KD đầy đủ (tùy chọn).
 
 ```bash
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2 TEACHER=convnextv2_base
+bash run/train_student.sh STUDENT=efficientformerv2_s2 TEACHER=convnextv2_base
 ```
 
-### GAP-6 ⚪ — On-device cho model khác + parity check
-- Nếu muốn số on-device của efficientnet_b0 / mobilevit_s: export `.pte` (slurm 25) → đo trên phone.
-- **Parity check** (`max|Δlogit|<1e-3`) chưa xác nhận — bắt buộc trước khi tin số on-device.
+### GAP-6 🟢 — Parity check PC ↔ `.pte`: **ĐÃ XÁC NHẬN (2026-08-23)**
+
+Parity **layer 1** (lowering đồ thị: `torch.export` → edge → XNNPACK) đã đạt trên
+`mobilenetv4_conv_medium`, checkpoint `kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_4`
+(fold app spec chọn ship):
+
+| Chỉ số | Giá trị |
+|---|---|
+| `max\|Δlogit\|` | **5.53e-06** (ngưỡng 1e-3 → dư 180×) |
+| mean `\|Δlogit\|` | 1.12e-06 |
+| `max\|Δprob\|` | 4.76e-07 |
+| Mẫu vượt ngưỡng | 0 / 100 |
+| `.pte` | 32.11 MB, ExecuTorch **1.4.1** (torch 2.13.0) |
+
+```bash
+bash run/setup_export_env.sh                                    # 1 lần → ./.venv-export
+CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_4/checkpoints/best_model.pth
+bash run/make_benchmark_set.sh N=100 MODEL=mobilenetv4_conv_medium CKPT="$CKPT"
+bash run/export_executorch.sh       MODEL=mobilenetv4_conv_medium CKPT="$CKPT"
+bash run/check_pte_parity.sh        MODEL=mobilenetv4_conv_medium   # exit 1 nếu FAIL
+# → reports/mobile_benchmark/parity_mobilenetv4_conv_medium.json
+```
+
+⚠️ **CKPT phải giống hệt nhau ở cả hai bước** `make_benchmark_set` và
+`export_executorch`, nếu không phép so sánh là giữa **hai model khác nhau** và
+sẽ "fail parity" vì lý do sai.
+
+⚠️ Đây mới là **layer 1**. **Layer 2** — app Android tự decode + resize + normalize
+có tái tạo đúng tensor đó không — vẫn **chưa** kiểm; đó là trap bilinear-vs-LANCZOS
+trong `ANDROID_APP_SPEC.md`, kiểm bằng `images/*` đối chiếu `inputs/*.bin`.
+
+⚠️ AAR ExecuTorch của app phải khớp **1.4.1** (version trong `./.venv-export`).
 
 ---
 
@@ -280,7 +317,8 @@ bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=efficientformerv2_s2 T
 | Benchmark on-device 3 ứng viên mobile | ✅ Có (Pixel 6a) |
 | Fold đủ 5 cho maxvit-KD + efficientformerv2_s2 | ❌ GAP-1b |
 | FLOPs cho model nhẹ | ❌ GAP-3 |
-| Peak RAM / end-to-end mobile + parity check | ❌ GAP-4 |
+| Parity PC ↔ `.pte` (layer 1, lowering đồ thị) | ✅ Có (2026-08-23, max\|Δlogit\| 5.53e-06) |
+| Peak RAM / end-to-end mobile + parity layer 2 (tiền xử lý trong app) | ❌ GAP-4 — cần máy Android thật |
 
 **Đủ để làm đề cương/proposal ngay** — luận điểm KD đã có bằng chứng đầy đủ (case chính
 mobilenetv4←convnextv2, +0.052 AUPRC). Còn lại là hoàn thiện: GAP-1b (chạy nốt fold dở dang)

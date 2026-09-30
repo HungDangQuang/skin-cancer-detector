@@ -28,9 +28,9 @@ khớp tuyệt đối eval (`build_transforms(cfg,"val")`).
 
 ```bash
 # Bộ input dùng chung:
-bash slurm/submit.sh slurm/26_make_benchmark_set.slurm N=100
+bash run/make_benchmark_set.sh N=100
 # Kèm logit tham chiếu cho parity — chạy cho TỪNG student định đo:
-bash slurm/submit.sh slurm/26_make_benchmark_set.slurm N=100 \
+bash run/make_benchmark_set.sh N=100 \
     MODEL=mobilenetv4_conv_medium \
     CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 ```
@@ -55,7 +55,7 @@ thêm batch → `(1,3,224,224)`.
 ## 2. Benchmark trên PC (server cluster)
 
 ```bash
-bash slurm/submit.sh slurm/24_benchmark.slurm \
+bash run/benchmark.sh \
     MODEL=mobilenetv4_conv_medium \
     CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 ```
@@ -74,9 +74,9 @@ ExecuTorch pin torch riêng → **venv cô lập**, không đụng venv training
 
 ```bash
 # Một lần, trên login node:
-bash slurm/setup_export_env.sh
+bash run/setup_export_env.sh
 # Mỗi student:
-bash slurm/submit.sh slurm/25_export_executorch.slurm \
+bash run/export_executorch.sh \
     MODEL=mobilenetv4_conv_medium \
     CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 # BACKEND=none nếu XNNPACK không partition được kiến trúc nào đó
@@ -85,9 +85,27 @@ bash slurm/submit.sh slurm/25_export_executorch.slurm \
 Ra `exports/executorch/<MODEL>.pte`. Dùng `torch.export` → chạy được cả student
 transformer (mobilevit/fastvit/efficientformerv2) mà `torch.jit.script` fail.
 
+> **(PLANNED) Cổng phát hiện ảnh không hợp lệ (OOD gate):** để app **từ chối** ảnh
+> không phải tổn thương da (thay vì ép ra benign/malignant), có phương án bọc model
+> thành `.pte` **2-output `(logit, ood_score)`** — Mahalanobis trên feature, `μ/Σ⁻¹`
+> đông cứng trong graph, app chỉ so thêm 1 ngưỡng. Post-hoc, không train lại, không
+> đụng số Chapter 4. Thiết kế đầy đủ + luồng on-device: [docs/ood_gate_plan.md](ood_gate_plan.md).
+
 ---
 
 ## 4. Benchmark trên Android (on-device)
+
+> **Sắp thực thi bước này?** [docs/MOBILE_BENCHMARK_TASK.md](MOBILE_BENCHMARK_TASK.md)
+> là task spec tự-chứa (tiếng Anh, viết 2026-08-24): chỉ đích danh 4 file `.pte`
+> cần đo, quy trình đo chi tiết, kết quả mong đợi + tiêu chí chấp nhận, và các bẫy
+> đã biết — trong đó có việc **3/4 file `ref_*.csv` hiện KHÔNG khớp** với `.pte`
+> định đo, và **số EfficientFormerV2 trên Pixel 6a nhiều khả năng đã vô hiệu**.
+> Mục §4.1–4.7 dưới đây là quy trình gốc; task spec là bản thi hành cụ thể hoá nó.
+
+> **Muốn dựng hẳn app sản phẩm (không chỉ đo benchmark)?** Đặc tả đầy đủ — 14 màn hình,
+> behavior, hợp đồng model (`model_config.json`, ngưỡng, calibration), thư viện Kotlin/Compose,
+> và một **màn hình Developer** hiện thực hoá đúng §4.1–§4.7 dưới đây — nằm ở
+> [docs/ANDROID_APP_SPEC.md](ANDROID_APP_SPEC.md).
 
 ### 4.1 Dependency
 - Thêm **ExecuTorch Android AAR** (có **XNNPACK** — phải khớp vì `.pte` lower bằng XNNPACK).
@@ -124,6 +142,20 @@ Vì input `.bin` **giống hệt** PC, lớp này cô lập lỗi *model/convert
 // đọc ref_<model>.csv theo id
 val diff = kotlin.math.abs(onDeviceLogit - refLogit)   // yêu cầu < 1e-3
 ```
+
+**Đã kiểm sẵn trên PC (2026-08-23) — làm trước khi động tới điện thoại.**
+`run/check_pte_parity.sh` chạy chính `.pte` đó qua ExecuTorch runtime trên server
+và đối chiếu `ref_<model>.csv`, nên nếu app lệch mà bước này PASS thì lỗi nằm ở
+**app**, không phải ở model/convert — thu hẹp phạm vi debug rất nhiều:
+
+```bash
+bash run/check_pte_parity.sh MODEL=mobilenetv4_conv_medium   # exit 1 nếu FAIL
+# → reports/mobile_benchmark/parity_<model>.json
+```
+
+Kết quả `mobilenetv4_conv_medium` (fold_4): `max|Δlogit|` = **5.53e-06**,
+`max|Δprob|` = 4.76e-07, 0/100 mẫu vượt ngưỡng, ExecuTorch **1.4.1** →
+AAR trong app phải khớp version này.
 
 ### 4.6 (c) Parity layer 2 — sanity tiền xử lý (tolerance lỏng)
 App đọc `images/<file>` → tự resize 224 + `/255` + chuẩn hóa ImageNet (theo
@@ -164,5 +196,5 @@ Ghi JSON giống `reports/benchmark/<model>.json`, thêm:
 - Khoảng cách **FLOPs (lý thuyết) vs latency đo thật** là một insight: student transformer có thể chậm trên mobile hơn FLOPs gợi ý.
 - `.pte` đang lower **XNNPACK = CPU** → số là mobile CPU. NPU/GPU (QNN/Vulkan) là scope khác.
 
-Xem thêm: `slurm/README.md` (mục Section 5 — benchmark/export) và
-`docs/SLURM.md`.
+Xem thêm: `run/README.md` (mục Section 5 — benchmark/export) và
+`run/README.md`.

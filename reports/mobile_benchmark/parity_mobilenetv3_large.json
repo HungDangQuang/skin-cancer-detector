@@ -1,0 +1,26 @@
+{
+  "model_name": "mobilenetv3_large",
+  "pte_path": "exports/executorch/mobilenetv3_large__efficientnet_b4_fold0.pte",
+  "pte_size_mb": 16.05,
+  "executorch_api": "executorch.runtime.Runtime",
+  "reference_csv": "data/benchmark_set/ref_mobilenetv3_large.csv",
+  "n_samples": 100,
+  "input_shape": [
+    3,
+    224,
+    224
+  ],
+  "tolerance": 0.001,
+  "max_abs_logit_delta": 4.34011840821924e-06,
+  "mean_abs_logit_delta": 1.0812299633062434e-06,
+  "p99_abs_logit_delta": 3.5944158934819764e-06,
+  "max_abs_prob_delta": 6.847655549535592e-07,
+  "n_over_tolerance": 0,
+  "worst_sample": {
+    "id": "0097",
+    "pytorch_logit": -1.409481,
+    "pte_logit": -1.4094853401184082,
+    "abs_delta": 4.34011840821924e-06
+  },
+  "passed": true
+}

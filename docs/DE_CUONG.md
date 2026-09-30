@@ -78,8 +78,8 @@ huấn luyện một mô hình "thầy" (teacher) dung lượng lớn, mạnh, r
     chuẩn hóa ImageNet); MixUp/CutMix/CutOut **không** dùng (có hại với lớp hiếm / lệch
     miền / phá tính nhất quán của KD).
 - **Huấn luyện:** cấu hình bằng **Hydra**; lớp `Trainer` (teacher / baseline) và
-  `KDTrainer` (student có KD); chạy trên **cụm UIT Slurm** (GPU L40, chiếm trọn GPU để
-  tránh tranh chấp bộ nhớ).
+  `KDTrainer` (student có KD); chạy trên **máy chủ GPU Linux** qua `bash run/<script>.sh` (một process
+  huấn luyện đủ 5 fold tuần tự; ghim `GPU=<id>` khi chạy song song).
 - **Đánh giá:** `compute_metrics` xuất pAUC@TPR≥80, AUC-ROC, **AUPRC** (+ prevalence),
   độ nhạy/đặc hiệu, các điểm vận hành sens@90/95spec; ngưỡng quyết định chọn theo
   **chỉ số Youden's J**; tổng hợp 5-fold theo **mean ± std**.
@@ -135,5 +135,5 @@ huấn luyện một mô hình "thầy" (teacher) dung lượng lớn, mạnh, r
 | **GĐ 8** (Tuần 13–14) | Tổng hợp kết quả, viết & hoàn thiện khóa luận | Khóa luận hoàn chỉnh + slide bảo vệ |
 
 > *Ghi chú:* timeline mang tính dự kiến; các giai đoạn huấn luyện (GĐ 3–7) phụ thuộc
-> hàng đợi và tài nguyên GPU của cụm UIT Slurm (chia sẻ), có thể chạy gối nhau khi tài
+> tài nguyên GPU của máy chủ dùng chung, có thể chạy gối nhau khi tài
 > nguyên cho phép.

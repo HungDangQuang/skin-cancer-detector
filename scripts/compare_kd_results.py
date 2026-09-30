@@ -228,7 +228,7 @@ def render_md(pairs, teachers, runs_dir: Path) -> str:
 
     if not pairs:
         L.append("**No KD runs found.** Train students first "
-                 "(`12_train_student.slurm`) and rsync `experiments/runs/`.")
+                 "(`run/train_student.sh`) and rsync `experiments/runs/`.")
         return "\n".join(L)
 
     # 1. Core KD-effect table (priority metrics, KD vs baseline + delta)

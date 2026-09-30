@@ -19,7 +19,7 @@ Two stages, all models output a single raw logit (`torch.sigmoid()` at inference
 2. **Student** — trained with `KDTrainer` + `BinaryDistillationLoss` against the
    frozen teacher:
    `L = 0.3·focal(student, y) + 0.7·T²·BCE(σ(s/T), σ(t/T))`, T = 4.0.
-   - `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2`
+   - `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2`, `repvit_m1_0`
 
 Each student is trained twice — **with KD** and **without KD (baseline)** — under
 identical data/hyperparameters/seed, over **5-fold CV** (StratifiedGroupKFold by
@@ -42,8 +42,8 @@ make install-dev        # deps + pre-commit hooks
 cp .env.example .env    # configure data paths
 ```
 
-> The repo runs on the **UIT Slurm cluster**, not locally — see `CLAUDE.md`
-> ("Local environment ≠ runtime environment"). The Mac is for editing only.
+> The repo runs on the **Linux GPU server** (`bash run/<script>.sh`), not locally — see
+> `CLAUDE.md` ("Local environment ≠ runtime environment"). The Mac is for editing only.
 
 ## Usage
 
@@ -94,13 +94,13 @@ make poc-all     # prepare-poc → poc-teacher → poc-student (2 epochs each)
 ### Cluster
 
 ```bash
-bash slurm/submit.sh slurm/11_train_teacher.slurm TEACHER=efficientnetv2_m
-bash slurm/submit.sh slurm/12_train_student.slurm STUDENT=mobilenetv4_conv_medium
-bash slurm/submit.sh slurm/23_export_model.slurm \
+bash run/train_teacher.sh TEACHER=efficientnetv2_m
+bash run/train_student.sh STUDENT=mobilenetv4_conv_medium
+bash run/export_model.sh \
     MODEL=mobilenetv4_conv_medium \
     CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 ```
-The model emits one raw logit → `sigmoid()` then the Youden threshold from that fold's `test_metrics.json` (not 0.5). Research/thesis model, not a validated medical device. See `docs/SLURM.md` and `slurm/README.md`.
+The model emits one raw logit → `sigmoid()` then the Youden threshold from that fold's `test_metrics.json` (not 0.5). Research/thesis model, not a validated medical device. See `run/README.md` and `run/README.md`.
 
 ## Project Structure
 
@@ -116,8 +116,8 @@ skin-cancer-detector/
 │   ├── inference/    # predictor and ensemble
 │   └── utils/        # seed, logger, config, checkpoint helpers
 ├── scripts/          # CLI entry points (train_*, evaluate, prepare_data, benchmark_mobile, ...)
-├── slurm/            # cluster job scripts (submit via slurm/submit.sh)
-├── docs/             # SLURM / PREPROCESSING / POC guides
+├── run/              # execution layer — launch everything via `bash run/<script>.sh`
+├── docs/             # PREPROCESSING / POC / GOTCHAS guides
 ├── reports/ + QA/    # thesis figures, results, recorded Q&A
 └── tests/            # unit tests
 ```

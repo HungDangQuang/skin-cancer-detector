@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="820" viewBox="0 0 1600 820" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9AA0A6"/>
+    </marker>
+    <filter id="cardShadow" x="-6%" y="-6%" width="112%" height="118%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#1a1a1a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="820" fill="#FFFFFF"/>
+
+  <!-- serpentine flow:  risk → step 1 → step 2
+                                          ↓
+                        rejected ← barriers ← scale -->
+
+  <!-- ===== 1. The risk (red) — col0 top ===== -->
+  <rect x="40" y="50" width="480" height="340" rx="14" fill="#FBEAE7" stroke="#F0C9C1"/>
+  <text x="280" y="84" text-anchor="middle" font-size="17" font-weight="700" fill="#B23A2A">1 · The risk</text>
+  <rect x="60" y="150" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#F3D3CC" filter="url(#cardShadow)"/>
+  <text x="166" y="178" text-anchor="middle" font-size="13" font-weight="700" fill="#B23A2A">ISIC 2024 · 3D-TBP</text>
+  <text x="166" y="202" text-anchor="middle" font-size="11" fill="#5A5A5A">10s–100s crops / patient</text>
+  <text x="166" y="224" text-anchor="middle" font-size="11" fill="#5A5A5A">one body · one session</text>
+  <text x="166" y="248" text-anchor="middle" font-size="11" font-weight="600" fill="#3B3B3B">→ shared tone · light · device</text>
+  <rect x="288" y="150" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#F3D3CC" filter="url(#cardShadow)"/>
+  <text x="394" y="178" text-anchor="middle" font-size="13" font-weight="700" fill="#B23A2A">PAD-UFES-20</text>
+  <text x="394" y="202" text-anchor="middle" font-size="11" fill="#5A5A5A">many shots · same lesion</text>
+  <text x="394" y="224" text-anchor="middle" font-size="11" fill="#5A5A5A">angle / distance only</text>
+  <text x="394" y="248" text-anchor="middle" font-size="11" font-weight="600" fill="#3B3B3B">→ literal near-duplicates</text>
+  <rect x="60" y="316" width="440" height="30" rx="8" fill="#F6DBD5"/>
+  <text x="280" y="336" text-anchor="middle" font-size="11" font-weight="600" fill="#9E3324">Per-image split → learns the PATIENT, not the disease</text>
+
+  <line x1="520" y1="220" x2="560" y2="220" stroke="#9AA0A6" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+  <!-- ===== 2. Step 1 — carve test (purple) — col1 top ===== -->
+  <rect x="560" y="50" width="480" height="340" rx="14" fill="#ECEBFB" stroke="#C9C6F0"/>
+  <text x="800" y="84" text-anchor="middle" font-size="17" font-weight="700" fill="#4B41B8">2 · Carve the test set FIRST</text>
+  <rect x="580" y="150" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#D6D3F5" filter="url(#cardShadow)"/>
+  <text x="686" y="178" text-anchor="middle" font-size="13" font-weight="700" fill="#4B41B8">1 / 6 of the data (≈17%)</text>
+  <text x="686" y="202" text-anchor="middle" font-size="11" fill="#5A5A5A">62,040 imgs · 241 malignant</text>
+  <text x="686" y="224" text-anchor="middle" font-size="11" fill="#5A5A5A">prevalence 0.3885%</text>
+  <text x="686" y="248" text-anchor="middle" font-size="11" font-weight="600" fill="#3B3B3B">→ sealed until final scoring</text>
+  <rect x="808" y="150" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#D6D3F5" filter="url(#cardShadow)"/>
+  <text x="914" y="178" text-anchor="middle" font-size="13" font-weight="700" fill="#4B41B8">Two constraints at once</text>
+  <text x="914" y="202" text-anchor="middle" font-size="11" fill="#5A5A5A">patient-disjoint</text>
+  <text x="914" y="224" text-anchor="middle" font-size="11" fill="#5A5A5A">label-stratified</text>
+  <text x="914" y="248" text-anchor="middle" font-size="11" font-weight="600" fill="#3B3B3B">→ test prevalence = overall</text>
+  <rect x="580" y="316" width="440" height="30" rx="8" fill="#E0DEF7"/>
+  <text x="800" y="336" text-anchor="middle" font-size="11" font-weight="600" fill="#4B41B8">StratifiedGroupKFold(n_splits=6, seed=42) — split 0 = test</text>
+
+  <line x1="1040" y1="220" x2="1080" y2="220" stroke="#9AA0A6" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+  <!-- ===== 3. Step 2 — 5-fold CV (blue) — col2 top ===== -->
+  <rect x="1080" y="50" width="480" height="340" rx="14" fill="#E8F0FB" stroke="#C2D8F2"/>
+  <text x="1320" y="84" text-anchor="middle" font-size="17" font-weight="700" fill="#2C63B0">3 · 5-fold CV on the dev pool</text>
+  <rect x="1100" y="150" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#D2E1F6" filter="url(#cardShadow)"/>
+  <text x="1206" y="178" text-anchor="middle" font-size="13" font-weight="700" fill="#2C63B0">StratifiedGroupKFold</text>
+  <text x="1206" y="202" text-anchor="middle" font-size="11" fill="#5A5A5A">K = 5 · seed 42</text>
+  <text x="1206" y="224" text-anchor="middle" font-size="11" fill="#5A5A5A">group = patient_id</text>
+  <text x="1206" y="248" text-anchor="middle" font-size="11" font-weight="600" fill="#3B3B3B">→ fold_{0..4}/train,val</text>
+  <rect x="1328" y="150" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#D2E1F6" filter="url(#cardShadow)"/>
+  <text x="1434" y="178" text-anchor="middle" font-size="13" font-weight="700" fill="#2C63B0">5 models, 1 config</text>
+  <text x="1434" y="202" text-anchor="middle" font-size="11" fill="#5A5A5A">248,161 train imgs / fold</text>
+  <text x="1434" y="224" text-anchor="middle" font-size="11" fill="#5A5A5A">test patients already gone</text>
+  <text x="1434" y="248" text-anchor="middle" font-size="11" font-weight="600" fill="#3B3B3B">→ no fold sees a test patient</text>
+  <rect x="1100" y="316" width="440" height="30" rx="8" fill="#DCE8F8"/>
+  <text x="1320" y="336" text-anchor="middle" font-size="11" font-weight="600" fill="#2C63B0">Same sealed test for all 5 → paired KD vs baseline is valid</text>
+
+  <line x1="1320" y1="390" x2="1320" y2="430" stroke="#9AA0A6" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+  <!-- ===== 4. Resulting scale (olive) — col2 bottom ===== -->
+  <rect x="1080" y="430" width="480" height="340" rx="14" fill="#EFF5E2" stroke="#D2E3B0"/>
+  <text x="1320" y="464" text-anchor="middle" font-size="17" font-weight="700" fill="#55801F">4 · Resulting scale</text>
+  <rect x="1100" y="500" width="440" height="76" rx="9" fill="#FFFFFF" stroke="#DCEBC3" filter="url(#cardShadow)"/>
+  <text x="1320" y="528" text-anchor="middle" font-size="13" font-weight="700" fill="#55801F">Held-out test — 62,040 images</text>
+  <text x="1320" y="552" text-anchor="middle" font-size="11" fill="#5A5A5A">241 malignant · prevalence 0.3885% · one set for every run</text>
+  <rect x="1100" y="590" width="440" height="76" rx="9" fill="#FFFFFF" stroke="#DCEBC3" filter="url(#cardShadow)"/>
+  <text x="1320" y="618" text-anchor="middle" font-size="13" font-weight="700" fill="#55801F">Train pool per fold — 248,161 images</text>
+  <text x="1320" y="642" text-anchor="middle" font-size="11" fill="#5A5A5A">everything available before the sampler intervenes</text>
+  <rect x="1100" y="680" width="440" height="76" rx="9" fill="#FFFFFF" stroke="#DCEBC3" filter="url(#cardShadow)"/>
+  <text x="1320" y="708" text-anchor="middle" font-size="13" font-weight="700" fill="#55801F">Seen per epoch — 5,790 images</text>
+  <text x="1320" y="732" text-anchor="middle" font-size="11" fill="#5A5A5A">1:5 ratio · a different subset is redrawn each epoch</text>
+
+  <line x1="1080" y1="600" x2="1040" y2="600" stroke="#9AA0A6" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+  <!-- ===== 5. Four barriers (green) — col1 bottom ===== -->
+  <rect x="560" y="430" width="480" height="340" rx="14" fill="#E7F4EC" stroke="#B6DEC5"/>
+  <text x="800" y="464" text-anchor="middle" font-size="17" font-weight="700" fill="#1E7A45">5 · Four leakage barriers</text>
+  <rect x="580" y="527" width="212" height="70" rx="9" fill="#FFFFFF" stroke="#CDE8D7" filter="url(#cardShadow)"/>
+  <text x="686" y="553" text-anchor="middle" font-size="12" font-weight="700" fill="#1E7A45">1 · Before folding</text>
+  <text x="686" y="575" text-anchor="middle" font-size="10" fill="#5A5A5A">test carved patient-disjoint</text>
+  <rect x="808" y="527" width="212" height="70" rx="9" fill="#FFFFFF" stroke="#CDE8D7" filter="url(#cardShadow)"/>
+  <text x="914" y="553" text-anchor="middle" font-size="12" font-weight="700" fill="#1E7A45">2 · While folding</text>
+  <text x="914" y="575" text-anchor="middle" font-size="10" fill="#5A5A5A">group key = patient_id</text>
+  <rect x="580" y="613" width="212" height="70" rx="9" fill="#FFFFFF" stroke="#CDE8D7" filter="url(#cardShadow)"/>
+  <text x="686" y="639" text-anchor="middle" font-size="12" font-weight="700" fill="#1E7A45">3 · At dataset merge</text>
+  <text x="686" y="661" text-anchor="middle" font-size="10" fill="#5A5A5A">PAD ids prefixed pad_</text>
+  <rect x="808" y="613" width="212" height="70" rx="9" fill="#FFFFFF" stroke="#CDE8D7" filter="url(#cardShadow)"/>
+  <text x="914" y="639" text-anchor="middle" font-size="12" font-weight="700" fill="#1E7A45">4 · External prep</text>
+  <text x="914" y="661" text-anchor="middle" font-size="10" fill="#5A5A5A">overlap check → exit code 2</text>
+  <rect x="580" y="699" width="440" height="30" rx="8" fill="#DCEBD9"/>
+  <text x="800" y="719" text-anchor="middle" font-size="11" font-weight="600" fill="#1E7A45">Enforced in code — barrier 4 aborts the run, not just warns</text>
+
+  <line x1="560" y1="600" x2="520" y2="600" stroke="#9AA0A6" stroke-width="1.8" marker-end="url(#arrow)"/>
+
+  <!-- ===== 6. Rejected design + cost (gray) — col0 bottom ===== -->
+  <rect x="40" y="430" width="480" height="340" rx="14" fill="#EEEDEA" stroke="#D8D6D1"/>
+  <text x="280" y="464" text-anchor="middle" font-size="17" font-weight="700" fill="#55534E">6 · Rejected design &amp; the cost</text>
+  <rect x="60" y="530" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#DCDAD5" filter="url(#cardShadow)"/>
+  <text x="166" y="558" text-anchor="middle" font-size="13" font-weight="700" fill="#3B3B3B">Earlier design — fixed</text>
+  <text x="166" y="582" text-anchor="middle" font-size="11" fill="#5A5A5A">test = fold 0's val split</text>
+  <text x="166" y="604" text-anchor="middle" font-size="11" fill="#5A5A5A">folds 1–4 saw their test</text>
+  <text x="166" y="628" text-anchor="middle" font-size="11" font-weight="600" fill="#3B3B3B">→ silent, only better scores</text>
+  <rect x="288" y="530" width="212" height="150" rx="10" fill="#FFFFFF" stroke="#DCDAD5" filter="url(#cardShadow)"/>
+  <text x="394" y="558" text-anchor="middle" font-size="13" font-weight="700" fill="#3B3B3B">What it costs</text>
+  <text x="394" y="582" text-anchor="middle" font-size="11" fill="#5A5A5A">every score comes out lower</text>
+  <text x="394" y="604" text-anchor="middle" font-size="11" fill="#5A5A5A">than a random split gives</text>
+  <text x="394" y="628" text-anchor="middle" font-size="11" font-weight="600" fill="#3B3B3B">→ lower, but honest</text>
+  <rect x="60" y="696" width="440" height="30" rx="8" fill="#E2E0DB"/>
+  <text x="280" y="716" text-anchor="middle" font-size="11" font-weight="600" fill="#55534E">The lost gap = memorisation reported as diagnosis</text>
+</svg>
