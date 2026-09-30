@@ -39,6 +39,7 @@ still tees.
 | `setup_env.sh` | One-time: create `./.venv-linux`, install deps, verify CUDA |
 | `setup_new_server.sh` | Bootstrap a brand-new server (clone + env + data layout) |
 | `validate.sh` | Import sanity + Hydra dry-load of every registered model (CPU, ~1 min) |
+| `test.sh` | Unit tests (`tests/`, or `TESTS="tests/test_x.py ..."`) in the server venv, CPU-only — the only place tests run (no Python on the Mac) |
 | `poc.sh` | Synthetic-data smoke test: prepare → teacher → student |
 | `prepare_data.sh` | ISIC 2024 (+ PAD-UFES-20) → processed images + fold splits |
 | `prepare_ddi.sh` | DDI (tone-balanced) → processed images, **appended to the TRAIN side only** (CPU) |

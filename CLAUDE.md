@@ -92,7 +92,7 @@ make train-all-students             # Run all three students sequentially
 python scripts/evaluate.py --model-name efficientnetv2_m --checkpoint path/to/best_model.pth
 
 # Tests
-make test                           # All tests with coverage
+make test                           # All tests with coverage (needs pytest-cov; on the server use `bash run/test.sh`)
 pytest tests/test_models.py -v      # Single test file
 pytest tests/test_losses.py::TestBinaryFocalLoss -v  # Single test class
 
