@@ -1,6 +1,9 @@
 # Data (too large for git)
 data/raw/
 data/processed/
+# 140 MB of regenerable-but-irreplaceable CSVs: too big for git. The durable copy
+# is the Mac rsync + the box; rebuild with scripts/rebuild_splits.py if both are lost.
+data/splits/
 experiments/
 
 # Python
@@ -90,3 +93,9 @@ reports/_replaced/
 reports/_metadata_backup/
 reports/_archive/
 reports/external/**/fold_*/
+
+# Word export of the thesis (run/export_thesis_docx.sh). Both are regenerated
+# from thesis/LUAN_VAN.md in seconds; the .docx is a 2.3 MB binary that would
+# churn the history on every edit. Keep the markdown as the single source.
+thesis/_build/
+thesis/*.docx
