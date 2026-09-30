@@ -198,8 +198,17 @@ def _verify_fast_path(y_true, probs, metrics, tol=1e-9) -> None:
 # --------------------------------------------------------------------------- #
 # Loading
 # --------------------------------------------------------------------------- #
-def load_run_predictions(run_dir: Path, subgroup_col: str | None):
-    """Read fold_*/predictions.csv -> (y_true, [y_prob per fold], subgroup or None).
+def _pred_suffix(pred_name: str) -> str:
+    """"" for predictions.csv, "_auprc" for predictions_auprc.csv, "_<stem>" otherwise."""
+    stem = Path(pred_name).stem
+    if stem == "predictions":
+        return ""
+    return stem[len("predictions"):] if stem.startswith("predictions_") else f"_{stem}"
+
+
+def load_run_predictions(run_dir: Path, subgroup_col: str | None,
+                          pred_name: str = "predictions.csv"):
+    """Read fold_*/<pred_name> (default predictions.csv) -> (y_true, [y_prob per fold], subgroup or None).
 
     Returns None if the run has no usable predictions. Enforces the shared-rows
     assumption: every fold must expose the same labels in the same order, which
@@ -210,7 +219,7 @@ def load_run_predictions(run_dir: Path, subgroup_col: str | None):
     probs, folds = [], []
 
     for fold_dir in sorted(run_dir.glob("fold_*")):
-        csv_path = fold_dir / "predictions.csv"
+        csv_path = fold_dir / pred_name
         if not csv_path.is_file():
             continue
         yt, yp, sg = [], [], []
@@ -229,7 +238,7 @@ def load_run_predictions(run_dir: Path, subgroup_col: str | None):
                 subgroup = np.asarray(sg, dtype=object)
         elif yt.shape != y_true_ref.shape or not np.array_equal(yt, y_true_ref):
             raise SystemExit(
-                f"{run_dir}: {fold_dir.name}/predictions.csv does not have the same "
+                f"{run_dir}: {fold_dir.name}/{pred_name} does not have the same "
                 "rows (or row order) as the first fold. The shared-index bootstrap "
                 "assumes all folds score the identical test set — refusing to guess."
             )
@@ -338,6 +347,11 @@ def main() -> None:
                          "kd_maxvit_base_to_fastvit_sa12:kd_convnextv2_base_to_mobilenetv4_conv_medium")
     ap.add_argument("--metrics", default=",".join(METRICS),
                     help=f"Comma-separated subset of {','.join(METRICS)}")
+    ap.add_argument("--pred-name", default="predictions.csv",
+                    help="Per-fold predictions file to read (default predictions.csv). "
+                         "predictions_auprc.csv reads the best-by-val-AUPRC checkpoint "
+                         "(training.callbacks.checkpoint.extra_monitors); the default "
+                         "outputs then become bootstrap_ci_auprc.{json,md}.")
     ap.add_argument("--out-json", type=Path, default=None,
                     help="Default: <results-dir>/bootstrap_ci.json")
     ap.add_argument("--out-md", type=Path, default=None,
@@ -360,9 +374,9 @@ def main() -> None:
     # ---- 1. per-run CIs -------------------------------------------------- #
     loaded, boots, indices = {}, {}, None
     for rel, path in sorted(runs):
-        data = load_run_predictions(path, args.subgroup_col)
+        data = load_run_predictions(path, args.subgroup_col, args.pred_name)
         if data is None:
-            print(f"skip (no predictions.csv): {rel}", file=sys.stderr)
+            print(f"skip (no {args.pred_name}): {rel}", file=sys.stderr)
             continue
         y_true, probs, subgroup, folds = data
         if indices is None:
@@ -399,6 +413,8 @@ def main() -> None:
         "explicit_pairs_by_subgroup": {},
         "fairness_gaps": {},
     }
+    if args.pred_name != "predictions.csv":
+        report["pred_name"] = args.pred_name  # recorded only off the default
     for rel, res in boots.items():
         report["per_run"][rel] = {
             # Surfaced because not every run has all 5 folds — a 3-fold interval
@@ -588,8 +604,11 @@ def main() -> None:
             report["explicit_pairs_by_subgroup"][f"{a_rel} vs {b_rel}"] = entry
 
     # ---- write ------------------------------------------------------------ #
-    out_json = args.out_json or args.results_dir / "bootstrap_ci.json"
-    out_md = args.out_md or args.results_dir / "bootstrap_ci.md"
+    # A non-default --pred-name gets its own default output names, so a second
+    # checkpoint's CI never overwrites the main one.
+    stem = "bootstrap_ci" + _pred_suffix(args.pred_name)
+    out_json = args.out_json or args.results_dir / f"{stem}.json"
+    out_md = args.out_md or args.results_dir / f"{stem}.md"
     out_json.parent.mkdir(parents=True, exist_ok=True)
     out_json.write_text(json.dumps(report, indent=2))
 
@@ -599,6 +618,10 @@ def main() -> None:
         "",
         f"B = {args.n_boot} replicates, seed {args.seed}, {n_rows} test rows.",
         "",
+    ]
+    if args.pred_name != "predictions.csv":
+        lines += [f"**Predictions file:** `fold_*/{args.pred_name}` (not the main `predictions.csv`).", ""]
+    lines += [
         "**Fold convention:** each replicate draws one set of row indices, scores "
         "**every fold** on those same rows, and averages. Folds are five models on "
         "the *same* test set, so their predictions are never pooled (that would "

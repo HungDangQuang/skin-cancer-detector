@@ -27,11 +27,20 @@
 #   BATCH     eval batch size                        (default 64)
 #   WORKERS   dataloader workers                     (default 8)
 #   GPU       physical GPU id / auto / cpu           (default auto)
+#   OUT_ROOT  results root                           (default reports/external)
+#             A run-dir OUTSIDE experiments/runs/ collapses to its basename as
+#             run_tag, so give each arm its own OUT_ROOT (e.g. reports/external_newsplit_ddi).
+#   CKPT_NAME checkpoint under fold_*/checkpoints/   (default best_model.pth)
+#             best_model_auprc.pth = best-by-val-AUPRC (extra_monitors=[auprc]);
+#             needs VAL_PRED_NAME=val_predictions_auprc.csv AND its own OUT_ROOT —
+#             the script refuses to write over another checkpoint's results.
+#   VAL_PRED_NAME  internal val predictions for the frozen threshold
+#             (default val_predictions.csv)
 #
 # Output per run × variant:
-#   reports/external/<ds>/<variant>/<run_tag>/fold_N/{test_metrics.json,predictions.csv,
-#                                                     subgroup_metrics.json}
-#   reports/external/<ds>/<variant>/<run_tag>/aggregated.{json,md}
+#   <OUT_ROOT>/<ds>/<variant>/<run_tag>/fold_N/{test_metrics.json,predictions.csv,
+#                                            subgroup_metrics.json}
+#   <OUT_ROOT>/<ds>/<variant>/<run_tag>/aggregated.{json,md}
 # ============================================================================
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 for arg in "$@"; do export "${arg?}"; done
@@ -44,6 +53,9 @@ FOLDS="${FOLDS:-0,1,2,3,4}"
 VARIANTS="${VARIANTS:-headline}"
 BATCH="${BATCH:-64}"
 WORKERS="${WORKERS:-8}"
+OUT_ROOT="${OUT_ROOT:-reports/external}"
+CKPT_NAME="${CKPT_NAME:-best_model.pth}"
+VAL_PRED_NAME="${VAL_PRED_NAME:-val_predictions.csv}"
 export TMPDIR="${TMPDIR:-${PROJECT_DIR}/.tmp}"
 mkdir -p "${TMPDIR}"
 
@@ -77,11 +89,11 @@ fi
 # checkpoint (teachers live one level deeper than students).
 if [ -z "${RUNS:-}" ]; then
     RUNS="$(find experiments/runs -mindepth 2 -maxdepth 3 -type d -name 'fold_*' \
-              -exec test -f '{}/checkpoints/best_model.pth' ';' -print \
+              -exec test -f "{}/checkpoints/${CKPT_NAME}" ';' -print \
             | sed 's|/fold_[0-9]*$||' | sort -u | tr '\n' ' ')"
 fi
 if [ -z "${RUNS// /}" ]; then
-    echo "ERROR: no run-dir with fold_*/checkpoints/best_model.pth found under experiments/runs/."
+    echo "ERROR: no run-dir with fold_*/checkpoints/${CKPT_NAME} found under experiments/runs/."
     echo "       Pass RUNS=\"<dir> <dir>\" explicitly, or rsync the checkpoints in."
     exit 1
 fi
@@ -91,8 +103,8 @@ N_RUNS=0
 for r in ${RUNS}; do
     # Fail before the sweep starts, not 40 minutes in: an explicitly passed
     # run-dir with no checkpoint is a typo, not a run to skip quietly.
-    if ! ls "${r}"/fold_*/checkpoints/best_model.pth >/dev/null 2>&1; then
-        echo "ERROR: no fold_*/checkpoints/best_model.pth under '${r}'."
+    if ! ls "${r}"/fold_*/checkpoints/"${CKPT_NAME}" >/dev/null 2>&1; then
+        echo "ERROR: no fold_*/checkpoints/${CKPT_NAME} under '${r}'."
         echo "       Checkpoints are not pulled to the Mac by default — rsync them to this box."
         exit 1
     fi
@@ -107,7 +119,7 @@ if [ "${GPU:-auto}" = "cpu" ]; then
     DEVICE_FLAG="--device cpu"
 fi
 
-echo "[run] External eval | dataset=${DATASET} variants=${VARIANTS} folds=${FOLDS} runs=${N_RUNS}"
+echo "[run] External eval | dataset=${DATASET} variants=${VARIANTS} folds=${FOLDS} runs=${N_RUNS} ckpt=${CKPT_NAME} out=${OUT_ROOT}"
 for r in ${RUNS}; do echo "        ${r}"; done
 
 # shellcheck disable=SC2086
@@ -117,6 +129,9 @@ python scripts/evaluate_external.py \
     --variants "${VARIANTS}" \
     --batch-size "${BATCH}" \
     --num-workers "${WORKERS}" \
+    --out-root "${OUT_ROOT}" \
+    --ckpt-name "${CKPT_NAME}" \
+    --val-pred-name "${VAL_PRED_NAME}" \
     ${DEVICE_FLAG} ${RUN_FLAGS}
 
-echo "[run] DONE — results under reports/external/${DATASET}/"
+echo "[run] DONE — results under ${OUT_ROOT}/${DATASET}/"

@@ -74,7 +74,7 @@ If `src/<pkg>/__init__.py` re-exports a symbol, the name has to match the actual
 - `augmentation=light` (default) reproduces the original hard-coded pipeline → the 30-run baseline is reproducible. `augmentation=heavy` is the stronger anti-overfit variant.
 - **MixUp / CutMix / CoarseDropout(CutOut) are forbidden in code** (`_FORBIDDEN_OPS` → `ValueError`), enforcing the docs/PREPROCESSING.md decision. Don't add them to the YAML expecting them to run.
 - `drop_path_rate` (stochastic depth) is a per-model-config knob (default 0.0/off) passed via `create_timm_backbone` only when `>0`. Some timm archs may not accept the kwarg — if a run sets `drop_path_rate>0` and errors with `TypeError`, that arch doesn't support it; verify per-arch on the server.
-- `val_metrics.json` is a new per-fold output (best-epoch val metrics). `aggregate_folds.py` still reads only `test_metrics.json`; the val file is for the val−test overfitting gap, computed separately.
+- `val_metrics.json` is a new per-fold output (best-epoch val metrics). `aggregate_folds.py` reads `test_metrics.json` by default (`--metrics-name test_metrics_auprc.json` for the best-by-val-AUPRC twin, since 2026-09-30) and never reads `val_metrics*.json`; the val file is for the val−test overfitting gap, computed separately.
 
 ### `load_config()` must compose Hydra defaults for the root config
 

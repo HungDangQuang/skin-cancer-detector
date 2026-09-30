@@ -207,10 +207,32 @@ brings `best_model_<m>.pth` along with `best_model.pth`. Cost: each extra monito
 more test + val inference pass per fold. A default run's result files are unchanged; its
 `config.yaml` only gains the `extra_monitors: []` line.
 
-> ⚠ As of 2026-09-30 **no downstream tool reads the `_<m>` twins yet**: `aggregate_folds.py`
-> reads `test_metrics.json`, `bootstrap_ci.py` reads `predictions.csv`, and
-> `evaluate_external.py` loads `best_model.pth` + `val_predictions.csv` — the file-name flags
-> are step C3 of `docs/TASK_ITEM2_3_source_sampler_ship_ckpt.md`.
+The downstream tools read the `_<m>` twins only when told to — every default is the main
+checkpoint, and every non-default name gets its own output so nothing is overwritten:
+
+```bash
+R=experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp
+bash run/aggregate.sh RUN_DIR=$R METRICS_NAME=test_metrics_auprc.json   # -> aggregated_auprc.{json,md}
+bash run/bootstrap_ci.sh RESULTS_DIR=experiments/runs_newsplit_ddi \
+     PRED_NAME=predictions_auprc.csv SUBGROUP=source                    # -> bootstrap_ci_auprc.{json,md}
+bash run/evaluate_external.sh DATASET=ham10000 RUNS="$R" \
+     CKPT_NAME=best_model_auprc.pth VAL_PRED_NAME=val_predictions_auprc.csv \
+     OUT_ROOT=reports/external_newsplit_ddi_auprc                       # its OWN out-root
+```
+
+`evaluate_external.py` refuses a checkpoint / val-predictions pair that does not share the
+suffix (the frozen Youden threshold must come from the same model), refuses a non-default
+checkpoint with the default `reports/external` root, and refuses to write a fold whose
+existing `test_metrics.json` came from a different checkpoint. `bootstrap_ci.py
+--pred-name` applies to every run in `RESULTS_DIR`, so a run without that file is skipped —
+it cannot pair the AUPRC checkpoint of one run against the pAUC checkpoint of another.
+
+The on-device chain needs no flag: `make_benchmark_set.sh` / `export_executorch.sh` /
+`infer_bundle.sh` take any `CKPT=` path and `eval_from_logits.sh` any `VALPRED=` — pass
+`.../checkpoints/best_model_auprc.pth` and `val_predictions_auprc.csv`, the SAME `CKPT` to
+both `make_benchmark_set.sh` and `export_executorch.sh`, and an explicit `OUT=` to
+`export_executorch.sh` (its default `exports/executorch/<model>.pte` overwrites the existing
+export of that architecture).
 
 ### 3b. Throughput knobs — use these on every long run
 

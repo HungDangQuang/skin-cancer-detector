@@ -31,8 +31,12 @@
 #                A - B. Semicolon-separate several. Sections 2/3 only pair
 #                kd-vs-baseline and suffix-vs-main, so comparing two KD runs to
 #                EACH OTHER (e.g. the two Pareto ship candidates) needs this.
-#   OUT_JSON     (default ${RESULTS_DIR}/bootstrap_ci.json)
-#   OUT_MD       (default ${RESULTS_DIR}/bootstrap_ci.md)
+#   PRED_NAME    per-fold predictions file        (default predictions.csv)
+#                predictions_auprc.csv = the best-by-val-AUPRC checkpoint
+#                (training.callbacks.checkpoint.extra_monitors=[auprc])
+#   OUT_JSON     (default ${RESULTS_DIR}/bootstrap_ci.json; bootstrap_ci_auprc.json
+#                for PRED_NAME=predictions_auprc.csv, so the main CI is never overwritten)
+#   OUT_MD       (default ${RESULTS_DIR}/bootstrap_ci.md;   likewise _auprc)
 #
 # Usage:
 #   bash run/bootstrap_ci.sh RESULTS_DIR=reports/external/ham10000/headline
@@ -71,8 +75,10 @@ N_BOOT="${N_BOOT:-2000}"
 SEED="${SEED:-42}"
 ALPHA="${ALPHA:-0.05}"
 METRICS="${METRICS:-auc_roc,auprc,pauc_at_tpr80,sens_at_90spec}"
-OUT_JSON="${OUT_JSON:-${RESULTS_DIR}/bootstrap_ci.json}"
-OUT_MD="${OUT_MD:-${RESULTS_DIR}/bootstrap_ci.md}"
+PRED_NAME="${PRED_NAME:-predictions.csv}"
+# Output names default on the Python side (they depend on PRED_NAME).
+OUT_JSON="${OUT_JSON:-}"
+OUT_MD="${OUT_MD:-}"
 
 if [ ! -d "${RESULTS_DIR}" ]; then
     echo "[run] ERROR: RESULTS_DIR not found: ${RESULTS_DIR}" >&2
@@ -80,8 +86,9 @@ if [ ! -d "${RESULTS_DIR}" ]; then
 fi
 
 ARGS=(--results-dir "${RESULTS_DIR}" --n-boot "${N_BOOT}" --seed "${SEED}"
-      --alpha "${ALPHA}" --metrics "${METRICS}"
-      --out-json "${OUT_JSON}" --out-md "${OUT_MD}")
+      --alpha "${ALPHA}" --metrics "${METRICS}" --pred-name "${PRED_NAME}")
+if [ -n "${OUT_JSON}" ]; then ARGS+=(--out-json "${OUT_JSON}"); fi
+if [ -n "${OUT_MD}" ]; then ARGS+=(--out-md "${OUT_MD}"); fi
 # PAIR holds one or more "A:B" specs separated by ";". Split on ";" only, so a
 # run-dir name may contain anything except a semicolon.
 if [ -n "${PAIR:-}" ]; then
@@ -96,7 +103,7 @@ if [ -n "${SUBGROUP:-}" ]; then
     ARGS+=(--subgroup-col "${SUBGROUP}")
 fi
 
-echo "[run] Bootstrap CI | dir=${RESULTS_DIR} B=${N_BOOT} seed=${SEED} subgroup=${SUBGROUP:-none} pair=${PAIR:-none}"
+echo "[run] Bootstrap CI | dir=${RESULTS_DIR} B=${N_BOOT} seed=${SEED} subgroup=${SUBGROUP:-none} pair=${PAIR:-none} preds=${PRED_NAME}"
 python scripts/bootstrap_ci.py "${ARGS[@]}"
 
 echo "[run] DONE"

@@ -44,7 +44,8 @@
 # is set), config.yaml, training_curves.png,
 # calibration_metrics.json, reliability_curve.png — i.e. everything the
 # eval-results / update-report skills read (~4 MB/fold). Plus aggregated.json /
-# aggregated.md at the run-dir level. Checkpoints only with CKPT=1.
+# aggregated.md at the run-dir level (+ aggregated_<m>.{json,md} from
+# aggregate.sh METRICS_NAME=test_metrics_<m>.json). Checkpoints only with CKPT=1.
 #
 # Like run/progress*.sh this runs on the Mac, so it deliberately does NOT source
 # run/common.sh: there is no ./.venv-linux and no GPU here, and a status check
@@ -369,7 +370,8 @@ awk -F'|' -v sel="${SELECT}" '
     [ -z "${dir}" ] && continue
     # shellcheck disable=SC2086
     rsync ${RSYNC_FLAGS} -e "ssh ${SSH_OPTS}" \
-        --include='aggregated.json' --include='aggregated.md' --exclude='*' \
+        --include='aggregated.json' --include='aggregated.md' \
+        --include='aggregated_*.json' --include='aggregated_*.md' --exclude='*' \
         "${host}:${dir}/${run}/" "${run}/" < /dev/null >/dev/null 2>&1
 done
 
