@@ -41,6 +41,7 @@ still tees.
 | `validate.sh` | Import sanity + Hydra dry-load of every registered model (CPU, ~1 min) |
 | `poc.sh` | Synthetic-data smoke test: prepare → teacher → student |
 | `prepare_data.sh` | ISIC 2024 (+ PAD-UFES-20) → processed images + fold splits |
+| `prepare_ddi.sh` | DDI (tone-balanced) → processed images, **appended to the TRAIN side only** (CPU) |
 | `download_external.sh` | Fetch the HAM10000 / Fitzpatrick17k raw bytes (network only) |
 | `prepare_external.sh` | HAM10000 / Fitzpatrick17k eval-only sets + leakage check |
 | `train_teacher.sh` | One teacher, all 5 folds sequentially |
@@ -61,7 +62,10 @@ still tees.
 | `plot_calibration_summary.sh` | Probability-calibration summary figure (3 panels: one-constant-per-domain · subgroup break · teacher→student inheritance) — CPU-only, derives every prevalence from the artifacts |
 | `bootstrap_ci.sh` | Bootstrap CIs from `predictions.csv`: per-run, paired KD delta, paired ablation delta (`__suffix` forks), named A-vs-B pairs (`PAIR=`), paired fairness gap, per-subgroup variants (`SUBGROUP=`) |
 | `attach_metadata.sh` | Add ISIC metadata columns to existing splits + `predictions.csv` (no GPU, no re-train) — unblocks subgroup calibration |
-| `make_benchmark_set.sh` | Build the fixed 100-image benchmark input set |
+| `make_benchmark_set.sh` | Build the fixed **100-image, class-balanced** set for latency/parity work (ids are NOT stable between calls — `docs/GOTCHAS.md`) |
+| `make_mobile_eval_bundle.sh` | Build the **mobile-evaluation bundle**: one zip of every image to be scored, manifest in split-file order, no balancing (spec: `docs/MOBILE_EVAL_PIPELINE.md`) |
+| `infer_bundle.sh` | Score that bundle on the **host, CPU, batch 1** (`CKPT`→PyTorch eager, `PTE`→ExecuTorch) → `sample_id,logit,error` CSV, the same format the phone emits |
+| `eval_from_logits.sh` | **Shared scorer** for both arms: logits CSV + manifest → `metrics.json` + `table.md`; `COMPARE=` emits the server-vs-mobile `comparison.md` |
 | `benchmark.sh` | Params / FLOPs / size / latency profile (`MOBILE=1` for the light subset) |
 | `export_model.sh` | Export to ONNX or TorchScript |
 | `setup_export_env.sh` | One-time: isolated `./.venv-export` for ExecuTorch |
@@ -126,7 +130,24 @@ bash run/download_external.sh DATASET=fitzpatrick17k             # then the full
 bash run/prepare_external.sh DATASET=ham10000
 bash run/prepare_external.sh DATASET=fitzpatrick17k SKIP_DOWNLOAD=1   # + crop70 / crop50 framing variants
 bash run/prepare_external.sh DATASET=fitzpatrick17k SKIP_DOWNLOAD=1 CROP_FRACS=none  # headline only
+
+# DDI (Diverse Dermatology Images) — a TRAIN-side source, added to the EXISTING splits.
+# Prereq: the release zip unpacked to data/raw/DDI/images/ (656 png + ddi_metadata.csv).
+bash run/prepare_ddi.sh DRY_RUN=1     # report the per-fold effect, write nothing
+bash run/prepare_ddi.sh               # process + append to every fold_*/train_split.csv
 ```
+
+> **`prepare_ddi.sh` does NOT re-partition anything.** It appends 656 rows (171 malignant,
+> Fitzpatrick tone balanced 208/241/207) to each fold's `train_split.csv` and leaves
+> `test_split.csv` and every `val_split.csv` byte-for-byte identical — so runs already
+> trained on these splits (`experiments/runs_newsplit_light`) stay valid paired controls.
+> Two consequences, both deliberate: DDI is **never scored on**, and its
+> `patient_id` is one group per image (the release ships no patient column), which is
+> acceptable only because DDI never reaches val/test. Adding DDI to the evaluation pool
+> would need a full split regeneration plus a retrained control — a different job.
+> `is_uninformative` **flags but does not drop** here: its ISIC-tuned `std < 8` fires more
+> on flat clinical photographs, which is not independent of skin tone, so dropping on it
+> would preferentially delete the dark-skin images this dataset exists to add.
 
 > **Fitzpatrick17k coverage: 99.98 % (16,574 / 16,577), md5-verified.** The release
 > ships URLs and one of the two linked atlases (`www.dermaamin.com`) is gone, so
@@ -154,47 +175,23 @@ bash run/aggregate.sh RUN_DIR=experiments/runs/kd_efficientnetv2_m_to_mobilenetv
 ```
 
 Common knobs (all `KEY=VALUE`): `FOLDS="0 1 2"`, `GPU=1` (pin a specific GPU),
-`GPU=auto` (default — picks the freest GPU), `GPU=cpu`, `AUG=light|heavy|domain`,
+`GPU=auto` (default — picks the freest GPU), `GPU=cpu`, `AUG=light|heavy`,
 `DROP_PATH=0.1`, `EXTRA="cudnn_deterministic=false training.batch_size=16"`.
 
-**`AUG` has three presets, and the third is not "heavier".** `light` (default) is
-the pipeline the whole 140 fold-run matrix was trained with; `heavy` is the
-anti-overfit lever (higher `p`, wider colour, `+GaussNoise`). Both leave
-`ShiftScaleRotate.scale_limit` at **0.2**, so neither has ever moved the *field of
-view*. `domain` (`configs/augmentation/domain.yaml`, added 2026-09-21) targets the
-two causes diagnosed for the cross-domain collapse — framing (`scale_limit` 0.5,
-`shift_limit` 0.3) and lighting/white balance (`ColorJitter`/`CLAHE`/`RandomGamma`).
-The `val` block is identical in all three: the evaluation path must not move, or
-the arm stops being comparable. Design + expected ceiling: `docs/domain_aug_plan.md`.
+**`AUG` has two presets.** `light` (default) is the pipeline the whole 140 fold-run
+matrix was trained with; `heavy` is the anti-overfit lever (higher `p`, wider colour,
+`+GaussNoise`). The `val` block is identical in both: the evaluation path must not
+move, or an arm stops being comparable. A third preset, `domain` (wider field of view +
+lighting), was trained on 2026-09-21..24 and **removed on 2026-09-30** because the KD
+student got significantly worse on 5/5 cross-domain cells — see `docs/domain_aug_plan.md`;
+the code is in commit `0c308b5`.
 
-The `domain` arm writes to its own tree so it cannot touch the main results —
-`output_dir=` (NOT `run_suffix=`, which `train_teacher.py` ignores):
-
-```bash
-export TMPDIR="$(pwd)/.tmp"
-bash run/train_teacher.sh TEACHER=efficientnetv2_m AUG=domain GPU=0 \
-     EXTRA="output_dir=experiments/runs_aug_domain"
-bash run/train_student.sh STUDENT=mobilenetv4_conv_medium TRAINING=baseline AUG=domain GPU=1 \
-     EXTRA="output_dir=experiments/runs_aug_domain"
-# KD student only AFTER the teacher has all 5 folds (it loads the teacher from
-# the SAME output_dir, so no new teacher config / registry entry is needed):
-bash run/train_student.sh STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m \
-     TRAINING=distillation AUG=domain GPU=0 \
-     EXTRA="output_dir=experiments/runs_aug_domain"
-```
-
-**Watching a run-tree that isn't `experiments/runs`.** `progress.sh`'s *live job*
-panel reads `output_dir=` straight off the command line, so it finds the arm with
-no flag. Its **run-dir table** ("folds with test_metrics.json") scans
-`OUTPUT_DIR_DEFAULT`, which defaults to `experiments/runs` — point it at the arm:
-
-```bash
-OUTPUT_DIR_DEFAULT=experiments/runs_aug_domain bash run/progress.sh
-```
-
-`pull_results.sh` already carries `experiments/runs_aug_domain` in its default
-`ROOTS` (a root that does not exist is skipped), so `/pull-results` sees the arm
-as soon as its first fold lands.
+Any augmentation or data arm writes to its own tree so it cannot touch the main results —
+`output_dir=` (NOT `run_suffix=`, which `train_teacher.py` ignores), and the KD student
+must use the SAME `output_dir` so it finds that arm's teacher. `progress.sh` scans
+`OUTPUT_DIR_DEFAULT` (default `experiments/runs`) for its run-dir table, so point it at
+the arm: `OUTPUT_DIR_DEFAULT=experiments/runs_newsplit_ddi bash run/progress.sh`.
+`pull_results.sh` carries `experiments/runs_newsplit_{light,ddi}` in its default `ROOTS`.
 
 ### 3b. Throughput knobs — use these on every long run
 

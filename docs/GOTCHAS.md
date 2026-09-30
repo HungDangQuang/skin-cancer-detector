@@ -68,7 +68,7 @@ If `src/<pkg>/__init__.py` re-exports a symbol, the name has to match the actual
 
 ### Augmentation is config-driven; don't edit ops in `transforms.py` alone (added 2026-06-21)
 
-`build_transforms` builds the pipeline **from `configs/augmentation/{light,heavy,domain}.yaml`** via an internal `name → Albumentations` registry — it no longer hard-codes the op list (it used to, and silently ignored those YAMLs). Consequences:
+`build_transforms` builds the pipeline **from `configs/augmentation/{light,heavy}.yaml`** via an internal `name → Albumentations` registry — it no longer hard-codes the op list (it used to, and silently ignored those YAMLs). Consequences:
 
 - To change augmentation, edit the **YAML**, not `transforms.py`. Adding a new op also needs a builder entry in `_TRANSFORM_BUILDERS`; an unknown `name` raises.
 - `augmentation=light` (default) reproduces the original hard-coded pipeline → the 30-run baseline is reproducible. `augmentation=heavy` is the stronger anti-overfit variant.
@@ -164,6 +164,79 @@ Two companion checks in the same code path:
 Full design + how to read each outcome: `docs/PREPROCESSING.md §1.2`.
 
 ---
+
+### `pkill -f <pattern>` qua ssh tự giết chính nó (phát hiện 2026-09-27)
+
+`ssh host 'pkill -f "infer_bundle.py --bundle"; <lệnh tiếp theo>'` **không bao giờ tới lệnh tiếp
+theo**. Remote chạy dưới `bash -c '<toàn bộ chuỗi lệnh>'`, nên command line của chính nó **chứa
+nguyên văn** pattern → `pkill -f` khớp chính mình và tự sát. Triệu chứng: lệnh trả về **rỗng hoàn
+toàn**, không lỗi, không output, và việc lẽ ra được phóng thì chưa từng chạy. Tôi mất 3 lệnh liên
+tiếp vì bẫy này trước khi nhận ra.
+
+Cách đúng — chèn ngoặc vuông để pattern không khớp chính văn bản của nó:
+```bash
+pkill -f 'infer_bund[l]e[.]py'        # an toàn
+pgrep -f 'x[y]z' | xargs -r kill      # hoặc lấy PID rồi kill
+```
+Cùng họ với quy ước `ps -ef | grep [t]rain_` kinh điển. Và nhớ quy tắc của dự án: **chỉ giết PID của
+mình**, không bao giờ giết tiến trình người khác.
+
+Bẫy kèm theo: `nohup ... &` qua ssh **không đủ** để tiến trình sống sót khi session đóng nếu nó còn
+giữ stdout/stderr của kênh ssh — dùng `setsid nohup ... > file 2>&1 < /dev/null &`. Mấy phép đo đầu
+của tôi chết giữa đường đúng vì thiếu `setsid` và `< /dev/null`.
+
+### Suy luận batch-1 trên CPU nhiều core: để mặc định là CHẬM 25× (phát hiện 2026-09-27)
+
+Đo trên box 64 core, `mobilenetv4_conv_medium`, batch 1, ảnh 224×224:
+
+| Số luồng | ms/ảnh | 70.883 ảnh |
+|--:|--:|--:|
+| 64 (PyTorch mặc định = mọi core) | **723** | **~14 giờ** |
+| 8 | **29,3** | 35 phút |
+| 1 | 43,5 | 51 phút |
+
+Phí đồng bộ chi phối một graph batch-1 nhỏ, nên **càng nhiều core càng chậm**. Triệu chứng lúc
+đang chạy: `%CPU` cỡ 800–900% mà tiến độ bò. `scripts/infer_bundle.py` vì thế mặc định
+`--threads 8`, **không** dùng mặc định của thư viện. Bài học quy trình: **đo nhịp trên vài trăm
+ảnh trước khi phóng cả tập** — con số 37,7 ms trong `reports/benchmark/*.json` là đo ở
+`threads: 1`, đừng suy ra cho cấu hình mặc định.
+
+Kèm một hệ quả về số học: **số luồng làm đổi logit** — 8 vs 1 luồng cho `max|Δlogit| = 2,0e-06`
+(mean 2,4e-07; 100/600 dòng lệch > 1e-6). Nhỏ hơn tác động export (5,57e-04) ~280 lần nên vô hại,
+nhưng **phải ghim và ghi lại số luồng** nếu định so hai lượt chạy. Lưu ý điều này **ngược** với kết
+quả trên điện thoại (1 vs 4 luồng cho logit y hệt) — đừng tổng quát hoá giữa hai nền tảng.
+
+Việc chia shard theo dải dòng (`--start/--end`) thì **an toàn tuyệt đối**: đã kiểm 2 shard ghép lại
+bit-identical với một lượt chạy liền (`max|Δ| = 0,000e+00`).
+
+### Bundle benchmark/eval: `id` KHÔNG phải định danh ảnh bền (phát hiện 2026-09-26)
+
+`scripts/make_benchmark_set.py:63-78` chọn mẫu bằng `rng.shuffle` rồi lấy `n//2` ca dương, và
+`:100-118` cấp `sample_id = f"{i:04d}"` **theo thứ tự của lượt chọn đó**. Hai lần gọi với `n` khác
+nhau ⇒ id `0042` là **hai ảnh khác nhau** (tên tệp `<id>__<source>__y<label>.<ext>` cũng khác). Nên
+một bộ con dùng làm cổng parity **phải được trích ra từ chính bundle lớn**, không phải sinh bằng
+lượt gọi thứ hai. Hệ quả nếu làm sai: Δlogit bậc 1 và một cuộc truy tìm bug CHW/RGB không tồn tại.
+
+Cùng họ: `OUTDIR` mặc định là `data/benchmark_set` và `make_benchmark_set.py:98-100` chỉ
+`mkdir(exist_ok=True)` **không dọn** ⇒ ghi bundle mới vào đó sẽ trộn với bundle cũ cùng id khác ảnh,
+và phá cổng `run/check_pte_parity.sh` (đọc `BENCH_DIR=data/benchmark_set`). Luôn đặt `OUTDIR=`.
+
+### `make_benchmark_set.py` không chạy được ở N lớn (phát hiện 2026-09-26)
+
+`:143` `np.stack(tensors)` giữ toàn bộ stack trong RAM và `:183-186` gọi
+`model(torch.from_numpy(inputs))` — **một forward duy nhất trên toàn bộ N**. Ở N = 59.093 thì riêng
+stack là **35,6 GB** (mỗi mẫu 3×224×224×4 = 602.112 B). Muốn sinh reference cho cả tập test phải
+viết lại theo lô. Ngoài ra `run/make_benchmark_set.sh:31-33` hard-code `CUDA_VISIBLE_DEVICES=""`
+nên N lớn sẽ chạy CPU.
+
+### Export `.pte` phiên bản thứ hai của cùng một model sẽ ghi đè bản cũ trong im lặng
+
+`run/export_executorch.sh:46` mặc định `OUT=exports/executorch/${MODEL}.pte`, và
+`run/export_all_students.sh` đặt tên tag `<model>__<teacher>_fold<N>.pte` — **trùng** tên bản đã
+export trước đó, trong khi `SKIP_EXISTING=1` sẽ **bỏ qua không báo**. Khi export lại từ checkpoint
+của một phân hoạch dữ liệu khác, phải đổi cây ra (`OUT=exports/executorch_v2/...`), nếu không sẽ có
+hai model khác nhau dùng một tên — đúng loại lỗi mà cổng parity không bắt được vì nó so đúng cặp
+file mình được trỏ tới.
 
 ## Operational / postmortems
 
