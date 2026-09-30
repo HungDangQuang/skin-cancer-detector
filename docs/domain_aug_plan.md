@@ -2,7 +2,37 @@
 
 > Tài liệu này trả lời: *"mô hình sụp khi đổi miền ảnh — huấn luyện lại với tăng cường
 > nhắm đúng nguyên nhân đã chẩn đoán thì thu hồi được bao nhiêu?"*
-> **Trạng thái: Việc 1 XONG (21/09). Việc 2 CHƯA chạy — phạm vi đã ĐỔI, xem cảnh báo dưới.**
+>
+> # 🔴 KẾT QUẢ: THẤT BẠI — KHÔNG DÙNG, KHÔNG ÁP DỤNG
+>
+> **Arm đã chạy xong đủ 30 fold-run + đánh giá 3 tầng (24/09). Câu trả lời: thu hồi được 0,
+> và làm hại mô hình.** `augmentation=domain` **không được dùng cho bất kỳ run nào về sau**;
+> **30/09/2026: preset `configs/augmentation/domain.yaml` và builder `RandomGamma` đã bị GỠ
+> khỏi code** (chỉ giữ code cho kết quả tốt). Muốn tái lập kết quả âm này thì lấy lại từ
+> commit `0c308b5`. Phần DDI (§6) giữ nguyên — đó là arm thành công.
+>
+> Bằng chứng quyết định — **student KD (mô hình sẽ đem triển khai) xấu đi có ý nghĩa ở 5/5 ô
+> đánh giá**, paired CI loại trừ 0 ở cả năm (ΔAUPRC, domain − light):
+> HAM10000 −0,0195 · Fitz headline −0,0436 · Fitz crop70 −0,0515 · Fitz crop50 −0,0564 ·
+> Fitz with_non_neoplastic −0,0395. In-domain cũng âm (−0,0811 AUPRC, không có CI).
+> Teacher và baseline thì lẫn lộn hai chiều tuỳ biến thể, chỉ riêng KD là nhất quán âm.
+>
+> Không quy được kết quả âm cho riêng trục nào: arm đổi **hai trục cùng lúc** (hình học là
+> trục chính, màu là phụ) nên nó **không** phải phép thử cho giả thuyết "chỉnh màu ảnh train".
+> Kết luận theo đúng điều đã đăng ký trước ở TL;DR: *bài toán cần thêm **dữ liệu** thật,
+> không cần thêm kỹ thuật tăng cường* → xem §6 (DDI).
+>
+> Số liệu đầy đủ: `reports/ci_newsplit_{ham10000_headline,fitzpatrick17k_*}.md`,
+> `reports/external_newsplit_{light,domain}/`, `experiments/runs_newsplit_{light,domain}/`.
+>
+> # ✅ VIỆC 4 (DDI) NGƯỢC LẠI: THÀNH CÔNG
+>
+> **Cũng chính kết luận "cần thêm DỮ LIỆU, không cần thêm kỹ thuật" đã được kiểm chứng và ĐÚNG.**
+> Arm DDI xong 26/09 (15/15 fold-run + 3 tầng đánh giá + paired CI 6 ô): student KD **tốt lên
+> có ý nghĩa ở 5/5 ô** trên AUPRC — đúng phản chiếu của arm `domain`. Chi tiết ở §6.
+>
+> **Trạng thái các việc: Việc 1 ✅ (21/09) · Việc 2 ✅ (23/09) · Việc 3 ✅ (24/09) · Việc 4 ✅ (26/09).**
+> **Còn tồn:** 4 việc tài liệu/runner ở **§9** + 3 quyết định mở ở **§8** (chờ tác giả).
 >
 > ⚠️ **RÀNG BUỘC BẤT BIẾN CŨ ĐÃ VÔ HIỆU (22/09).** Tài liệu này ban đầu ghi *"không chạy lại
 > `prepare` → splits không đổi → ma trận 140 fold-run vẫn so sánh được"*. Điều đó **không còn
@@ -34,8 +64,8 @@
   ([light.yaml:15](../configs/augmentation/light.yaml), [heavy.yaml:18](../configs/augmentation/heavy.yaml)),
   tức trục field-of-view **chưa từng được chạm vào**. `heavy` chỉ mạnh hơn về màu/nhiễu.
 - **Giải pháp:** thêm `configs/augmentation/domain.yaml` nhắm hai trục — **field of view** và
-  **ánh sáng/cân bằng trắng** — rồi train lại **15 fold-run** trên cặp nhanh nhất và so paired CI
-  với nhánh `light` đã có.
+  **ánh sáng/cân bằng trắng** — rồi train lại ~~15~~ **30 fold-run** trên cặp nhanh nhất và so paired CI
+  với nhánh `light` ~~đã có~~ **train lại trên splits mới** (xem ràng buộc 22/09 ở đầu tài liệu).
 - **Trần kỳ vọng: thấp.** Nếu framing chỉ chiếm ~6% vấn đề thì sửa ở train cũng có trần tương tự.
   Kết quả âm vẫn có giá trị: nó chuyển kết luận thành *"bài toán cần thêm dữ liệu, không cần thêm kỹ thuật"*.
 
@@ -57,7 +87,7 @@ mở rộng 4 student × 2 nhánh · chạy lại `prepare` · train lại ma tr
 
 ---
 
-## 2. Việc 1 — Mac, không GPU, không phụ thuộc ai
+## 2. Việc 1 — Mac, không GPU, không phụ thuộc ai ✅ XONG 21/09
 
 | # | File | Thay đổi | Xong |
 |---|---|---|:--:|
@@ -110,9 +140,12 @@ albumentations, chỉ `_FORBIDDEN_OPS` bị chặn"* — **SAI**. `_TRANSFORM_BU
 
 ---
 
-## 4. Việc 2 — Server, 15 fold-run
+## 4. Việc 2 — Server, ~~15~~ 30 fold-run ✅ XONG 23/09
 
-Cả arm ghi vào **`experiments/runs_aug_domain/`**, theo tiền lệ `experiments/runs_isic_only/`.
+~~Cả arm ghi vào `experiments/runs_aug_domain/`~~ — **tên cây đã ĐỔI khi thi công.** Hai nhánh thực tế
+là `experiments/runs_newsplit_light/` và `experiments/runs_newsplit_domain/` (xem khối cây ở dưới):
+tiền tố `newsplit_` để nói rõ chúng nằm trên splits gom-theo-bệnh-nhân sinh lại 22/09, **không**
+so sánh được với ma trận 140 fold cũ. Theo tiền lệ `experiments/runs_isic_only/`.
 
 **Vì sao `output_dir` chứ không phải `run_suffix`** — một quyết định giải đúng hai bẫy cùng lúc:
 1. `scripts/train_teacher.py:39` hardwire `Path(cfg.output_dir)/"teacher"/cfg.teacher.name/f"fold_{fold}"`
@@ -150,26 +183,37 @@ Driver chạy tuần tự cả 6 bước: `.tmp/arm_driver.sh` (tmux `newsplit_a
 
 **Một GPU ⇒ chạy tuần tự.** CLAUDE.md đã đo: một job KD đã bão hoà card, thêm job chỉ thêm rủi ro OOM.
 Theo dõi: `OUTPUT_DIR_DEFAULT=experiments/runs_newsplit_light bash run/progress.sh`.
-Kéo về Mac: `bash run/pull_results.sh pull` (hai cây mới **chưa** nằm trong `ROOTS` mặc định — xem 2.5).
+Kéo về Mac: `bash run/pull_results.sh pull` — ~~hai cây mới chưa nằm trong `ROOTS` mặc định~~ **đã
+thêm** từ commit `e7d6486` ([run/pull_results.sh:95](../run/pull_results.sh)); nhưng cây thứ ba
+`runs_newsplit_ddi` thì **vẫn chưa** — xem §9.1.
 
-| ☐ | Bước (30 fold-run) |
+| ☑ | Bước (30 fold-run) — **TẤT CẢ XONG 23/09** |
 |:--:|---|
-| 🔄 | 2.1 Teacher × 2 nhánh (light + domain), 5 fold mỗi nhánh — **ĐANG CHẠY** từ 22/09 13:48 |
-| ☐ | 2.2 Baseline student × 2 nhánh, 5 fold mỗi nhánh |
-| ☐ | 2.3 KD student × 2 nhánh, 5 fold mỗi nhánh (sau 2.1) |
-| ☐ | 2.4 `aggregate.sh` × **6** run-dir |
-| ☐ | 2.5 `pull_results.sh pull` — **phải thêm** `experiments/runs_newsplit_{light,domain}` vào `ROOTS` (mặc định hiện chỉ có `runs_aug_domain`) |
+| ✅ | 2.1 Teacher × 2 nhánh (light + domain), 5 fold mỗi nhánh |
+| ✅ | 2.2 Baseline student × 2 nhánh, 5 fold mỗi nhánh |
+| ✅ | 2.3 KD student × 2 nhánh, 5 fold mỗi nhánh |
+| ✅ | 2.4 `aggregate.sh` × **6** run-dir |
+| ✅ | 2.5 `pull_results.sh pull` — 30 fold về Mac. `ROOTS` **đã** có hai cây mới từ commit `e7d6486`, không phải sửa |
 
 ---
 
-## 5. Việc 3 — Đánh giá
+## 5. Việc 3 — Đánh giá ✅ XONG 24/09
 
-| ☐ | Tầng | Cách |
-|:--:|---|---|
-| ☐ | In-domain | `test_metrics.json` tự sinh khi train xong |
-| ☐ | Cross-domain | `bash run/evaluate_external.sh DATASET=ham10000 RUNS="<6 run-dir mới>"` |
-| ☐ | Công bằng theo tông da | `bash run/evaluate_external.sh DATASET=fitzpatrick17k VARIANTS=all` |
-| ☐ | **Paired CI** | `run/bootstrap_ci.sh` — **phải dựng tree tạm trước**, xem dưới |
+| ☑ | Tầng | Cách | Xong |
+|:--:|---|---|:--:|
+| ✅ | In-domain | `test_metrics.json` tự sinh khi train xong | 23/09 |
+| ✅ | Cross-domain | `run/evaluate_external.sh DATASET=ham10000` | 24/09 |
+| ✅ | Công bằng theo tông da | `run/evaluate_external.sh DATASET=fitzpatrick17k VARIANTS=all` | 24/09 |
+| ✅ | **Paired CI** | `run/bootstrap_ci.sh`, đủ **5/5 ô** (HAM headline + Fitz × 4 biến thể) | 24/09 |
+
+⚠️ **HAI bẫy đã bật ra khi thi công, phải nhớ nếu làm arm tương tự:**
+1. **`evaluate_external.py:319` khoá cứng `runs_root = Path("experiments/runs")`.** Run-dir nằm ngoài
+   cây đó rơi về `run_tag = run_dir.name` ⇒ hai nhánh `runs_newsplit_{light,domain}` **và** cả run cũ
+   cùng tên **ghi đè nhau trong im lặng**. Bắt buộc truyền `--out-root` riêng cho từng nhánh
+   (`reports/external_newsplit_{light,domain}/`).
+2. **Auto-pairing `__<suffix>` ở §3 của `bootstrap_ci.py` KHÔNG kích hoạt** với tên có tiền tố `x_`:
+   nó còn đòi khớp "kind" đã parse (`scripts/bootstrap_ci.py:452`). Dùng cờ **`PAIR="A:B"`** tường minh
+   (quy ước ở đây: `domain − light`, dương = aug giúp).
 
 ⚠️ **Đối chứng đã ĐỔI (22/09):** so sánh giờ là `runs_newsplit_light` vs `runs_newsplit_domain` —
 **không** còn so với ma trận 140 fold cũ (splits khác, và splits cũ rò rỉ bệnh nhân).
@@ -181,16 +225,83 @@ Cách đúng đã có tiền lệ: `reports/framing_crop_ci19.md` được sinh 
 `..._light` / `..._aug_domain`, rồi chạy CI trên tree đó. Script chỉ đọc `fold_*/predictions.csv`.
 
 **Ô quyết định:** ΔAUPRC và ΔSens@90Spec **trên HAM10000 và Fitzpatrick17k**, **paired**.
-In-domain chỉ dùng để kiểm *"aug mới có làm hại miền gốc không"* — với 241 ca dương trên 62.040 ảnh,
-in-domain vốn thiếu lực (chỉ 5/12 cặp KD đạt ý nghĩa ở đó).
+In-domain chỉ dùng để kiểm *"aug mới có làm hại miền gốc không"* — tập test mới có **265 ca dương
+trên 59.093 ảnh** (`CLAUDE.md:258`), vốn thiếu lực. *(Bản trước ghi "241 ca dương / 62.040 ảnh" —
+đó là số của splits CŨ đã rò rỉ bệnh nhân, đã sửa 24/09.)*
+
+**Một cảnh báo khi đọc kết quả:** phát hiện *"da tối bị hại nặng nhất"* **không vững qua các biến thể**
+— đúng rõ ở `headline` (cả 3 model) và `crop50` (baseline, KD), nhưng ở `with_non_neoplastic` thì
+nhóm light của KD còn bị hại nặng hơn dark, và ở `crop70` nhóm dark của teacher không phân định được.
+Chỉ phát biểu kèm tên biến thể, không tổng quát hoá.
 
 ---
 
-## 6. Việc 4 — Song song, khởi động ngay
+## 6. Việc 4 — DDI ✅ XONG 26/09 — và **THÀNH CÔNG**
 
-| ☐ | Bước |
-|:--:|---|
-| ☐ | Xin Research Use Agreement cho **DDI** (Diverse Dermatology Images, Stanford) |
+| ☑ | Bước | Xong |
+|:--:|---|:--:|
+| ✅ | Lấy **DDI** (Diverse Dermatology Images, Stanford) — 656 ảnh | 25/09 |
+| ✅ | Nạp vào TRAIN side: `bash run/prepare_ddi.sh` | 25/09 |
+| ✅ | Train arm DDI — **15/15 fold-run** (tmux `ddiarm`, khởi động 25/09 12:03, fold cuối ghi 26/09 04:23) | 26/09 |
+| ✅ | `aggregate.sh` × 3 run-dir (`teacher` · `baseline` · `kd`) | 26/09 |
+| ✅ | Eval ngoài đủ **5 ô** — `reports/external_newsplit_ddi/{ham10000/headline, fitzpatrick17k/{headline,crop70,crop50,with_non_neoplastic}}`, mỗi ô 3 model | 26/09 |
+| ✅ | Paired CI **6 file** `reports/ci_ddi_*.md` (5 ô ngoài + in-domain) | 26/09 |
+| ☐ | Viết kết quả thành **báo cáo** + cập nhật `CLAUDE.md`/`PREPROCESSING.md` + `pull_results.sh` (memory ✅ 26/09) | **xem §9** |
+
+### 6a. Kết quả (26/09) — ngược hẳn arm `domain`
+
+Quy ước: Δ = `x_*__ddi − x_*`, đối chứng là nhánh **`light`** (`runs_newsplit_light`), dương = DDI giúp.
+`*` = CI 95% loại trừ 0. Nguồn: mục **3b** của 6 file `reports/ci_ddi_*.md`.
+
+| Ô đánh giá | ΔAUPRC student KD | ΔAUPRC teacher | ΔAUPRC baseline |
+|---|---|---|---|
+| HAM10000 headline | **+0,0863 [+0,0737, +0,0979]** \* | +0,0391 \* | +0,0154 \* |
+| Fitzpatrick17k headline | **+0,0400 [+0,0332, +0,0467]** \* | +0,0233 \* | +0,0241 \* |
+| Fitz crop70 | **+0,0317** \* | +0,0206 \* | +0,0106 \* |
+| Fitz crop50 | **+0,0179** \* | +0,0098 \* | +0,0070 |
+| Fitz with_non_neoplastic | **+0,0434** \* | +0,0175 \* | +0,0253 \* |
+| In-domain | **+0,0246 [+0,0060, +0,0425]** \* | +0,0024 | +0,0041 |
+
+- **Student KD dương có ý nghĩa 5/5 ô ngoài** — **phản chiếu chính xác** arm `domain` (âm 5/5 ô).
+  Trên HAM10000 KD dương có ý nghĩa **cả 4 metric**, Sens@90%Spec **+0,1038 [+0,0875, +0,1190]** \*.
+- **Nhóm da tối** (Fitz headline, per-`tone_group`): KD ΔAUPRC **+0,0473 [+0,0276, +0,0672]** \*,
+  ΔAUC +0,0360 \* — tức 656 ảnh (171 ca dương) làm được cái mà tăng cường không làm được.
+- **Phải nêu, không giấu:** pAUC của **teacher** âm có ý nghĩa ở nhiều biến thể
+  (crop70 −0,0027 \* · crop50 −0,0032 \* · with_non_neoplastic −0,0087 \* · in-domain −0,0029 \*),
+  và baseline ở crop50 nhóm dark Sens@90%Spec −0,0519 \*. Kết luận dương thuộc **student KD**,
+  không phải "mọi model đều tốt lên".
+- In-domain: ΔAUC của KD là −0,0000 (không phân định) nhưng **ΔAUPRC dương có ý nghĩa** — và AUPRC
+  mới là headline ở prevalence 0,39% (`CLAUDE.md`, mục Evaluation). Không đọc ô này qua AUC.
+
+⚠️ **Chưa verify được trên Mac:** các số liệu nạp ở §6b (656 dòng append vào mỗi `train_split.csv`,
+test/val giữ byte-for-byte) chỉ kiểm được trên server — Mac không có `data/splits/fold_*` lẫn
+`data/processed/ddi/`, chỉ có backup `reports/_ddi_backup/20260925_120233/` (bản **trước** khi append).
+
+### 6b. Cách thi công
+
+**ĐÃ THỰC HIỆN 2026-09-25 — và KHÁC kế hoạch ban đầu ở một điểm quan trọng.**
+Kế hoạch viết *"thêm DDI buộc chạy lại `prepare` ⇒ chia lại splits ⇒ ma trận cũ không còn so
+sánh được"*. Cách đó **không dùng được**: CLAUDE.md cấm re-run `prepare` (ISIC HDF5 + PAD raw đã
+mất, fast-path `dst.exists()` sẽ `unlink()` vĩnh viễn ảnh processed), và nó còn vô hiệu hoá luôn
+30 fold-run vừa train xong.
+
+Cách đã làm thay thế — `scripts/prepare_ddi.py` + `run/prepare_ddi.sh`:
+- Xử lý DDI vào cây RIÊNG `data/processed/ddi/` (không đọc/ghi gì của ISIC/PAD ⇒ không thể phá).
+- **APPEND** 656 dòng vào mỗi `fold_*/train_split.csv`. `test_split.csv` và cả 5 `val_split.csv`
+  **giữ nguyên byte-for-byte** (đã kiểm: test 59.093 dòng / 0 DDI; mỗi val 0 DDI; mỗi train đúng 656 DDI).
+- ⇒ `experiments/runs_newsplit_light` **vẫn là đối chứng ghép cặp hợp lệ** ⇒ chi phí **15 fold-run
+  thay vì 30**. Arm DDI ghi vào `experiments/runs_newsplit_ddi/` (dùng `output_dir=`, `AUG=light`
+  để khác biệt duy nhất là 656 dòng DDI).
+
+Số liệu nạp: 656 ảnh · 171 ác tính / 485 lành · FST 12/34/56 = 208/241/207 · **0 ảnh bị loại**
+(0 integrity failure, 0 flagged uninformative) · positives mỗi fold **+17,3% đến +18,9%**
+(fold_0: 906 → 1.077). Backup CSV gốc: `reports/_ddi_backup/<ts>/`.
+
+**Hai hệ quả phải nêu khi báo cáo:** (a) DDI **không bao giờ được chấm điểm** — đóng góp của nó đo
+gián tiếp trên tập test in-domain không đổi và trên nhóm tông da của Fitzpatrick17k; (b) `patient_id`
+của DDI là **một nhóm mỗi ảnh** (release không có cột bệnh nhân), chấp nhận được **chỉ vì** DDI
+không bao giờ vào val/test. Muốn đưa DDI vào tập đánh giá thì phải sinh lại splits + train lại
+đối chứng — một việc khác.
 
 **Vì sao DDI:** 656 ảnh / 570 bệnh nhân, **171 ác tính / 485 lành**, FST **cân bằng có chủ đích**
 (I-II 208 · III-IV 241 · V-VI 207), non-commercial research use — **cho phép huấn luyện**. Là bộ duy nhất
@@ -199,10 +310,13 @@ khoảng cách sáng–tối*. Với `DynamicUndersampledSampler` 1:5 thì **s�
 không phải tổng số ảnh — nên 171 ca dương nằm cùng bậc độ lớn với đóng góp của PAD (377 ảnh / 180 ác tính
 phía test, đã tạo ΔAUPRC +0,092…+0,131).
 
-Đây là đường găng **thời gian**, không phải kỹ thuật. Việc thêm DDI vào train là **quyết định riêng, lớn hơn**:
-nó buộc chạy lại `prepare` ⇒ chia lại splits ⇒ ma trận 140 fold cũ **không còn so sánh được**. Chỉ khởi động
-khi (a) DUA về và (b) arm §2–§5 đã có kết luận. Khi làm: namespace `patient_id` thành `ddi_{id}`, nếu không
-group trùng và rò rỉ qua fold.
+~~Đây là đường găng **thời gian**, không phải kỹ thuật. Việc thêm DDI vào train là **quyết định riêng,
+lớn hơn**: nó buộc chạy lại `prepare` ⇒ chia lại splits ⇒ ma trận 140 fold cũ **không còn so sánh được**.
+Chỉ khởi động khi (a) DUA về và (b) arm §2–§5 đã có kết luận.~~
+→ **ĐOẠN NÀY ĐÃ VÔ HIỆU (25/09), giữ lại để thấy kế hoạch đã sai ở đâu.** Nó nói ngược hẳn §6b ngay
+phía trên: `prepare` **không** phải chạy lại, splits **không** bị chia lại, `runs_newsplit_light` **vẫn**
+là đối chứng hợp lệ, và chi phí là 15 chứ không phải 30 fold-run. Phần duy nhất còn hiệu lực:
+**namespace `patient_id` thành `ddi_{id}`**, nếu không group trùng và rò rỉ qua fold — đã làm.
 
 **MIDAS — đã LOẠI** (2026-09-21, quyết định của tác giả): làm phình scope luận văn. Ghi lại giá trị đã mất
 để khỏi phải tìm lại: MIDAS có ảnh lâm sàng của **cùng một tổn thương ở 15 cm và 30 cm**, tức một thí nghiệm
@@ -230,7 +344,30 @@ field-of-view **có đối chứng** — sạch hơn crop70. Nếu sau này mở
 
 | # | Câu hỏi | Chờ ai |
 |---|---|---|
-| 1 | Nếu arm dương có ý nghĩa: mở rộng sang cặp ship (`maxvit_base → fastvit_sa12`) không? | Tác giả, sau khi có số |
-| 2 | Nếu arm âm: chuyển sang phương án (b) hai cường độ, hay dừng và kết luận "cần thêm dữ liệu"? | Tác giả, sau khi có số |
-| 3 | Arm này gắn vào câu hỏi nghiên cứu nào của luận văn? | Phụ thuộc việc chốt khung Q_A/Q_B/Q_C/Q_D (feedback GVHD 2026-09-21) |
+| ~~1~~ | ~~Nếu arm dương: mở rộng sang cặp ship?~~ — **ĐÓNG (24/09): arm âm, không mở rộng** | — |
+| **2** | **Arm âm rồi: chạy phương án (b) hai cường độ (thêm 30 fold-run), hay dừng hẳn?** ⇒ khuyến nghị **dừng**, và kết quả DDI ở §6a **củng cố thêm**: cùng một câu hỏi ("thu hẹp khoảng cách miền") đã có lời đáp dương bằng **dữ liệu**, nên 30 fold-run tăng cường nữa là chi phí đặt sai chỗ | **Tác giả — đang chờ** |
+| 3 | Arm này gắn vào câu hỏi nghiên cứu nào của luận văn? Giờ là **một cặp đối chứng**: `domain` (âm) vs DDI (dương) trả lời cùng một câu hỏi bằng hai đường — đáng vào luận văn như một mục chung | Phụ thuộc việc chốt khung Q_A/Q_B/Q_C/Q_D (feedback GVHD 2026-09-21) |
 | 4 | Calibration có đưa lại vào luận văn không? Nó bị gỡ 09/09 với lý do *"không Q nào trong Q1–Q6 hỏi về hiệu chuẩn"* — lý do đó mất hiệu lực nếu có một câu hỏi về "đòn bẩy tăng độ chính xác" | Tác giả |
+| **5** | **MỚI (26/09) — DDI dương rồi: có mở rộng sang cặp ship (`maxvit_base → fastvit_sa12`) và/hoặc 4 student không?** Hiện chỉ đo trên một cặp `efficientnetv2_m → mobilenetv4_conv_medium`, tức **teacher yếu nhất xuyên miền** (§7.1) — trần có thể còn cao hơn. Chi phí: 10 fold-run/cặp (đối chứng `light` đã có) | **Tác giả** |
+
+---
+
+## 9. Việc còn tồn (26/09) — không phải GPU, là tài liệu + runner
+
+Bốn việc dưới đây là lý do tài liệu này **chưa** đóng được, dù cả 4 Việc đã xong phần thí nghiệm.
+Bằng chứng đều kiểm được trên Mac.
+
+| # | Việc | Bằng chứng còn thiếu |
+|:--:|---|---|
+| 9.1 | Thêm `experiments/runs_newsplit_ddi` vào `ROOTS` của `pull_results.sh` | [run/pull_results.sh:95](../run/pull_results.sh) chỉ có `runs`, `runs_isic_only`, `runs_newsplit_light`, `runs_newsplit_domain` ⇒ `/pull-results` **vô hình** với arm DDI. Đúng loại desync runner↔code mà bước 3 quy trình CLAUDE.md nhắm tới |
+| 9.2 | `CLAUDE.md` — khối "Data integrity" chưa nói mỗi `fold_*/train_split.csv` giờ có thêm 656 dòng DDI | `grep -c DDI CLAUDE.md` = **0**. Người đọc sau sẽ trích sai population/positive count của tập train |
+| 9.3 | `docs/PREPROCESSING.md` — chưa có mục nào về nguồn train **thứ ba** | `grep -c DDI docs/PREPROCESSING.md` = **0** |
+| 9.4 | Viết kết quả DDI thành **báo cáo** (`reports/`) — memory ✅ đã ghi 26/09 (`project_ddi_arm_result`) | Ngoài 6 file `reports/ci_ddi_*.md` (artifact thô) thì **không** file `reports/*.md` nào báo cáo arm DDI |
+
+**Đã xong, không cần làm lại:** [run/README.md:44](../run/README.md) và [:131-143](../run/README.md)
+đã tài liệu hoá `prepare_ddi.sh` đầy đủ (kèm hai hệ quả "DDI never scored on" + `patient_id` một
+nhóm mỗi ảnh) ⇒ runner↔README **không** desync.
+
+**Một nghĩa khác của "xong" mà tài liệu này không quyết:** `scripts/prepare_ddi.py` và
+`run/prepare_ddi.sh` hiện còn **untracked** trong git (`??`). Theo CLAUDE.md chỉ commit khi tác giả
+yêu cầu, nên đây **không** phải lỗi — chỉ ghi ra để không ai tưởng arm DDI đã vào lịch sử repo.

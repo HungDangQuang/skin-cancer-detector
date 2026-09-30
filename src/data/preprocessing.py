@@ -366,6 +366,159 @@ def process_pad_ufes_20(
     return df
 
 
+def process_ddi(
+    raw_dir: str | Path,
+    processed_dir: str | Path,
+    image_size: int = 224,
+    min_size: int = 32,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Process DDI (Diverse Dermatology Images, Stanford) into the training schema.
+
+    Raw structure expected (what `scripts/prepare_ddi.py` unpacks):
+        raw_dir/images/000001.png ... 000656.png
+        raw_dir/images/ddi_metadata.csv   <- DDI_ID, DDI_file, skin_tone, malignant, disease
+
+    DDI is a TRAIN-side source (like ISIC/PAD), added for one reason: it is the
+    only public set with pathology-confirmed malignancies on dark skin, with
+    Fitzpatrick tone deliberately balanced (FST 12/34/56 = 208/241/207).
+
+    Two deliberate deviations from `process_pad_ufes_20`, both documented because
+    they change what lands on disk:
+
+    1. **`is_uninformative` FLAGS but does not DROP.** Its `std < 8` threshold is
+       ISIC-tuned and fires more readily on flat clinical photographs, which is
+       *not* independent of skin tone — dropping on it would preferentially
+       delete the dark-skin images this dataset exists to contribute. Only true
+       integrity failures (unreadable, smaller than `min_size`) are dropped.
+    2. **`patient_id` is one group per image** (`ddi_<id>`). The release carries
+       no patient column, so the 656 images cannot be grouped by their ~570
+       patients. Residual within-DDI leakage is therefore possible; it is
+       harmless for the intended use (DDI goes to the TRAIN side only, never to
+       val/test), but it would NOT be acceptable if DDI were ever added to the
+       evaluation pool.
+
+    Returns:
+        (df, tone_df) — `df` has the 6 standard split columns
+        (image_id, patient_id, image_path, label, class_name, source) so its rows
+        append to an existing split CSV unchanged; `tone_df` is the side-car
+        (image_id, skin_tone, disease, flagged_uninformative) kept OUT of the
+        split CSVs so their schema stays exactly 6 columns.
+    """
+    raw_dir = Path(raw_dir)
+    processed_dir = Path(processed_dir)
+    images_dir = raw_dir / "images"
+    metadata_csv = images_dir / "ddi_metadata.csv"
+
+    if not metadata_csv.exists():
+        raise FileNotFoundError(
+            f"DDI metadata not found: {metadata_csv}\n"
+            f"       Expected the release zip unpacked into {images_dir}."
+        )
+
+    metadata = pd.read_csv(metadata_csv)
+    for col in ("DDI_ID", "DDI_file", "skin_tone", "malignant"):
+        if col not in metadata.columns:
+            raise ValueError(f"DDI metadata missing column {col!r}; got {list(metadata.columns)}")
+
+    class_names = {0: "benign", 1: "malignant"}
+    records: list[dict] = []
+    tone_rows: list[dict] = []
+    excluded: list[dict] = []
+    seen_hashes: set[str] = set()
+    skipped = 0
+    flagged = 0
+
+    for _, row in tqdm(metadata.iterrows(), total=len(metadata), desc="Processing DDI"):
+        ddi_id = int(row["DDI_ID"])
+        image_id = f"ddi_{ddi_id:06d}"
+        # `malignant` ships as a real boolean in the CSV; str() keeps this robust
+        # to pandas reading it as bool, numpy.bool_ or the string "True".
+        label = 1 if str(row["malignant"]).strip().lower() == "true" else 0
+        class_name = class_names[label]
+        dst = processed_dir / class_name / f"{image_id}.jpg"
+
+        try:
+            if dst.exists():
+                img = Image.open(dst).convert("RGB")
+                is_new = False
+            else:
+                src = images_dir / str(row["DDI_file"])
+                if not src.exists():
+                    excluded.append({"image_id": image_id, "reason": f"missing_file: {src.name}"})
+                    continue
+                img = Image.open(src).convert("RGB")
+                if min(img.size) < min_size:
+                    excluded.append({"image_id": image_id, "reason": f"too_small: {img.size}"})
+                    continue
+                img = img.resize((image_size, image_size), Image.LANCZOS)
+                is_new = True
+        except (OSError, ValueError, Image.DecompressionBombError) as e:
+            excluded.append({"image_id": image_id, "reason": f"corrupt: {e}"})
+            continue
+
+        # Deviation 1: flag, never unlink — see the docstring.
+        uninformative = bool(is_uninformative(img))
+        if uninformative:
+            flagged += 1
+
+        img_hash = hashlib.md5(img.tobytes()).hexdigest()
+        duplicate = img_hash in seen_hashes
+        if not duplicate:
+            seen_hashes.add(img_hash)
+
+        if is_new:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            img.save(dst)
+        else:
+            skipped += 1
+
+        records.append(
+            {
+                "image_id": image_id,
+                # Deviation 2: no patient column in the release — see the docstring.
+                "patient_id": image_id,
+                "image_path": str(dst),
+                "label": label,
+                "class_name": class_name,
+                "source": "ddi",
+            }
+        )
+        tone_rows.append(
+            {
+                "image_id": image_id,
+                "skin_tone": int(row["skin_tone"]),
+                "disease": str(row.get("disease", "")),
+                "flagged_uninformative": uninformative,
+                "flagged_duplicate": duplicate,
+            }
+        )
+
+    if excluded:
+        processed_dir.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(excluded).to_csv(processed_dir / "excluded_images.csv", index=False)
+
+    df = pd.DataFrame(records)
+    tone_df = pd.DataFrame(tone_rows)
+    if df.empty:
+        raise RuntimeError(
+            f"process_ddi: 0 of {len(metadata)} rows produced an image. "
+            f"Check that DDI_file values (e.g. {str(metadata['DDI_file'].iloc[0])!r}) "
+            f"match files in {images_dir}."
+        )
+
+    tone_counts = tone_df.groupby("skin_tone").size().to_dict()
+    print(
+        f"DDI — total: {len(df)} | benign: {(df['label']==0).sum()} | "
+        f"malignant: {(df['label']==1).sum()} | FST {tone_counts} | "
+        f"skipped (already-on-disk): {skipped} | "
+        f"dropped (integrity only): {len(excluded)} | "
+        f"flagged uninformative (KEPT): {flagged} | "
+        f"flagged duplicate (KEPT): {int(tone_df['flagged_duplicate'].sum())}"
+    )
+    return df, tone_df
+
+
 # ------------------------------------------------------------------
 # External EVALUATION-ONLY datasets (HAM10000, Fitzpatrick17k)
 #
