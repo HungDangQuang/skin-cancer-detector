@@ -53,6 +53,7 @@ still tees.
 | `progress_all.sh` | Same report for **every** server at once, run from the Mac |
 | `pull_results.sh` | **Mac-side**: diff the servers' run-dirs against this Mac, then rsync the missing results down |
 | `ablation_sampler.sh` | Data-strategy ablation A — undersampling ratio |
+| `srcsamp_eval.sh` | Arm C (source-stratified sampler) after training: aggregate + HAM/Fitzpatrick for both checkpoints + paired CIs vs the control (`reports/ci_srcsamp_*`) |
 | `ablation_pad.sh` | Data-strategy ablation B — PAD mixing (ISIC-only vs ISIC+PAD) |
 | `aggregate.sh` | fold_*/test_metrics.json → mean ± std (`aggregated.{json,md}`) |
 | `evaluate.sh` | Evaluate one checkpoint on the held-out test set |
@@ -281,6 +282,12 @@ line per source with the uniform-draw expectation and the % change) and the real
 `(source × label)` counts every epoch (`Sampler epoch N …`) — the epoch line is logged
 for the default sampler too, so a control run trained from now on shows how few PAD benign it actually drew (runs trained earlier have no such line).
 Design + pre-registered endpoints: `docs/TASK_ITEM2_3_source_sampler_ship_ckpt.md`.
+After arm C (and its optional baseline) has trained, `bash run/srcsamp_eval.sh GPU=0` does the rest
+in one launch: `aggregated{,_auprc}` per run, HAM10000 + Fitzpatrick17k for both checkpoints
+into `reports/external_newsplit_srcsamp{,_auprc}/`, and the paired CIs with the pre-registered
+sign (new − control) into `reports/ci_srcsamp_*.{json,md}` — the AUPRC checkpoint only gets
+per-run CIs (`ci_srcsamp_auprc_*`), since the control has no such checkpoint. The CI trees are
+symlinks under `.tmp/ci_srcsamp/` holding only the arm and its control.
 
 > ⚠ The student arm isolates via `run_suffix=`, the teacher arm via `output_dir=`
 > — `scripts/train_teacher.py` does **not** read `run_suffix`, so without the
