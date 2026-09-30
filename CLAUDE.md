@@ -217,7 +217,11 @@ experiments/runs/
     predictions.csv            ← test y_true,y_prob,y_pred[,source] (offline PR/AUPRC/per-domain)
     val_predictions.csv        ← val fit-set for calibration (no sampler → true ~0.39% prevalence)
     training_curves.png
-  kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_{0..4}/...
+  kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_{0..4}/...   ← same files as above, plus
+    # only with training.callbacks.checkpoint.extra_monitors=[auprc] (default []), STUDENT folds:
+    checkpoints/best_model_auprc.pth + val_metrics_auprc.json + test_metrics_auprc.json
+    + predictions_auprc.csv + val_predictions_auprc.csv   ← best-by-val-AUPRC twin (run/README.md §3)
+    # (a teacher with the knob gets only best_model_auprc.pth + val_metrics_auprc.json — nothing scores it)
   kd_efficientnetv2_m_to_fastvit_sa12/fold_{0..4}/...
   kd_efficientnetv2_m_to_efficientformerv2_s2/fold_{0..4}/...
 ```

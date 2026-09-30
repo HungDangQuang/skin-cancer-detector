@@ -15,7 +15,7 @@ from src.training.feature_distillation import RKDLoss
 from src.training.losses import build_loss
 from src.training.optimizers import build_optimizer
 from src.training.schedulers import build_scheduler
-from src.training.callbacks import EarlyStopping, ModelCheckpoint
+from src.training.callbacks import EarlyStopping, ExtraCheckpoints, ModelCheckpoint
 from src.utils.batch import unpack_batch
 from src.utils.logger import get_logger
 
@@ -113,6 +113,12 @@ class KDTrainer:
             mode=cb_cfg.checkpoint.mode,
             save_last=cb_cfg.checkpoint.save_last,
         ) if cb_cfg.checkpoint.enabled else None
+        # Optional best-by-<metric> checkpoints (e.g. [auprc]); [] = none.
+        self.extra_checkpoints = ExtraCheckpoints(
+            cb_cfg.checkpoint.get("extra_monitors", []),
+            checkpoint_dir=self.run_dir / "checkpoints",
+            run_dir=self.run_dir,
+        ) if cb_cfg.checkpoint.enabled else None
 
         # train_rkd_loss is ALWAYS declared and ALWAYS appended each epoch (0.0
         # when RKD is off), so the history lists never desync — the trainer's
@@ -178,6 +184,8 @@ class KDTrainer:
             monitor_val = val_metrics.get("pauc_at_tpr80", val_metrics["loss"])
             if self.checkpoint:
                 self.checkpoint.step(monitor_val, self.student, self.optimizer, epoch, val_metrics)
+            if self.extra_checkpoints:
+                self.extra_checkpoints.step(val_metrics, self.student, self.optimizer, epoch)
 
             # Track best-epoch val metrics (higher pauc is better), aligned to
             # the checkpoint's best_model.pth so val_metrics.json describes the
@@ -191,6 +199,8 @@ class KDTrainer:
                 break
 
         self._save_val_metrics()
+        if self.extra_checkpoints:
+            self.extra_checkpoints.save_val_metrics()
         return self.history
 
     def _save_val_metrics(self) -> None:

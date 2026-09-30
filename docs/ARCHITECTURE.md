@@ -133,6 +133,9 @@ experiments/runs/
     val_predictions.csv  ← fit-set cho calibration (val, giữ prevalence thật ~0,39%)
     training_curves.png
   kd_<teacher>_to_<student>/fold_{0..4}/...
+    # chỉ khi training.callbacks.checkpoint.extra_monitors=[auprc] (mặc định []), fold STUDENT:
+    checkpoints/best_model_auprc.pth + val_metrics_auprc.json + test_metrics_auprc.json
+    + predictions_auprc.csv + val_predictions_auprc.csv   ← bản đôi chọn theo val AUPRC
   <...>__<run_suffix>/    ← ablation (samp_off, ratio3, mselogit, rkd, …)
 ```
 Sau aggregate: `aggregated.{json,md}` = **mean ± std** — con số để báo cáo (1 fold đơn lẻ variance rất rộng).

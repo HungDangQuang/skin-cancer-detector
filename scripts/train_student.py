@@ -108,7 +108,18 @@ def main(cfg: DictConfig) -> None:
     logger.info(f"Training complete ({'KD' if use_kd else 'baseline'}). "
                 f"Checkpoint: {run_dir / 'checkpoints' / 'best_model.pth'}")
 
-    best_ckpt = run_dir / "checkpoints" / "best_model.pth"
+    # "" = the main best_model.pth (pAUC) -> test_metrics.json / predictions.csv /
+    # val_predictions.csv, exactly as before. Each extra monitor m (training.
+    # callbacks.checkpoint.extra_monitors, default []) gets best_model_<m>.pth ->
+    # the same three files with a _<m> suffix (val_metrics_<m>.json is written by
+    # the trainer).
+    extra_monitors = list(cfg.training.callbacks.checkpoint.get("extra_monitors", []) or [])
+    for tag in [""] + [f"_{m}" for m in extra_monitors]:
+        _evaluate_checkpoint(cfg, student_cfg, student, datamodule, run_dir, tag)
+
+
+def _evaluate_checkpoint(cfg, student_cfg, student, datamodule, run_dir: Path, tag: str) -> None:
+    best_ckpt = run_dir / "checkpoints" / f"best_model{tag}.pth"
     if best_ckpt.exists():
         logger.info(f"Evaluating best student checkpoint on held-out test set: {best_ckpt}")
         load_checkpoint(str(best_ckpt), student, device=cfg.device)
@@ -121,16 +132,17 @@ def main(cfg: DictConfig) -> None:
             sources=datamodule.test_sources(),
             metadata=test_meta,
         )
-        evaluator.save_metrics(test_metrics, run_dir / "test_metrics.json")
-        evaluator.save_predictions(test_metrics, run_dir / "predictions.csv")
+        evaluator.save_metrics(test_metrics, run_dir / f"test_metrics{tag}.json")
+        evaluator.save_predictions(test_metrics, run_dir / f"predictions{tag}.csv")
         # Calibration fit-set: val predictions. The val loader uses NO
         # undersampler (datamodule.val_dataloader), so it preserves the true
         # ~0.39% prevalence — the correct distribution to fit a Platt / isotonic
         # calibrator on. scripts/compute_calibration.py consumes val_predictions.csv
         # (fit) + predictions.csv (apply on test). No sources arg: val has no
-        # per-domain source method (only test_sources() exists).
+        # per-domain source method (only test_sources() exists). It is also the
+        # source of the frozen Youden threshold in scripts/evaluate_external.py.
         val_metrics = evaluator.evaluate(datamodule.val_dataloader())
-        evaluator.save_predictions(val_metrics, run_dir / "val_predictions.csv")
+        evaluator.save_predictions(val_metrics, run_dir / f"val_predictions{tag}.csv")
     else:
         logger.warning(f"No best checkpoint at {best_ckpt}; skipping test-set evaluation.")
 

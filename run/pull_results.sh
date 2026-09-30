@@ -10,7 +10,7 @@
 #   bash run/pull_results.sh                      # check only: what's on the servers but not here
 #   bash run/pull_results.sh pull                 # + rsync the NEW folds down
 #   bash run/pull_results.sh pull stale           # + also re-pull folds whose remote copy is NEWER
-#   bash run/pull_results.sh pull ckpt            # + also best_model.pth (heavy; never last_model.pth)
+#   bash run/pull_results.sh pull ckpt            # + also best_model{,_<m>}.pth (heavy; never last_model.pth)
 #   bash run/pull_results.sh pull dry             # rsync --dry-run (show, don't write)
 #   bash run/pull_results.sh vastnew              # only one host
 #   bash run/pull_results.sh 'kd_convnextv2*'     # only run-dirs matching a glob
@@ -34,13 +34,14 @@
 #   STALE       1 = also pull folds whose remote test_metrics.json is newer
 #               than the local one; the local fold is MOVED to
 #               experiments/_replaced/<timestamp>/ first, never deleted
-#   CKPT        1 = also pull checkpoints/best_model.pth (last_model.pth never)
+#   CKPT        1 = also pull checkpoints/best_model.pth + best_model_<m>.pth (extra_monitors; last_model.pth never)
 #   DRY         1 = rsync --dry-run
 #   ARGS        extra bare/KEY=VALUE args as one string (used by /pull-results)
 #   SSH_OPTS    extra ssh options (default "-o BatchMode=yes -o ConnectTimeout=10")
 #
 # What gets pulled (per fold): test_metrics.json, val_metrics.json,
-# predictions.csv, val_predictions.csv, config.yaml, training_curves.png,
+# predictions.csv, val_predictions.csv (+ their _<m> twins when extra_monitors
+# is set), config.yaml, training_curves.png,
 # calibration_metrics.json, reliability_curve.png — i.e. everything the
 # eval-results / update-report skills read (~4 MB/fold). Plus aggregated.json /
 # aggregated.md at the run-dir level. Checkpoints only with CKPT=1.
@@ -307,7 +308,7 @@ RSYNC_FLAGS="${RSYNC_FLAGS} -v"
 build_filters() {
     FILTERS=(--exclude='last_model.pth')
     if [ "${CKPT}" = "1" ]; then
-        FILTERS+=(--include='checkpoints/' --include='checkpoints/best_model.pth')
+        FILTERS+=(--include='checkpoints/' --include='checkpoints/best_model.pth' --include='checkpoints/best_model_*.pth')
     else
         FILTERS+=(--exclude='checkpoints/')
     fi

@@ -193,6 +193,25 @@ must use the SAME `output_dir` so it finds that arm's teacher. `progress.sh` sca
 the arm: `OUTPUT_DIR_DEFAULT=experiments/runs_newsplit_ddi bash run/progress.sh`.
 `pull_results.sh` carries `experiments/runs_newsplit_{light,ddi}` in its default `ROOTS`.
 
+**Second checkpoint by another val metric (`extra_monitors`, default `[]`).**
+`best_model.pth` is always picked by val pAUC (hard-coded in both trainers — the yaml
+`monitor:` key only labels the log line). `EXTRA="training.callbacks.checkpoint.extra_monitors=[auprc]"`
+additionally keeps `checkpoints/best_model_auprc.pth` (first epoch with the best val AUPRC,
+same training trajectory — early stopping still watches `val_loss`), and a **student** fold
+then also gets `val_metrics_auprc.json`, `test_metrics_auprc.json`, `predictions_auprc.csv`
+and `val_predictions_auprc.csv` (the frozen-Youden source for that checkpoint). The main files
+keep their names and contents. Allowed: `auprc`, `auc_roc`, `pauc_at_tpr80`,
+`sens_at_90spec`, `sens_at_95spec`. `train_teacher.py` does not evaluate the extra
+checkpoint (the trainer would save it; nothing scores it). `pull_results.sh pull ckpt`
+brings `best_model_<m>.pth` along with `best_model.pth`. Cost: each extra monitor adds one
+more test + val inference pass per fold. A default run's result files are unchanged; its
+`config.yaml` only gains the `extra_monitors: []` line.
+
+> ⚠ As of 2026-09-30 **no downstream tool reads the `_<m>` twins yet**: `aggregate_folds.py`
+> reads `test_metrics.json`, `bootstrap_ci.py` reads `predictions.csv`, and
+> `evaluate_external.py` loads `best_model.pth` + `val_predictions.csv` — the file-name flags
+> are step C3 of `docs/TASK_ITEM2_3_source_sampler_ship_ckpt.md`.
+
 ### 3b. Throughput knobs — use these on every long run
 
 They cost nothing in result quality: the teacher-logit cache is *exact*, and the
@@ -231,7 +250,7 @@ python scripts/analyze_pad_ablation.py --help   # per-domain (ISIC vs PAD) compa
 #     and ISIC fills the rest. KD student only; the DDI-arm teacher is reused frozen:
 bash run/train_student.sh STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m \
      TRAINING=distillation GPU=0 \
-     EXTRA="output_dir=experiments/runs_newsplit_ddi run_suffix=__srcsamp data.sampler_stratify_by=source"
+     EXTRA="output_dir=experiments/runs_newsplit_ddi run_suffix=__srcsamp data.sampler_stratify_by=source training.callbacks.checkpoint.extra_monitors=[auprc]"
 ```
 
 Arm C logs the per-source quota once at start-up (`Sampler stratify_by=source: …`, one
