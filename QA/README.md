@@ -17,6 +17,11 @@ Drive).
   run and when it was read — numbers change as folds finish.
 - When the underlying code or results change, **update the matching QA file** in
   the same task (same discipline as the modification workflow in `CLAUDE.md`).
+- **Cross-check gate (2026-09-14).** A QA file is a thesis source, so every new or updated
+  QA is drafted in the scratchpad and cross-checked by two read-only `review-verifier`
+  sub-agents (facts/fabrication + completeness/transparency) **before** it is written here.
+  Anything they could not verify must stay visible in the file ("unknown / not yet measured"),
+  not quietly dropped. Procedure: `.claude/skills/answer-qa/SKILL.md` step 5.
 
 ## Template
 

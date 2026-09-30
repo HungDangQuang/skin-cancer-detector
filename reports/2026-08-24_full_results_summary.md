@@ -542,10 +542,10 @@ cứng — đúng vai trò của một bộ điều chuẩn, không phải "truy
 
 **Ở dữ liệu lạ, không phải in-domain.** So sánh cùng 12 cặp:
 
-| | In-domain (prev 0,388%) | HAM10000 (prev 15,7%) |
+| | In-domain (prev 0,388%) | HAM10000 (prev 15,6%) |
 |---|---|---|
-| ΔAUPRC trung bình | +0,0243 (thắng 10/12) | **+0,0297 (thắng 12/12)** |
-| ΔpAUC trung bình | +0,0052 | **+0,0071** |
+| ΔAUPRC trung bình | +0,0236 (thắng 10/12) | **+0,0314 (thắng 12/12)** |
+| ΔpAUC trung bình | +0,0052 | **+0,0069** |
 | AUC của baseline | 0,971–0,980 (**gần bão hoà**) | 0,76–0,82 (**còn dư địa**) |
 
 Và ở HAM10000 **đã có paired bootstrap CI**: `efficientnetv2_m→mobilenetv4` cho

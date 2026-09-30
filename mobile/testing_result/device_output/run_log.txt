@@ -1,0 +1,84 @@
+2026-09-29 20:08:46 === bắt đầu arm=processed224 threads=4 gateOnly=true models=all limitPerDataset=none
+2026-09-29 20:08:58 bundle=mobile_eval_bundle v=1 rows=70883 key=sample_id manifest_sha256=2128e9acc057… image_size=224 mean=[0.485, 0.456, 0.406] std=[0.229, 0.224, 0.225]
+2026-09-29 20:09:31 === bắt đầu arm=processed224 threads=4 gateOnly=true models=all limitPerDataset=none
+2026-09-29 20:09:32 bundle=mobile_eval_bundle v=1 rows=70883 key=sample_id manifest_sha256=2128e9acc057… image_size=224 mean=[0.485, 0.456, 0.406] std=[0.229, 0.224, 0.225]
+2026-09-29 20:09:32 models: 1 (catalog.json)
+2026-09-29 20:09:43 GATE mobilenetv4_ddi_fold0 bin max|Δ|=3.338e-06 (PASS, worst 000082) · 4t vs 1t trùng bit · image max|Δ|=3.338e-06 (worst 000082, lỗi 0)
+2026-09-29 20:09:44 EVAL_GATE_DONE 1 model qua cổng
+2026-09-29 20:09:54 === bắt đầu arm=processed224 threads=4 gateOnly=false models=all limitPerDataset=none
+2026-09-29 20:09:56 bundle=mobile_eval_bundle v=1 rows=70883 key=sample_id manifest_sha256=2128e9acc057… image_size=224 mean=[0.485, 0.456, 0.406] std=[0.229, 0.224, 0.225]
+2026-09-29 20:09:56 models: 1 (catalog.json)
+2026-09-29 20:09:56 GATE mobilenetv4_ddi_fold0 bin max|Δ|=3.338e-06 (PASS, worst 000082) · 4t vs 1t trùng bit · image max|Δ|=3.338e-06 (worst 000082, lỗi 0) (dùng lại cổng phiên trước)
+2026-09-29 20:10:28 PROGRESS mobilenetv4_ddi_fold0 1000/70883
+2026-09-29 20:11:05 PROGRESS mobilenetv4_ddi_fold0 2000/70883
+2026-09-29 20:11:42 PROGRESS mobilenetv4_ddi_fold0 3000/70883
+2026-09-29 20:12:19 PROGRESS mobilenetv4_ddi_fold0 4000/70883
+2026-09-29 20:12:56 PROGRESS mobilenetv4_ddi_fold0 5000/70883
+2026-09-29 20:13:33 PROGRESS mobilenetv4_ddi_fold0 6000/70883
+2026-09-29 20:14:13 PROGRESS mobilenetv4_ddi_fold0 7000/70883
+2026-09-29 20:14:56 PROGRESS mobilenetv4_ddi_fold0 8000/70883
+2026-09-29 20:15:39 PROGRESS mobilenetv4_ddi_fold0 9000/70883
+2026-09-29 20:16:24 PROGRESS mobilenetv4_ddi_fold0 10000/70883
+2026-09-29 20:17:10 PROGRESS mobilenetv4_ddi_fold0 11000/70883
+2026-09-29 20:17:56 PROGRESS mobilenetv4_ddi_fold0 12000/70883
+2026-09-29 20:18:44 PROGRESS mobilenetv4_ddi_fold0 13000/70883
+2026-09-29 20:19:31 PROGRESS mobilenetv4_ddi_fold0 14000/70883
+2026-09-29 20:20:18 PROGRESS mobilenetv4_ddi_fold0 15000/70883
+2026-09-29 20:21:05 PROGRESS mobilenetv4_ddi_fold0 16000/70883
+2026-09-29 20:21:53 PROGRESS mobilenetv4_ddi_fold0 17000/70883
+2026-09-29 20:22:41 PROGRESS mobilenetv4_ddi_fold0 18000/70883
+2026-09-29 20:23:31 PROGRESS mobilenetv4_ddi_fold0 19000/70883
+2026-09-29 20:24:22 PROGRESS mobilenetv4_ddi_fold0 20000/70883
+2026-09-29 20:25:13 PROGRESS mobilenetv4_ddi_fold0 21000/70883
+2026-09-29 20:26:05 PROGRESS mobilenetv4_ddi_fold0 22000/70883
+2026-09-29 20:26:56 PROGRESS mobilenetv4_ddi_fold0 23000/70883
+2026-09-29 20:27:48 PROGRESS mobilenetv4_ddi_fold0 24000/70883
+2026-09-29 20:28:39 PROGRESS mobilenetv4_ddi_fold0 25000/70883
+2026-09-29 20:29:31 PROGRESS mobilenetv4_ddi_fold0 26000/70883
+2026-09-29 20:30:23 PROGRESS mobilenetv4_ddi_fold0 27000/70883
+2026-09-29 20:31:16 PROGRESS mobilenetv4_ddi_fold0 28000/70883
+2026-09-29 20:32:08 PROGRESS mobilenetv4_ddi_fold0 29000/70883
+2026-09-29 20:33:00 PROGRESS mobilenetv4_ddi_fold0 30000/70883
+2026-09-29 20:33:53 PROGRESS mobilenetv4_ddi_fold0 31000/70883
+2026-09-29 20:34:45 PROGRESS mobilenetv4_ddi_fold0 32000/70883
+2026-09-29 20:35:38 PROGRESS mobilenetv4_ddi_fold0 33000/70883
+2026-09-29 20:36:31 PROGRESS mobilenetv4_ddi_fold0 34000/70883
+2026-09-29 20:37:24 PROGRESS mobilenetv4_ddi_fold0 35000/70883
+2026-09-29 20:38:17 PROGRESS mobilenetv4_ddi_fold0 36000/70883
+2026-09-29 20:39:11 PROGRESS mobilenetv4_ddi_fold0 37000/70883
+2026-09-29 20:40:04 PROGRESS mobilenetv4_ddi_fold0 38000/70883
+2026-09-29 20:40:58 PROGRESS mobilenetv4_ddi_fold0 39000/70883
+2026-09-29 20:41:52 PROGRESS mobilenetv4_ddi_fold0 40000/70883
+2026-09-29 20:42:45 PROGRESS mobilenetv4_ddi_fold0 41000/70883
+2026-09-29 20:43:39 PROGRESS mobilenetv4_ddi_fold0 42000/70883
+2026-09-29 20:44:33 PROGRESS mobilenetv4_ddi_fold0 43000/70883
+2026-09-29 20:45:27 PROGRESS mobilenetv4_ddi_fold0 44000/70883
+2026-09-29 20:46:22 PROGRESS mobilenetv4_ddi_fold0 45000/70883
+2026-09-29 20:47:16 PROGRESS mobilenetv4_ddi_fold0 46000/70883
+2026-09-29 20:48:12 PROGRESS mobilenetv4_ddi_fold0 47000/70883
+2026-09-29 20:49:09 PROGRESS mobilenetv4_ddi_fold0 48000/70883
+2026-09-29 20:50:04 PROGRESS mobilenetv4_ddi_fold0 49000/70883
+2026-09-29 20:50:59 PROGRESS mobilenetv4_ddi_fold0 50000/70883
+2026-09-29 20:51:53 PROGRESS mobilenetv4_ddi_fold0 51000/70883
+2026-09-29 20:52:48 PROGRESS mobilenetv4_ddi_fold0 52000/70883
+2026-09-29 20:53:43 PROGRESS mobilenetv4_ddi_fold0 53000/70883
+2026-09-29 20:54:38 PROGRESS mobilenetv4_ddi_fold0 54000/70883
+2026-09-29 20:55:33 PROGRESS mobilenetv4_ddi_fold0 55000/70883
+2026-09-29 20:56:28 PROGRESS mobilenetv4_ddi_fold0 56000/70883
+2026-09-29 20:57:24 PROGRESS mobilenetv4_ddi_fold0 57000/70883
+2026-09-29 20:58:19 PROGRESS mobilenetv4_ddi_fold0 58000/70883
+2026-09-29 20:59:14 PROGRESS mobilenetv4_ddi_fold0 59000/70883
+2026-09-29 21:00:09 PROGRESS mobilenetv4_ddi_fold0 60000/70883
+2026-09-29 21:01:04 PROGRESS mobilenetv4_ddi_fold0 61000/70883
+2026-09-29 21:01:59 PROGRESS mobilenetv4_ddi_fold0 62000/70883
+2026-09-29 21:02:54 PROGRESS mobilenetv4_ddi_fold0 63000/70883
+2026-09-29 21:03:49 PROGRESS mobilenetv4_ddi_fold0 64000/70883
+2026-09-29 21:04:45 PROGRESS mobilenetv4_ddi_fold0 65000/70883
+2026-09-29 21:05:40 PROGRESS mobilenetv4_ddi_fold0 66000/70883
+2026-09-29 21:06:35 PROGRESS mobilenetv4_ddi_fold0 67000/70883
+2026-09-29 21:07:30 PROGRESS mobilenetv4_ddi_fold0 68000/70883
+2026-09-29 21:08:25 PROGRESS mobilenetv4_ddi_fold0 69000/70883
+2026-09-29 21:09:21 PROGRESS mobilenetv4_ddi_fold0 70000/70883
+2026-09-29 21:10:41 DETERMINISM mobilenetv4_ddi_fold0 500/500 trùng bit
+2026-09-29 21:10:47 SUMMARY mobilenetv4_ddi_fold0 status=done rows=70883 errors=0 vs_ref max|Δ|=6.676e-06 (>tol: 0)
+2026-09-29 21:10:47 EVAL_DONE 1 model → /storage/emulated/0/Android/data/com.nemis.skindetector/files/eval_results/processed224

@@ -304,35 +304,35 @@ Tính lại từ `predictions.csv` (average precision, stdlib; giá trị cột 
 | `teacher/efficientnetv2_m` | 0,0640 ± 0,0203 | 0,7857 ± 0,0608 |
 | `baseline_fastvit_sa12` | 0,0448 ± 0,0071 | 0,7739 ± 0,0403 |
 | `kd_maxvit_base_to_fastvit_sa12` | **0,0592 ± 0,0103** | **0,8111 ± 0,0227** |
-| `baseline_mobilenetv4_conv_medium` | 0,0541 ± 0,0185 | 0,7656 ± 0,0588 |
+| `baseline_mobilenetv4_conv_medium` | 0,0541 ± 0,0185 | 0,7633 ± 0,0588 |
 | `kd_efficientnetv2_m_to_mobilenetv4_conv_medium` | **0,0646 ± 0,0120** | 0,7511 ± 0,0441 |
 
 **Δ KD tách theo miền, cả 12 cặp:**
 
 | Teacher → Student | ΔAUPRC **ISIC** | (tương đối) | ΔAUPRC **PAD** | (tương đối) |
 |---|---|---|---|---|
-| efficientnetv2_m → mobilenetv4 | **+0,0105** | **+19,4%** | −0,0145 | −1,9% |
+| efficientnetv2_m → mobilenetv4 | **+0,0105** | **+19,4%** | −0,0122 | −1,6% |
 | efficientnetv2_m → fastvit | +0,0104 | +23,2% | −0,0007 | −0,1% |
-| efficientnetv2_m → efficientformerv2 | **+0,0171** | **+33,1%** | −0,0272 | −3,4% |
-| efficientnetv2_m → repvit | −0,0027 | −5,6% | +0,0131 | +1,9% |
-| convnextv2 → mobilenetv4 | +0,0077 | +14,3% | +0,0254 | +3,3% |
+| efficientnetv2_m → efficientformerv2 | **+0,0171** | **+33,1%** | −0,0339 | −4,2% |
+| efficientnetv2_m → repvit | −0,0027 | −5,5% | +0,0131 | +1,9% |
+| convnextv2 → mobilenetv4 | +0,0077 | +14,2% | +0,0277 | +3,6% |
 | convnextv2 → fastvit | **+0,0196** | **+43,8%** | +0,0215 | +2,8% |
-| convnextv2 → efficientformerv2 | +0,0130 | +25,1% | +0,0001 | +0,0% |
+| convnextv2 → efficientformerv2 | +0,0129 | +25,0% | −0,0066 | −0,8% |
 | convnextv2 → repvit | −0,0013 | −2,7% | **+0,0608** | **+8,9%** |
-| maxvit → mobilenetv4 | +0,0038 | +7,0% | +0,0243 | +3,2% |
-| maxvit → fastvit | +0,0144 | +32,2% | +0,0373 | +4,8% |
-| maxvit → efficientformerv2 | +0,0108 | +20,9% | +0,0147 | +1,8% |
-| maxvit → repvit | +0,0042 | +8,6% | **+0,0800** | **+11,7%** |
+| maxvit → mobilenetv4 | +0,0038 | +7,0% | +0,0266 | +3,5% |
+| maxvit → fastvit | +0,0144 | +32,1% | +0,0372 | +4,8% |
+| maxvit → efficientformerv2 | +0,0108 | +20,9% | +0,0080 | +1,0% |
+| maxvit → repvit | +0,0042 | +8,6% | **+0,0800** | **+11,8%** |
 
 **Ba kết luận mới, đều quan trọng:**
 
 1. **Hai cặp "ΔAUPRC âm" thực ra DƯƠNG trên miền ISIC.**
    `efficientnetv2_m → mobilenetv4` có ΔISIC **+19,4%** và `→ efficientformerv2_s2` có ΔISIC **+33,1%**.
    Toàn bộ phần âm đến từ tập con PAD 377 ảnh. Vì PAD chiếm 75% ca dương nên nó lôi con số tổng xuống.
-   → Phát biểu đúng là: *"KD cải thiện phân biệt trên miền dermoscopy ISIC ở cả hai cặp này; con số tổng
+   → Phát biểu đúng là: *"KD cải thiện phân biệt trên miền ISIC ở cả hai cặp này; con số tổng
    bị chi phối bởi 377 ảnh lâm sàng."* Đây là câu trả lời chuẩn nếu hội đồng hỏi "sao có cặp KD âm?".
 2. **KD giúp nhiều hơn về mặt TỈ LỆ ở miền khó.** Trên ISIC (AUPRC gốc chỉ 0,045–0,069), KD cho mức
-   tăng tương đối +7%…+44% ở 10/12 cặp; trên PAD (AUPRC gốc đã 0,68–0,80) mức tăng chỉ 0–12%.
+   tăng tương đối +7%…+44% ở 10/12 cặp; trên PAD (AUPRC gốc đã 0,68–0,81) mức tăng chỉ −4%…+12%.
    Khớp hoàn hảo với quy luật §3.4: **KD lãi ở chỗ còn dư địa**.
 3. **Không mô hình nào thực sự "giỏi" trên ISIC.** AUPRC ISIC cao nhất trong toàn bộ 19 run là **0,0689**
    (`teacher/convnextv2_base`). Lift so với ngẫu nhiên (0,00099) là ~70×, nghe rất tốt; nhưng ở
@@ -397,12 +397,17 @@ Gap **val − test** trung bình qua 5 fold, cho cả 19 run:
 
 ### 3.7 🔬 Hiệu chuẩn in-domain, và phát hiện "KD truyền hồ sơ tự tin của teacher"
 
+> **Hồ sơ đầy đủ: [`reports/2026-09-09_calibration_findings.md`](2026-09-09_calibration_findings.md).**
+> Toàn bộ phần hiệu chuẩn đã được **gỡ khỏi luận văn** ngày 2026-09-09 vì không câu hỏi nghiên cứu nào
+> (Q1–Q6) hỏi về nó. Số liệu vẫn đúng và vẫn tái tạo được; file kia là bản ghi đầy đủ có kèm hình
+> 3 panel, phần Platt, hiệu chuẩn theo tông da, và cảnh báo về việc phép sửa bắn quá tay ở đuôi tự tin.
+
 **(a) Prior-shift sửa được gần như hoàn toàn phần lệch toàn cục.** Bộ lấy mẫu dạy model theo prior
 1/(1+5) = 16,67% trong khi prevalence thật là 0,3885%; hiệu chỉnh closed-form cho kết quả:
 
 | | ECE trước | ECE sau prior-shift | Cải thiện |
 |---|---|---|---|
-| Dải qua 19 run | 0,0361 … 0,1342 | **0,0014 … 0,0033** | ~25–45× |
+| Dải qua 19 run | 0,0361 … 0,1342 | **0,0014 … 0,0033** | 13,8–64,5× (trung bình 31,8×) |
 
 Xin nhắc lại: **điều này KHÔNG đổi bất kỳ số xếp hạng nào** (pAUC/AUPRC/AUC bất biến với biến đổi đơn
 điệu). Nó chỉ làm cho "% nguy cơ" hiển thị cho người dùng trở nên trung thực.
@@ -412,7 +417,7 @@ Xin nhắc lại: **điều này KHÔNG đổi bất kỳ số xếp hạng nào
 
 | | ECE trước | ECE sau prior-shift |
 |---|---|---|
-| Nhóm ảnh PAD (`nan`) | 0,158 … 0,258 | 0,150 … 0,296 — **xấu đi ở 17/19 run** |
+| Nhóm ảnh PAD (`nan`) | 0,1583 … 0,2583 | 0,1501 … 0,3042 — **xấu đi ở 17/19 run** |
 
 Cơ chế: hiệu chỉnh prior dùng **một** prevalence mục tiêu (0,39%) cho **cả** tập, nhưng nhóm PAD có
 prevalence thật 34% → bị đẩy xuống quá tay. **Kết luận: hiệu chuẩn phải theo miền, không thể toàn cục.**
@@ -651,9 +656,9 @@ học kém hơn mỗi epoch — nó **ngừng học sớm hơn hẳn**.
 
 | Biến thể | Ảnh | Prev | KD trên AUPRC (điểm) | KD trên AUPRC (CI loại trừ 0) |
 |---|---|---|---|---|
-| `headline` (1 ảnh/tổn thương) | 7.470 | 15,6% | **12/12**, Δ +0,0297 | **11/12** |
-| `full` (mọi ảnh) | 10.015 | 19,5% | **12/12**, Δ +0,0298 | **12/12** |
-| `no_akiec` (bỏ actinic keratosis) | 7.242 | 13,0% | **12/12**, Δ +0,0267 | 9/12 |
+| `headline` (1 ảnh/tổn thương) | 7.470 | 15,6% | **12/12**, Δ +0,0314 | **11/12** |
+| `full` (mọi ảnh) | 10.015 | 19,5% | **12/12**, Δ +0,0317 | **12/12** |
+| `no_akiec` (bỏ actinic keratosis) | 7.242 | 13,0% | **12/12**, Δ +0,0280 | 9/12 |
 
 **Không có gì đảo chiều.** Hai phản biện hiển nhiên đều bị bác:
 - *"Kết quả là do tính akiec là ác tính"* → Không; bỏ akiec (−228 ca dương) verdict không đổi.
@@ -681,8 +686,8 @@ Cặp `efficientnetv2_m → mobilenetv4_conv_medium` trên HAM10000 headline, pa
 > **"ΔAUPRC +0,071 [+0,060, +0,082]" là câu nên đưa vào luận văn** — một effect size kèm khoảng tin cậy,
 > chứ không phải tỉ số "KD thắng 12/12".
 
-**Vì sao ghép cặp lại quan trọng:** `kd_convnextv2_base_to_mobilenetv4` AUPRC 0,4198 [0,3959, 0,4440]
-và baseline 0,3754 [0,3578, 0,3996] **chồng lấn nhau** — đọc riêng thì "không kết luận được" — nhưng
+**Vì sao ghép cặp lại quan trọng:** `kd_convnextv2_base_to_mobilenetv4` AUPRC 0,4198 [0,3942, 0,4459]
+và baseline 0,3754 [0,3530, 0,3989] **chồng lấn nhau** — đọc riêng thì "không kết luận được" — nhưng
 Δ **có ghép cặp** là +0,0445 [+0,0350, +0,0547], **loại trừ 0 dứt khoát**. CI không ghép cặp vứt bỏ
 tương quan và sẽ đánh giá thấp bằng chứng.
 

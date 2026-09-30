@@ -1,5 +1,14 @@
 # External evaluation — cross-domain (HAM10000) & fairness (Fitzpatrick17k)
 
+> ⛔ **SUPERSEDED — do not quote numbers from this file.** The whole external evaluation was
+> re-run on 2026-08-24 after a run-dir was found to be mixing two experiments (a June `fold_3`
+> plus a missing `fold_4`). Every figure below predates that fix. The live numbers are in
+> `reports/external/<dataset>/<variant>/` and are synthesised in `reports/BAO_CAO_TONG_HOP.md`.
+> Known stale values: HAM10000 mean ΔAUPRC **+0.0297 → +0.0314** (`headline`),
+> **+0.0298 → +0.0317** (`full`), **+0.0267 → +0.0280** (`no_akiec`); HAM prevalence
+> **15.7% → 15.6%**. Kept only as a record of what the 08-23 run produced.
+
+
 **Date:** 2026-08-23 (revised same day — see below) · **Box:** `vastnew`
 (`/workspace/skin-cancer-detector`, 1×RTX 3090)
 **Scope:** 19 trained run-dirs (3 teachers + 4 baselines + 12 KD students) × 5 folds, evaluated on
