@@ -115,7 +115,7 @@ For each symptom that's failing, suggest ONE direction at a time (changing many 
 
 For each suggestion, name the **configs/** file(s) that control the relevant lever so the user knows where to look:
 - LR / weight decay / optimizer → `configs/training/{distillation,baseline,default}.yaml`
-- Augmentation strength → `configs/augmentation/{light,heavy,domain}.yaml` (and the `augmentation=heavy` / `augmentation=domain` Hydra override; `domain` is the cross-domain arm, not a stronger `heavy`)
+- Augmentation strength → `configs/augmentation/{light,heavy}.yaml` (and the `augmentation=heavy` Hydra override). Do NOT suggest a wider field-of-view/colour preset as a cross-domain fix: `augmentation=domain` was run and made the KD student significantly worse on 5/5 cells (removed 2026-09-30, `docs/domain_aug_plan.md`)
 - KD `temperature` / `alpha` → `configs/training/distillation.yaml`'s `distillation:` block
 - Early stopping `patience` / monitor → `configs/training/*.yaml`'s `callbacks.early_stopping`
 

@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 
 # Albumentations ops this project allows in the augmentation config. The
-# pipeline is built from configs/augmentation/{light,heavy,domain}.yaml (NOT hard-coded
+# pipeline is built from configs/augmentation/{light,heavy}.yaml (NOT hard-coded
 # here) so the augmentation strength is a tunable knob. Each entry maps an op
 # `name` -> a builder that consumes the remaining keys of the config dict as
 # kwargs. Keep this to geometric/photometric, per-image, label-preserving ops.
@@ -23,8 +23,6 @@ _TRANSFORM_BUILDERS = {
     "CLAHE": lambda clip_limit=2.0, p=0.2, **k: A.CLAHE(clip_limit=clip_limit, p=p),
     "GaussianBlur": lambda blur_limit=(3, 7), p=0.2, **k: A.GaussianBlur(blur_limit=tuple(blur_limit), p=p),
     "GaussNoise": lambda var_limit=(10.0, 50.0), p=0.3, **k: A.GaussNoise(var_limit=tuple(var_limit), p=p),
-    # Exposure error across capture devices (added for configs/augmentation/domain.yaml).
-    "RandomGamma": lambda gamma_limit=(80, 120), p=0.3, **k: A.RandomGamma(gamma_limit=tuple(gamma_limit), p=p),
     "Normalize": lambda mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225), **k: A.Normalize(
         mean=list(mean), std=list(std)
     ),
@@ -65,7 +63,7 @@ def build_transforms(cfg, split: str = "train"):
     Build an Albumentations transform pipeline from the augmentation config.
 
     The op list comes from ``cfg.augmentation[split]`` (configs/augmentation/
-    {light,heavy,domain}.yaml), so augmentation strength is a tunable knob rather than
+    {light,heavy}.yaml), so augmentation strength is a tunable knob rather than
     hard-coded here. ``Resize`` is always prepended and ``ToTensorV2`` always
     appended; ``Normalize`` falls back to ImageNet stats if the config omits it.
 
