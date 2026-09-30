@@ -225,7 +225,20 @@ bash run/ablation_pad.sh ARM=isic_only
 bash run/ablation_pad.sh ARM=isic_pad
 bash run/ablation_pad.sh ARM=isic_only MODEL_KIND=teacher TEACHER=convnextv2_base
 python scripts/analyze_pad_ablation.py --help   # per-domain (ISIC vs PAD) compare
+
+# C — source-stratified sampler (data.sampler_stratify_by=source; default null = off).
+#     Same benign/epoch total, but PAD/DDI get min(ratio × their malignant, their benign)
+#     and ISIC fills the rest. KD student only; the DDI-arm teacher is reused frozen:
+bash run/train_student.sh STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m \
+     TRAINING=distillation GPU=0 \
+     EXTRA="output_dir=experiments/runs_newsplit_ddi run_suffix=__srcsamp data.sampler_stratify_by=source"
 ```
+
+Arm C logs the per-source quota once at start-up (`Sampler stratify_by=source: …`, one
+line per source with the uniform-draw expectation and the % change) and the realised
+`(source × label)` counts every epoch (`Sampler epoch N …`) — the epoch line is logged
+for the default sampler too, so a control run trained from now on shows how few PAD benign it actually drew (runs trained earlier have no such line).
+Design + pre-registered endpoints: `docs/TASK_ITEM2_3_source_sampler_ship_ckpt.md`.
 
 > ⚠ The student arm isolates via `run_suffix=`, the teacher arm via `output_dir=`
 > — `scripts/train_teacher.py` does **not** read `run_suffix`, so without the

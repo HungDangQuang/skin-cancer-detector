@@ -28,3 +28,4 @@ random_seed: 42
 # Keep class-imbalance sampling enabled so the sampler code path runs
 use_weighted_sampler: true
 undersample_ratio: 3     # small ratio because we only have a handful of malignants
+sampler_stratify_by: null  # or "source" — see configs/data/isic2024.yaml

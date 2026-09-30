@@ -38,6 +38,13 @@ fold: 0
 # Dynamic undersampling: 1 malignant : 5 benign per epoch (resampled each epoch)
 use_weighted_sampler: true
 undersample_ratio: 5
+# How the benign rows of each epoch are drawn. null (default) = uniformly from
+# the whole benign pool, source-blind — the setting every existing run used.
+# "source" = same total benign/epoch, but each minority source (PAD-UFES-20,
+# DDI) gets min(ratio × its malignant, its benign) and the largest pool (ISIC)
+# fills the rest. Uniform gives PAD ~14.5 benign/epoch against 669 malignant
+# (fold 0, v2 splits before DDI; the server copy with DDI differs). The per-source counts go to the log at start-up and every epoch.
+sampler_stratify_by: null
 
 # PAD ablation knob. null = train on all sources (ISIC+PAD, the default strategy).
 # Set to a list (e.g. [isic2024]) to restrict TRAIN+VAL to those source datasets;

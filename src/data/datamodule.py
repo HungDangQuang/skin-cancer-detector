@@ -114,13 +114,20 @@ class SkinLesionDataModule:
         if metadata_cols:
             self._fit_meta_scaler()
 
-        # Dynamic undersampling sampler (1:5 ratio, resampled each epoch)
+        # Dynamic undersampling sampler (1:5 ratio, resampled each epoch).
+        # data.sampler_stratify_by: null (default, historical uniform benign draw)
+        # or "source" (per-source benign quota, same total) — see sampler.py.
+        stratify_by = self.data_cfg.get("sampler_stratify_by", None)
         if self.data_cfg.get("use_weighted_sampler", True):
             self._train_sampler = DynamicUndersampledSampler(
                 labels=self._train_dataset.labels,
                 ratio=self.data_cfg.get("undersample_ratio", 5),
                 seed=self.cfg.seed,
+                sources=self._row_sources(self._train_dataset),
+                stratify_by=stratify_by,
             )
+        elif stratify_by:
+            logger.warning(f"sampler_stratify_by={stratify_by!r} ignored: use_weighted_sampler=false.")
 
     def set_epoch(self, epoch: int) -> None:
         """Call at the start of each epoch to reshuffle undersampled benign pool."""
@@ -227,6 +234,19 @@ class SkinLesionDataModule:
             f"train_sources={keep}: {split} split filtered {n0} -> {n1} rows "
             f"({n0 - n1} dropped)."
         )
+
+    @staticmethod
+    def _row_sources(dataset: SkinLesionDataset) -> list[str]:
+        """Per-row origin tag for a split, row-aligned with ``dataset.df``.
+
+        Prefers the split CSV's own ``source`` column (DDI rows carry ``"ddi"``,
+        which ``source_from_path`` does not know); rows without one fall back to
+        the path-derived tag.
+        """
+        from_path = dataset.df[dataset.image_col].astype(str).map(source_from_path)
+        if "source" not in dataset.df.columns:
+            return from_path.tolist()
+        return dataset.df["source"].where(dataset.df["source"].notna(), from_path).astype(str).tolist()
 
     def test_sources(self) -> list[str]:
         """
