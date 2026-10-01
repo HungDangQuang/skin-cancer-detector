@@ -1,0 +1,2 @@
+mobilenetv4_srcsamp_auprc_fold4 PAD benign flagged 207/208 | PAD malignant caught 189/189
+mobilenetv4_ddi_fold0 PAD benign flagged 205/208 | PAD malignant caught 189/189

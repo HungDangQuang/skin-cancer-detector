@@ -268,6 +268,7 @@ không được bịa ra phát hiện.
 | So sánh số của luận văn với số của bài báo khác mà **không cùng thang** (khác tập test, khác prevalence, khác định nghĩa metric) | CHẶN |
 | Khẳng định một thí nghiệm "đã chạy" trong khi run-dir không tồn tại | CHẶN |
 | Nội suy một con số chưa đo ("ước tính khoảng…") mà không nói rõ là ước tính | CHẶN |
+| Câu "mô hình đạt yêu cầu / đủ tốt / dùng được trên điện thoại / sẵn sàng triển khai" không đi qua `.claude/skills/eval-results/reference/acceptance-gates.md` (mốc đã chốt, cận CI, tách miền), hoặc suy nó từ "KD tốt hơn baseline" / "điện thoại = máy chủ" / số in-domain gộp hay splits v1 | CHẶN |
 
 **Phía người soát — ba điều tuyệt đối không làm:**
 

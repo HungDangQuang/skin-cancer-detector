@@ -13,7 +13,7 @@ verbatim under each skill's `reference/` and the SKILL.md routes to the right on
 | Skill | Use it when you want to… | Routes to (`reference/`) |
 |---|---|---|
 | [code-change](code-change/SKILL.md) | **add / remove / edit code** and carry it through review → validate → run on the GPU server | review-preprocessing · review-training · review-runner · add-model · validate-pipeline · poc-smoke-test · kd-experiment · dev-cycle |
-| [eval-results](eval-results/SKILL.md) | **read & judge results**, conclude whether the solution is effective | analyze-evaluation · compare-kd · assess-training · diagnose-training |
+| [eval-results](eval-results/SKILL.md) | **read & judge results**, conclude whether the solution is effective — and, only via `acceptance-gates`, whether the model **meets the requirement** | **acceptance-gates** · analyze-evaluation · compare-kd · assess-training · diagnose-training |
 | [update-report](update-report/SKILL.md) | **write / refresh the report `.md`** (reports/, proposal, daily log) once results exist | — (Google Drive deferred) |
 | [draw-diagram](draw-diagram/SKILL.md) | **draw a pipeline / architecture figure** in the house soft-card SVG style | — (was `diagram-style`) |
 | [answer-qa](answer-qa/SKILL.md) | **answer a thesis question AND store it** as `QA/NNN-*.md`, qua **cổng kiểm chéo** trước khi ghi file | — (dùng `review-thesis/reference/cross-check.md`) |
@@ -36,12 +36,19 @@ verbatim under each skill's `reference/` and the SKILL.md routes to the right on
 - **"Is this good? Did KD help? Why did it fail?"** → `eval-results`. Pick the rubric by the
   artifact you have: eval JSON → analyze-evaluation; all runs → compare-kd; good log →
   assess-training; broken run → diagnose-training.
+- **"Model đạt yêu cầu chưa / đủ tốt chưa / dùng được trên điện thoại chưa?"** → `eval-results`
+  → **`reference/acceptance-gates.md`** — the only route to that verdict.
 - **"Write this up."** → `update-report` for the `.md` deliverables; `answer-qa` if it's a
   thesis question you want stored under `QA/`.
 - **"Draw the pipeline / a figure."** → `draw-diagram` (SVG, not a matplotlib number-plot).
 - **"Explain / quiz me on concept X."** → `tutor-knowledge` (spawns the `knowledge-tutor` agent).
 
 ## Notes
+
+- **"Đạt yêu cầu" có đúng một định nghĩa:** `eval-results/reference/acceptance-gates.md`
+  (2026-10-01). Good/Moderate/Poor trong `analyze-evaluation` / `assess-training` chỉ là sức khoẻ
+  của run; "KD tốt hơn baseline" chỉ là so sánh. Không skill/agent nào được tự viết "đạt / đủ tốt /
+  sẵn sàng ship" ngoài đường đó — `review-verifier` chấm vi phạm là `SAI`.
 
 - **Cổng kiểm chéo:** mọi câu trả lời có số liệu / `file:line` / bản vá đều phải qua hai
   sub-agent `review-verifier` một lượt trước khi gửi — không riêng lượt soát luận văn

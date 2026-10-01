@@ -32,6 +32,11 @@ finishes. This is the "Document" step of the modification workflow, made callabl
   Quote the **aggregated mean ± std** over folds, and lead with **AUPRC** at the ~0.39%
   prevalence (pAUC@TPR≥80 for ISIC-benchmark comparison). If you need the *verdict* first,
   run **eval-results**; this skill writes up a verdict you already have.
+- **Never write "đạt yêu cầu / đủ tốt / sẵn sàng triển khai" on your own.** Such a sentence may
+  only copy a verdict produced through `.claude/skills/eval-results/reference/acceptance-gates.md`,
+  together with its `### Cổng chấp nhận` block. A comparison result ("KD tốt hơn baseline có ý
+  nghĩa") must be written as a comparison, not upgraded to "model tốt". State splits v1 (leaked) or
+  v2 for every in-domain number.
 - **Match the existing report's structure** — reuse its heading layout, table columns, and
   tone rather than inventing a new format. Look at a sibling `reports/*.md` first.
 - **Don't overwrite a report whose framing contradicts the new data** without flagging it —

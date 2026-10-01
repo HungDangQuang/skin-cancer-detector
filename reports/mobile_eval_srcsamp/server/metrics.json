@@ -1,0 +1,59 @@
+{
+  "_meta": {
+    "label": "server",
+    "runtime": "pytorch-eager",
+    "device": "cpu",
+    "batch_size": 1,
+    "threshold": 0.2272492349147796,
+    "threshold_source": "experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp/fold_4/val_predictions_auprc.csv",
+    "manifest": "data/mobile_eval_bundle/manifest.csv",
+    "manifest_sha": "2128e9acc05788b9",
+    "logits": "reports/mobile_eval_srcsamp/server_logits.csv",
+    "spec": "docs/MOBILE_EVAL_PIPELINE.md"
+  },
+  "indomain": {
+    "prevalence": 0.00448445670383971,
+    "auprc": 0.6587995730871591,
+    "pauc_at_tpr80": 0.18366087384905913,
+    "auc_roc": 0.9828366610175363,
+    "sens_at_90spec": 0.9584905660377359,
+    "sens_at_95spec": 0.9207547169811321,
+    "sensitivity": 0.9283018867924528,
+    "specificity": 0.9450771741347658,
+    "f1_score": 0.13148049171566006,
+    "brier": 0.012679379242283626,
+    "ece": 0.0721077951947279,
+    "n": 59093,
+    "n_unscored": 0
+  },
+  "ham10000_headline": {
+    "prevalence": 0.15649263721552878,
+    "auprc": 0.5792844789867582,
+    "pauc_at_tpr80": 0.12758198659248488,
+    "auc_roc": 0.8806527783755047,
+    "sens_at_90spec": 0.613344739093242,
+    "sens_at_95spec": 0.4251497005988024,
+    "sensitivity": 1.0,
+    "specificity": 0.0926837009998413,
+    "f1_score": 0.29025450031036626,
+    "brier": 0.2264363646428705,
+    "ece": 0.35500008147387624,
+    "n": 7470,
+    "n_unscored": 0
+  },
+  "fitzpatrick17k_headline": {
+    "prevalence": 0.5,
+    "auprc": 0.7246196655077755,
+    "pauc_at_tpr80": 0.06172239368998626,
+    "auc_roc": 0.7314529749657064,
+    "sens_at_90spec": 0.36342592592592593,
+    "sens_at_95spec": 0.23842592592592593,
+    "sensitivity": 1.0,
+    "specificity": 0.001388888888888889,
+    "f1_score": 0.666975451597962,
+    "brier": 0.22069551915881927,
+    "ece": 0.08412779414019007,
+    "n": 4320,
+    "n_unscored": 0
+  }
+}

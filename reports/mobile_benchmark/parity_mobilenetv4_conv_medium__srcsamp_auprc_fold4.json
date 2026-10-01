@@ -1,0 +1,26 @@
+{
+  "model_name": "mobilenetv4_conv_medium",
+  "pte_path": "exports/executorch_srcsamp/mobilenetv4_conv_medium__srcsamp_auprc_fold4.pte",
+  "pte_size_mb": 32.11,
+  "executorch_api": "executorch.runtime.Runtime",
+  "reference_csv": "data/benchmark_set_srcsamp/ref_mobilenetv4_conv_medium.csv",
+  "n_samples": 100,
+  "input_shape": [
+    3,
+    224,
+    224
+  ],
+  "tolerance": 0.001,
+  "max_abs_logit_delta": 6.3108825685276315e-06,
+  "mean_abs_logit_delta": 9.018649952007712e-07,
+  "p99_abs_logit_delta": 4.151179198945709e-06,
+  "max_abs_prob_delta": 3.499381093230447e-07,
+  "n_over_tolerance": 0,
+  "worst_sample": {
+    "id": "0098",
+    "pytorch_logit": -5.46181,
+    "pte_logit": -5.461816310882568,
+    "abs_delta": 6.3108825685276315e-06
+  },
+  "passed": true
+}

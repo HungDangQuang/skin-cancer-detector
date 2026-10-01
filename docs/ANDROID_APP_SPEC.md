@@ -483,6 +483,43 @@ Worked examples (use them as test vectors):
 
 Repo-side follow-up (not part of the Android work, but the app blocks on the config): add `scripts/make_app_config.py` that reads `aggregated.json` + the chosen fold's `val_predictions.csv` / `test_metrics.json` and emits the model's `config.json`. Until it exists, hand-write the config from the numbers in §2 and set `"thresholdSource": "TEMPORARY: test-set Youden of fold 4 — replace before release"`.
 
+### 3.5a Phone photos need their OWN operating point (measured 2026-10-01)
+
+A threshold derived on the whole validation set is dominated by ISIC 3D-TBP crops (~99% of val
+rows) and is wrong for the camera photos this app actually receives. For the ship candidate
+(`runs_newsplit_ddi/kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp/fold_4`,
+`best_model_auprc.pth`) the global val-Youden threshold 0.2272 flags **175/175** benign PAD-UFES-20
+phone photos already on validation and **207/208** on test.
+
+Rule: the default operating point for camera input is chosen on the **phone-photo (PAD) rows of the
+validation predictions only** — `val_predictions_auprc.csv` has no source column but follows
+`data/splits/isic2024/fold_N/val_split.csv` row for row. Current target: **sensitivity 90 % on val
+PAD** (screening: do not miss malignant phone photos). Fold 4 → threshold **0.5705**. Threshold always
+chosen on val; results (`reports/2026-10-01_pad_threshold/`):
+
+| | global val-Youden | PAD val, sens 90 % |
+|---|---|---|
+| test PAD, fold 4 (the ship fold) sensitivity / specificity | 1.000 / 0.005 | 0.873 / 0.731 |
+| test PAD, all 5 folds pooled | 0.998 / 0.016 | 0.891 / 0.713 |
+| Fitzpatrick17k, fold 4 | 1.000 / 0.001 | 0.567 / 0.769 |
+| Fitzpatrick17k, all 5 folds pooled | 1.000 / 0.002 | 0.692 / 0.590 |
+
+**The 90 % target is post-hoc**: it was picked after three candidate operating points had been scored
+on fold 4's test PAD rows, and every fold scores those same test rows, so folds 0–3 are not clean
+confirmation. Fitzpatrick17k is the only untouched check, and there sensitivity falls to 0.69 (0.57
+on fold 4) — the threshold does not transfer to other clinical photos at the same sensitivity. The
+same val set also chose the checkpoint and the fold; there is no CI. Val PAD is small (351–403 rows per
+fold), so the threshold moves between folds (0.514–0.600). Real camera photos are still unmeasured
+(L3), and dermoscopy input would need a separate point.
+
+Ship it as an extra `operatingPoints` entry (e.g. `"id": "phone_sens90"`) and make it
+`defaultOperatingPoint`; keep the global point for reference. **Not paste-ready yet:** the schema in
+§3.2 also needs `label`, `calibratedThreshold`, `sensitivity`, `specificity`, `ppvAtPrevalence`,
+`npvAtPrevalence`, `falseAlarmsPer1000` for this entry (PPV/NPV must use the phone-photo prevalence,
+not 0.0039), `riskBands` must be re-cut around the new default's `calibratedThreshold`, and
+`thresholdSource` must name both sources. Those values belong to `scripts/make_app_config.py` (§3.5),
+which does not exist yet.
+
 ### 3.6 Version pinning between export and runtime
 
 The `.pte` format is versioned. The Python `executorch` version that produced the file **must** match the Android AAR version. Procedure:

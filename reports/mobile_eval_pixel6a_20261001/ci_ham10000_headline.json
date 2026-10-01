@@ -1,0 +1,118 @@
+{
+  "results_dir": ".tmp/pixel_cmp/ham10000_headline",
+  "n_boot": 2000,
+  "seed": 42,
+  "alpha": 0.05,
+  "n_test_rows": 7470,
+  "fold_convention": "shared row indices across folds; statistic = mean over folds (folds are models on the SAME test rows, so predictions are never pooled)",
+  "metrics": [
+    "auc_roc",
+    "auprc",
+    "pauc_at_tpr80",
+    "sens_at_90spec"
+  ],
+  "per_run": {
+    "x_mobilenetv4_ddi_fold0": {
+      "n_folds": 1,
+      "auc_roc": {
+        "point": 0.8049324526406865,
+        "lo": 0.7913364149785307,
+        "hi": 0.8181129379204786,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.40435290558046355,
+        "lo": 0.37645048381324486,
+        "hi": 0.433716580577594,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.09564207563289542,
+        "lo": 0.08866785421887684,
+        "hi": 0.10252880326417492,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.41916167664670656,
+        "lo": 0.38429729517022543,
+        "hi": 0.44973538012988884,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    },
+    "x_mobilenetv4_srcsamp_auprc_fold4": {
+      "n_folds": 1,
+      "auc_roc": {
+        "point": 0.8806527783755047,
+        "lo": 0.8702271368611404,
+        "hi": 0.8900771292489447,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.5792844245027344,
+        "lo": 0.5482414425829593,
+        "hi": 0.6090041241433759,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.12758198659248482,
+        "lo": 0.12125996318290888,
+        "hi": 0.1335749070738356,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.613344739093242,
+        "lo": 0.5777505360585291,
+        "hi": 0.6456506989487896,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    }
+  },
+  "kd_deltas": {},
+  "ablation_deltas": {},
+  "ablation_deltas_by_subgroup": {},
+  "explicit_pairs": {
+    "x_mobilenetv4_srcsamp_auprc_fold4 vs x_mobilenetv4_ddi_fold0": {
+      "run_a": "x_mobilenetv4_srcsamp_auprc_fold4",
+      "run_b": "x_mobilenetv4_ddi_fold0",
+      "sign": "a_minus_b",
+      "auc_roc": {
+        "point": 0.07572032573481824,
+        "lo": 0.06434558979077187,
+        "hi": 0.08706789981856465,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.17493151892227088,
+        "lo": 0.14931245587111525,
+        "hi": 0.2013241062863556,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.031939910959589396,
+        "lo": 0.023960030548988674,
+        "hi": 0.0398360487603422,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.1941830624465355,
+        "lo": 0.15985337353184495,
+        "hi": 0.23239247249160752,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    }
+  },
+  "explicit_pairs_by_subgroup": {},
+  "fairness_gaps": {}
+}

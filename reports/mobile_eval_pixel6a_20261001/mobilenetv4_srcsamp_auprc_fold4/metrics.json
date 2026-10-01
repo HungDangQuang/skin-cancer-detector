@@ -1,0 +1,59 @@
+{
+  "_meta": {
+    "label": "mobile",
+    "runtime": "executorch-android-1.4.0(threads=4)",
+    "device": "Pixel 6a (Tensor G1)",
+    "batch_size": 1,
+    "threshold": 0.2272492349147796,
+    "threshold_source": "experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp/fold_4/val_predictions_auprc.csv",
+    "manifest": "data/mobile_eval_bundle/manifest.csv",
+    "manifest_sha": "2128e9acc05788b9",
+    "logits": ".tmp/pixel_in/mobilenetv4_srcsamp_auprc_fold4.csv",
+    "spec": "docs/MOBILE_EVAL_PIPELINE.md"
+  },
+  "indomain": {
+    "prevalence": 0.00448445670383971,
+    "auprc": 0.6587995730871592,
+    "pauc_at_tpr80": 0.18366084177602499,
+    "auc_roc": 0.9828366289445021,
+    "sens_at_90spec": 0.9584905660377359,
+    "sens_at_95spec": 0.9207547169811321,
+    "sensitivity": 0.9283018867924528,
+    "specificity": 0.9450771741347658,
+    "f1_score": 0.13148049171566006,
+    "brier": 0.012679378162769012,
+    "ece": 0.0721077953797533,
+    "n": 59093,
+    "n_unscored": 0
+  },
+  "ham10000_headline": {
+    "prevalence": 0.15649263721552878,
+    "auprc": 0.5792844245027344,
+    "pauc_at_tpr80": 0.12758198659248482,
+    "auc_roc": 0.8806527783755047,
+    "sens_at_90spec": 0.613344739093242,
+    "sens_at_95spec": 0.4251497005988024,
+    "sensitivity": 1.0,
+    "specificity": 0.0926837009998413,
+    "f1_score": 0.29025450031036626,
+    "brier": 0.22643631852315013,
+    "ece": 0.3550000199374008,
+    "n": 7470,
+    "n_unscored": 0
+  },
+  "fitzpatrick17k_headline": {
+    "prevalence": 0.5,
+    "auprc": 0.7246196655077755,
+    "pauc_at_tpr80": 0.06172239368998626,
+    "auc_roc": 0.7314529749657064,
+    "sens_at_90spec": 0.36342592592592593,
+    "sens_at_95spec": 0.23842592592592593,
+    "sensitivity": 1.0,
+    "specificity": 0.001388888888888889,
+    "f1_score": 0.666975451597962,
+    "brier": 0.22069551741814278,
+    "ece": 0.08412778847184071,
+    "n": 4320,
+    "n_unscored": 0
+  }
+}
