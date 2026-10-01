@@ -72,6 +72,7 @@ still tees.
 | `export_model.sh` | Export to ONNX or TorchScript |
 | `setup_export_env.sh` | One-time: isolated `./.venv-export` for ExecuTorch |
 | `export_executorch.sh` | Export to `.pte` for Android on-device |
+| `make_app_config.sh` | Generate the app's per-model `config.json` (ANDROID_APP_SPEC §3.2): thresholds chosen on val (phone-photo point on the PAD rows), sens/spec reported on test; prevalences are required inputs — guide `docs/APP_CONFIG_GUIDE.md` |
 | `check_pte_parity.sh` | PyTorch ↔ `.pte` numerical parity gate (`max|Δlogit| < 1e-3`) |
 | `export_all_students.sh` | All four mobile students → `.pte` + parity, one launch (ref/export/parity share one CKPT) |
 | `export_thesis_docx.sh` | **Mac-side**: `thesis/LUAN_VAN.md` → `thesis/LUAN_VAN.docx` via pandoc, with a fidelity gate on figures/tables/headings |
