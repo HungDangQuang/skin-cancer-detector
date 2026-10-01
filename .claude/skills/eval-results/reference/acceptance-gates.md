@@ -38,9 +38,9 @@ Mốc chốt sau khi đã nhìn thấy kết quả của chính model đang ch�
 |---|---|---|---|
 | **Sáu tiêu chí chọn model** (§2.0) | **ĐÃ CHỐT** — đây là danh sách *cái gì* phải đạt | 01/10/2026 | tác giả |
 | Mốc số của từng cổng (§2 A/B/C) | ĐỀ XUẤT — tác giả **đã ghi nhận** 01/10/2026, **post-hoc** (sau khi đã thấy mọi kết quả B/C của ứng viên ship, `reports/ci_gates_srcsamp_*.md`); các dòng CHỜ QUYẾT bên dưới vẫn mở, nên phán quyết tổng vẫn là `CHƯA CÓ TIÊU CHÍ CHỐT` | 01/10/2026 (ghi nhận) | tác giả |
-| B2: mục tiêu 0,81 hay chỉ sàn 0,47 | CHỜ QUYẾT | — | — |
-| B4 (HAM10000): mục tiêu 0,81; sàn chưa có | CHỜ QUYẾT | — | — |
-| C2 "vượt teacher": cách hiểu (đề xuất: vượt trội có ý nghĩa, `lo > 0`), metric (đề xuất ΔAUPRC), tập miền (đề xuất PAD · Fitz · HAM; ISIC bỏ vì đề xuất xoay quanh ảnh kiểu điện thoại và xuyên miền) | CHỜ QUYẾT | — | — |
+| B2: mốc quyết định = **mục tiêu ≥ 0,81** (sàn 0,47 chỉ báo cáo) | **ĐÃ CHỐT — post-hoc** | 02/10/2026 | tác giả |
+| B4 (HAM10000): mốc quyết định = **mục tiêu ≥ 0,81** | **ĐÃ CHỐT — post-hoc** | 02/10/2026 | tác giả |
+| C2 "vượt teacher": cách hiểu (đề xuất: vượt trội có ý nghĩa, `lo > 0`), metric (đề xuất ΔAUPRC), tập miền (đề xuất PAD · Fitz · HAM; ISIC bỏ vì đề xuất xoay quanh ảnh kiểu điện thoại và xuyên miền) | **metric = ΔAUPRC: ĐÃ CHỐT — post-hoc** (02/10/2026, tác giả); cách hiểu `lo > 0` và tập miền PAD·Fitz·HAM: vẫn là đề xuất, đang được dùng | 02/10/2026 (metric) | tác giả |
 | C4a "tốt trên mọi tông da": mỗi nhóm đạt sàn 0,47 hay mức cao hơn | CHỜ QUYẾT | — | — |
 | δ của C4b (đề xuất 0,02 AUC — không có nguồn) | CHỜ QUYẾT | — | — |
 
