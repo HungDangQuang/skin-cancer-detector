@@ -369,6 +369,27 @@ risk and turns an assumption into a result. **Now wired** as
 `run/ablation_sampler.sh` (`SAMP=off|3|5|10`, toggles
 `data.use_weighted_sampler`/`data.undersample_ratio`) — see §7.
 
+### 3.1 Source-stratified benign draw (`data.sampler_stratify_by`, opt-in, 2026-09-30)
+
+The default draw is **source-blind**: benign rows come uniformly from the whole
+benign pool, so a minority source is almost absent from every epoch. Fold 0 of the
+v2 splits *before* DDI was appended (the Mac copy) has 669 PAD malignant but only 809 PAD benign among 252,521 benign rows,
+so 4,530 benign/epoch × 809 / 252,521 ≈ **14.5 PAD benign per epoch** — the model
+sees PAD almost only as malignant.
+
+`data.sampler_stratify_by: source` keeps the **total** benign/epoch
+(`ratio × n_malignant`) and re-splits it: every source except the largest benign
+pool gets `min(ratio × n_malignant_s, n_benign_s)`, the largest pool (ISIC) fills the
+remainder. On that fold PAD takes all 809 and ISIC drops from ~4,515 to 3,721
+benign/epoch; on the server's copy, where DDI (+656 rows) is also a source, the brief
+estimates PAD 809 + DDI 485 and ISIC −~24% (the real numbers are logged at start-up).
+The source comes from the split CSV's `source` column (DDI = `"ddi"`), falling back to
+the image path. Cost: the ~1.3k minority benign images repeat **every** epoch.
+
+`null` (default) is the historical draw — same RNG calls, same indices
+(`tests/test_sampler.py::test_default_matches_historical_draw`), so every existing
+run reproduces unchanged. Runner: `run/README.md` §4 arm C.
+
 ---
 
 ## 4. Augmentation — corrected pipeline

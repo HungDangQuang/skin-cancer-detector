@@ -56,7 +56,7 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | `src/data/` | `preprocessing.py` | `process_isic2024` / `process_pad_ufes_20`, `generate_group_kfold_splits` (nhớ `label_col="label"`, `patient_id` namespaced `pad_{id}`) |
 | | `dataset.py` | `SkinLesionDataset` (đọc cột `image_path`, `label`) |
 | | `datamodule.py` | `SkinLesionDataModule` — build DataLoader; `set_epoch()` reshuffle sampler |
-| | `sampler.py` | `DynamicUndersampledSampler` — giữ tỉ lệ ~1:5 malignant:benign, reshuffle mỗi epoch |
+| | `sampler.py` | `DynamicUndersampledSampler` — giữ tỉ lệ ~1:5 malignant:benign, reshuffle mỗi epoch; opt-in `data.sampler_stratify_by=source` chia quota ảnh lành theo nguồn (PAD/DDI), giữ nguyên tổng (`docs/PREPROCESSING.md §3.1`) |
 | | `transforms.py` | `build_transforms` — Albumentations **từ config** `augmentation/{light,heavy}.yaml`; MixUp/CutMix/CutOut bị cấm (`_FORBIDDEN_OPS`) |
 | `src/models/` | `registry.py` | `MODEL_REGISTRY` (string→class) + `build_model` / `build_model_from_name` |
 | | `base_model.py` | `BaseModel` (ABC): `forward(x)->Tensor(B,)`, `forward_features(x)->(feat(B,C), logit(B,))` cho feature-KD, `freeze_backbone()`, `unfreeze()` |
@@ -133,6 +133,9 @@ experiments/runs/
     val_predictions.csv  ← fit-set cho calibration (val, giữ prevalence thật ~0,39%)
     training_curves.png
   kd_<teacher>_to_<student>/fold_{0..4}/...
+    # chỉ khi training.callbacks.checkpoint.extra_monitors=[auprc] (mặc định []), fold STUDENT:
+    checkpoints/best_model_auprc.pth + val_metrics_auprc.json + test_metrics_auprc.json
+    + predictions_auprc.csv + val_predictions_auprc.csv   ← bản đôi chọn theo val AUPRC
   <...>__<run_suffix>/    ← ablation (samp_off, ratio3, mselogit, rkd, …)
 ```
 Sau aggregate: `aggregated.{json,md}` = **mean ± std** — con số để báo cáo (1 fold đơn lẻ variance rất rộng).

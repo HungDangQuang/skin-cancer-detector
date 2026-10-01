@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -106,29 +107,51 @@ def resolve_model_name(run_dir: Path, cfg, override: str | None) -> str:
     return str(cfg.student.name)
 
 
-def frozen_threshold(fold_dir: Path) -> tuple[float, str]:
+DEFAULT_CKPT_NAME = "best_model.pth"
+DEFAULT_VAL_PRED_NAME = "val_predictions.csv"
+
+
+def checkpoint_tag(ckpt_name: str, val_pred_name: str) -> str:
+    """Shared suffix of a checkpoint and its val predictions ("" or e.g. "_auprc").
+
+    The frozen Youden threshold must come from the val predictions of the SAME
+    checkpoint (best_model_auprc.pth <-> val_predictions_auprc.csv); a mismatch
+    would score one model at another model's operating point, so it is refused.
+    """
+    c = re.fullmatch(r"best_model(.*)\.pth", ckpt_name)
+    v = re.fullmatch(r"val_predictions(.*)\.csv", val_pred_name)
+    if not c or not v or c.group(1) != v.group(1):
+        raise SystemExit(
+            f"ERROR: --ckpt-name {ckpt_name} and --val-pred-name {val_pred_name} do not "
+            f"belong together (expected best_model<tag>.pth + val_predictions<tag>.csv)."
+        )
+    return c.group(1)
+
+
+def frozen_threshold(fold_dir: Path, val_pred_name: str = DEFAULT_VAL_PRED_NAME,
+                     val_metrics_name: str = "val_metrics.json") -> tuple[float, str]:
     """Decision threshold from the run's own INTERNAL validation fold.
 
     Preference order — first the raw val predictions (recompute Youden's J
     exactly as training did), then the threshold recorded in val_metrics.json.
     The external set is never consulted; see this module's docstring.
     """
-    val_preds = fold_dir / "val_predictions.csv"
+    val_preds = fold_dir / val_pred_name
     if val_preds.is_file():
         df = pd.read_csv(val_preds)
         if {"y_true", "y_prob"}.issubset(df.columns) and df["y_true"].nunique() > 1:
             thr = youden_threshold(df["y_true"].to_numpy(), df["y_prob"].to_numpy())
-            return float(thr), "internal val_predictions.csv (Youden J)"
+            return float(thr), f"internal {val_pred_name} (Youden J)"
 
-    val_metrics = fold_dir / "val_metrics.json"
+    val_metrics = fold_dir / val_metrics_name
     if val_metrics.is_file():
         recorded = json.loads(val_metrics.read_text()).get("threshold")
         if isinstance(recorded, (int, float)):
-            return float(recorded), "internal val_metrics.json (recorded threshold)"
+            return float(recorded), f"internal {val_metrics_name} (recorded threshold)"
 
     raise FileNotFoundError(
-        f"No internal validation threshold for {fold_dir}: neither val_predictions.csv "
-        f"nor a 'threshold' in val_metrics.json. Refusing to fall back to a threshold "
+        f"No internal validation threshold for {fold_dir}: neither {val_pred_name} "
+        f"nor a 'threshold' in {val_metrics_name}. Refusing to fall back to a threshold "
         f"fitted on the external set — that would be selecting on the test data."
     )
 
@@ -213,11 +236,22 @@ def evaluate_fold(
 ) -> dict | None:
     """Evaluate one fold's checkpoint on one external split. Returns its metrics."""
     fold_dir = run_dir / f"fold_{fold}"
-    ckpt = fold_dir / "checkpoints" / "best_model.pth"
+    ckpt = fold_dir / "checkpoints" / args.ckpt_name
     cfg_path = fold_dir / "config.yaml"
     if not ckpt.is_file() or not cfg_path.is_file():
-        logger.warning(f"skipping {fold_dir}: missing best_model.pth or config.yaml")
+        logger.warning(f"skipping {fold_dir}: missing {args.ckpt_name} or config.yaml")
         return None
+
+    # Refuse to overwrite another checkpoint's results under the same run_tag —
+    # the second out-dir used to be the only protection, and it was silent.
+    prev_json = out_dir / f"fold_{fold}" / "test_metrics.json"
+    if prev_json.is_file():
+        prev_ckpt = json.loads(prev_json.read_text()).get("checkpoint", DEFAULT_CKPT_NAME)
+        if prev_ckpt != args.ckpt_name:
+            raise SystemExit(
+                f"ERROR: {prev_json} holds results of {prev_ckpt}; refusing to overwrite them "
+                f"with {args.ckpt_name}. Use a separate --out-root."
+            )
 
     cfg = load_config(cfg_path)
     model_name = resolve_model_name(run_dir, cfg, args.model_name)
@@ -230,7 +264,9 @@ def evaluate_fold(
 
     device = args.device or ("cuda" if torch.cuda.is_available() else "cpu")
     load_checkpoint(ckpt, model, device=device)
-    threshold, threshold_source = frozen_threshold(fold_dir)
+    threshold, threshold_source = frozen_threshold(
+        fold_dir, args.val_pred_name, f"val_metrics{args.ckpt_tag}.json"
+    )
 
     loader = build_loader(model_cfg, split_csv, args.batch_size, args.num_workers)
     frame = loader.dataset.df
@@ -252,6 +288,8 @@ def evaluate_fold(
     metrics["model_name"] = model_name
     metrics["n_samples"] = len(frame)
     metrics["threshold_source"] = threshold_source
+    if args.ckpt_name != DEFAULT_CKPT_NAME:  # recorded only off the default
+        metrics["checkpoint"] = args.ckpt_name
 
     fold_out = out_dir / f"fold_{fold}"
     evaluator.save_metrics(metrics, fold_out / "test_metrics.json")
@@ -288,8 +326,17 @@ def main() -> None:
     )
     ap.add_argument("--dataset", required=True, choices=["ham10000", "fitzpatrick17k"])
     ap.add_argument("--run-dir", action="append", required=True, type=Path,
-                    help="training run-dir holding fold_*/checkpoints/best_model.pth "
+                    help="training run-dir holding fold_*/checkpoints/<--ckpt-name> "
                          "(repeatable)")
+    ap.add_argument("--ckpt-name", default=DEFAULT_CKPT_NAME,
+                    help="checkpoint file under fold_*/checkpoints/ (default best_model.pth; "
+                         "best_model_auprc.pth = the best-by-val-AUPRC twin). A non-default "
+                         "name REQUIRES a non-default --out-root, else it would overwrite the "
+                         "main results under the same run_tag.")
+    ap.add_argument("--val-pred-name", default=DEFAULT_VAL_PRED_NAME,
+                    help="internal val predictions the frozen Youden threshold is fit on; "
+                         "must match --ckpt-name (val_predictions_auprc.csv for "
+                         "best_model_auprc.pth)")
     ap.add_argument("--folds", default="0,1,2,3,4", help="comma-separated fold ids")
     ap.add_argument("--variants", default="headline",
                     help="split variants from the dataset config's `splits:` block, "
@@ -305,6 +352,13 @@ def main() -> None:
     ap.add_argument("--num-workers", type=int, default=8)
     ap.add_argument("--device", default=None, help="cuda | cpu (default: cuda when available)")
     args = ap.parse_args()
+    args.ckpt_tag = checkpoint_tag(args.ckpt_name, args.val_pred_name)
+    if args.ckpt_tag and args.out_root == Path("reports/external"):
+        sys.exit(
+            f"ERROR: --ckpt-name {args.ckpt_name} with the default --out-root would write "
+            f"over the best_model.pth results (same run_tag). Pass e.g. "
+            f"--out-root reports/external_auprc."
+        )
 
     args.subgroup_cols = (
         [c.strip() for c in args.subgroup_cols.split(",") if c.strip()]

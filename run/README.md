@@ -39,6 +39,7 @@ still tees.
 | `setup_env.sh` | One-time: create `./.venv-linux`, install deps, verify CUDA |
 | `setup_new_server.sh` | Bootstrap a brand-new server (clone + env + data layout) |
 | `validate.sh` | Import sanity + Hydra dry-load of every registered model (CPU, ~1 min) |
+| `test.sh` | Unit tests (`tests/`, or `TESTS="tests/test_x.py ..."`) in the server venv, CPU-only — the only place tests run (no Python on the Mac) |
 | `poc.sh` | Synthetic-data smoke test: prepare → teacher → student |
 | `prepare_data.sh` | ISIC 2024 (+ PAD-UFES-20) → processed images + fold splits |
 | `prepare_ddi.sh` | DDI (tone-balanced) → processed images, **appended to the TRAIN side only** (CPU) |
@@ -52,6 +53,7 @@ still tees.
 | `progress_all.sh` | Same report for **every** server at once, run from the Mac |
 | `pull_results.sh` | **Mac-side**: diff the servers' run-dirs against this Mac, then rsync the missing results down |
 | `ablation_sampler.sh` | Data-strategy ablation A — undersampling ratio |
+| `srcsamp_eval.sh` | Arm C (source-stratified sampler) after training: aggregate + HAM/Fitzpatrick for both checkpoints + paired CIs vs the control (`reports/ci_srcsamp_*`) |
 | `ablation_pad.sh` | Data-strategy ablation B — PAD mixing (ISIC-only vs ISIC+PAD) |
 | `aggregate.sh` | fold_*/test_metrics.json → mean ± std (`aggregated.{json,md}`) |
 | `evaluate.sh` | Evaluate one checkpoint on the held-out test set |
@@ -193,6 +195,47 @@ must use the SAME `output_dir` so it finds that arm's teacher. `progress.sh` sca
 the arm: `OUTPUT_DIR_DEFAULT=experiments/runs_newsplit_ddi bash run/progress.sh`.
 `pull_results.sh` carries `experiments/runs_newsplit_{light,ddi}` in its default `ROOTS`.
 
+**Second checkpoint by another val metric (`extra_monitors`, default `[]`).**
+`best_model.pth` is always picked by val pAUC (hard-coded in both trainers — the yaml
+`monitor:` key only labels the log line). `EXTRA="training.callbacks.checkpoint.extra_monitors=[auprc]"`
+additionally keeps `checkpoints/best_model_auprc.pth` (first epoch with the best val AUPRC,
+same training trajectory — early stopping still watches `val_loss`), and a **student** fold
+then also gets `val_metrics_auprc.json`, `test_metrics_auprc.json`, `predictions_auprc.csv`
+and `val_predictions_auprc.csv` (the frozen-Youden source for that checkpoint). The main files
+keep their names and contents. Allowed: `auprc`, `auc_roc`, `pauc_at_tpr80`,
+`sens_at_90spec`, `sens_at_95spec`. `train_teacher.py` does not evaluate the extra
+checkpoint (the trainer would save it; nothing scores it). `pull_results.sh pull ckpt`
+brings `best_model_<m>.pth` along with `best_model.pth`. Cost: each extra monitor adds one
+more test + val inference pass per fold. A default run's result files are unchanged; its
+`config.yaml` only gains the `extra_monitors: []` line.
+
+The downstream tools read the `_<m>` twins only when told to — every default is the main
+checkpoint, and every non-default name gets its own output so nothing is overwritten:
+
+```bash
+R=experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp
+bash run/aggregate.sh RUN_DIR=$R METRICS_NAME=test_metrics_auprc.json   # -> aggregated_auprc.{json,md}
+bash run/bootstrap_ci.sh RESULTS_DIR=experiments/runs_newsplit_ddi \
+     PRED_NAME=predictions_auprc.csv SUBGROUP=source                    # -> bootstrap_ci_auprc.{json,md}
+bash run/evaluate_external.sh DATASET=ham10000 RUNS="$R" \
+     CKPT_NAME=best_model_auprc.pth VAL_PRED_NAME=val_predictions_auprc.csv \
+     OUT_ROOT=reports/external_newsplit_ddi_auprc                       # its OWN out-root
+```
+
+`evaluate_external.py` refuses a checkpoint / val-predictions pair that does not share the
+suffix (the frozen Youden threshold must come from the same model), refuses a non-default
+checkpoint with the default `reports/external` root, and refuses to write a fold whose
+existing `test_metrics.json` came from a different checkpoint. `bootstrap_ci.py
+--pred-name` applies to every run in `RESULTS_DIR`, so a run without that file is skipped —
+it cannot pair the AUPRC checkpoint of one run against the pAUC checkpoint of another.
+
+The on-device chain needs no flag: `make_benchmark_set.sh` / `export_executorch.sh` /
+`infer_bundle.sh` take any `CKPT=` path and `eval_from_logits.sh` any `VALPRED=` — pass
+`.../checkpoints/best_model_auprc.pth` and `val_predictions_auprc.csv`, the SAME `CKPT` to
+both `make_benchmark_set.sh` and `export_executorch.sh`, and an explicit `OUT=` to
+`export_executorch.sh` (its default `exports/executorch/<model>.pte` overwrites the existing
+export of that architecture).
+
 ### 3b. Throughput knobs — use these on every long run
 
 They cost nothing in result quality: the teacher-logit cache is *exact*, and the
@@ -225,7 +268,27 @@ bash run/ablation_pad.sh ARM=isic_only
 bash run/ablation_pad.sh ARM=isic_pad
 bash run/ablation_pad.sh ARM=isic_only MODEL_KIND=teacher TEACHER=convnextv2_base
 python scripts/analyze_pad_ablation.py --help   # per-domain (ISIC vs PAD) compare
+
+# C — source-stratified sampler (data.sampler_stratify_by=source; default null = off).
+#     Same benign/epoch total, but PAD/DDI get min(ratio × their malignant, their benign)
+#     and ISIC fills the rest. KD student only; the DDI-arm teacher is reused frozen:
+bash run/train_student.sh STUDENT=mobilenetv4_conv_medium TEACHER=efficientnetv2_m \
+     TRAINING=distillation GPU=0 \
+     EXTRA="output_dir=experiments/runs_newsplit_ddi run_suffix=__srcsamp data.sampler_stratify_by=source training.callbacks.checkpoint.extra_monitors=[auprc]"
 ```
+
+Arm C logs the per-source quota once at start-up (`Sampler stratify_by=source: …`, one
+line per source with the uniform-draw expectation and the % change) and the realised
+`(source × label)` counts every epoch (`Sampler epoch N …`) — the epoch line is logged
+for the default sampler too, so a control run trained from now on shows how few PAD benign it actually drew (runs trained earlier have no such line).
+Design + pre-registered endpoints: `docs/TASK_ITEM2_3_source_sampler_ship_ckpt.md`.
+After arm C (and its optional baseline) has trained, `bash run/srcsamp_eval.sh GPU=0` does the rest
+in one launch: `aggregated{,_auprc}` per run, HAM10000 + Fitzpatrick17k for both checkpoints
+into `reports/external_newsplit_srcsamp{,_auprc}/`, and the paired CIs with the pre-registered
+sign (new − control) into `reports/ci_srcsamp_*.{json,md}` (read section 6, row `pad_ufes_20`, AUPRC
+for the pre-registered endpoint — sections 3 and 5 carry the opposite sign) — the AUPRC checkpoint only gets
+per-run CIs (`ci_srcsamp_auprc_*`), since the control has no such checkpoint. The CI trees are
+symlinks under `.tmp/ci_srcsamp/` holding only the arm and its control.
 
 > ⚠ The student arm isolates via `run_suffix=`, the teacher arm via `output_dir=`
 > — `scripts/train_teacher.py` does **not** read `run_suffix`, so without the

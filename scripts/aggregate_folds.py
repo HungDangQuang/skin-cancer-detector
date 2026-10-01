@@ -22,8 +22,8 @@ from pathlib import Path
 from statistics import mean, stdev
 
 
-def load_fold_metrics(run_dir: Path) -> dict[int, dict]:
-    """Return {fold_idx: metrics_dict} for every fold_*/test_metrics.json found."""
+def load_fold_metrics(run_dir: Path, metrics_name: str = "test_metrics.json") -> dict[int, dict]:
+    """Return {fold_idx: metrics_dict} for every fold_*/<metrics_name> found."""
     found = {}
     for fold_dir in sorted(run_dir.glob("fold_*")):
         if not fold_dir.is_dir():
@@ -32,7 +32,7 @@ def load_fold_metrics(run_dir: Path) -> dict[int, dict]:
             idx = int(fold_dir.name.removeprefix("fold_"))
         except ValueError:
             continue
-        metrics_path = fold_dir / "test_metrics.json"
+        metrics_path = fold_dir / metrics_name
         if not metrics_path.exists():
             print(f"WARN: missing {metrics_path}", file=sys.stderr)
             continue
@@ -67,7 +67,8 @@ def aggregate(per_fold: dict[int, dict]) -> dict:
     return {"n_folds": len(per_fold), "fold_ids": sorted(per_fold.keys()), "metrics": agg}
 
 
-def write_markdown_summary(agg: dict, run_dir: Path, out_path: Path) -> None:
+def write_markdown_summary(agg: dict, run_dir: Path, out_path: Path,
+                           metrics_name: str = "test_metrics.json") -> None:
     """Thesis-grade markdown report. Lists EVERY metric from every fold —
     headline rates first, then confusion counts, then anything else, then a
     per-fold matrix so the reader can recompute mean/std and verify."""
@@ -84,6 +85,9 @@ def write_markdown_summary(agg: dict, run_dir: Path, out_path: Path) -> None:
     lines.append("")
     lines.append(f"Folds aggregated: {agg['n_folds']} ({agg.get('fold_ids', [])})")
     lines.append("")
+    if metrics_name != "test_metrics.json":
+        lines.append(f"Source: `fold_*/{metrics_name}` (not the main `test_metrics.json`).")
+        lines.append("")
 
     lines.append("## Headline metrics (rates)")
     lines.append("")
@@ -146,22 +150,29 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--run-dir", required=True, type=Path,
                         help="Directory containing fold_0/, fold_1/, ... subdirs")
+    parser.add_argument("--metrics-name", default="test_metrics.json",
+                        help="Per-fold metrics file (default test_metrics.json). "
+                             "test_metrics_auprc.json aggregates the best-by-val-AUPRC "
+                             "checkpoint into aggregated_auprc.{json,md}, leaving "
+                             "aggregated.{json,md} untouched.")
     args = parser.parse_args()
 
     if not args.run_dir.is_dir():
         print(f"ERROR: not a directory: {args.run_dir}", file=sys.stderr)
         sys.exit(1)
 
-    per_fold = load_fold_metrics(args.run_dir)
+    per_fold = load_fold_metrics(args.run_dir, args.metrics_name)
     if not per_fold:
-        print(f"ERROR: no fold_*/test_metrics.json found under {args.run_dir}", file=sys.stderr)
+        print(f"ERROR: no fold_*/{args.metrics_name} found under {args.run_dir}", file=sys.stderr)
         sys.exit(1)
 
     agg = aggregate(per_fold)
-    json_out = args.run_dir / "aggregated.json"
-    md_out = args.run_dir / "aggregated.md"
+    stem = Path(args.metrics_name).stem  # test_metrics[_<m>]
+    suffix = stem[len("test_metrics"):] if stem.startswith("test_metrics") else f"_{stem}"
+    json_out = args.run_dir / f"aggregated{suffix}.json"
+    md_out = args.run_dir / f"aggregated{suffix}.md"
     json_out.write_text(json.dumps(agg, indent=2))
-    write_markdown_summary(agg, args.run_dir, md_out)
+    write_markdown_summary(agg, args.run_dir, md_out, args.metrics_name)
     print(f"Wrote {json_out} ({agg['n_folds']} folds)")
     print(f"Wrote {md_out}")
 

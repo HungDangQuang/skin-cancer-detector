@@ -43,3 +43,8 @@ callbacks:
     monitor: val_pauc_at_tpr80
     mode: max
     save_last: true
+    # Extra best-by-<metric> checkpoints next to best_model.pth (pAUC), e.g.
+    # [auprc] -> best_model_auprc.pth + val_metrics_auprc.json, and train_student.py
+    # writes test_metrics_auprc.json / predictions_auprc.csv / val_predictions_auprc.csv.
+    # Allowed: auprc, auc_roc, pauc_at_tpr80, sens_at_90spec, sens_at_95spec. [] = none.
+    extra_monitors: []

@@ -73,9 +73,13 @@ from src.evaluation.metrics import pauc_at_tpr, sensitivity_at_specificity
 sys.path.insert(0, str(Path(__file__).parent))
 from compare_kd_results import find_run_dirs, parse_run_name  # noqa: E402
 
-METRICS = ("auc_roc", "auprc", "pauc_at_tpr80", "sens_at_90spec")
+# Sensitivity at a fixed specificity floor: metric name -> floor.
+_SPEC_METRICS = {"sens_at_80spec": 0.80, "sens_at_90spec": 0.90}
+# Every metric the tool can bootstrap, and the default subset (unchanged since
+# before sens_at_80spec existed, so default reports reproduce byte-for-byte).
+METRICS = ("auc_roc", "auprc", "pauc_at_tpr80", "sens_at_90spec", "sens_at_80spec")
+DEFAULT_METRICS = ("auc_roc", "auprc", "pauc_at_tpr80", "sens_at_90spec")
 _MIN_TPR = 0.80
-_SPEC_LEVEL = 0.90
 
 
 # --------------------------------------------------------------------------- #
@@ -97,8 +101,8 @@ def _metric(name: str, y_true: np.ndarray, y_prob: np.ndarray) -> float:
         return float(average_precision_score(y_true, y_prob))
     if name == "pauc_at_tpr80":
         return float(pauc_at_tpr(y_true, y_prob, min_tpr=_MIN_TPR))
-    if name == "sens_at_90spec":
-        return float(sensitivity_at_specificity(y_true, y_prob, (_SPEC_LEVEL,))["sens_at_90spec"])
+    if name in _SPEC_METRICS:
+        return float(sensitivity_at_specificity(y_true, y_prob, (_SPEC_METRICS[name],))[name])
     raise ValueError(f"unknown metric {name!r}")
 
 
@@ -151,14 +155,15 @@ def _fast_metrics(curve: _SortedCurve, flipped: _SortedCurve,
 
     out = {}
     recall = tp / P
-    if "auc_roc" in metrics or "sens_at_90spec" in metrics:
+    spec_wanted = [m for m in metrics if m in _SPEC_METRICS]
+    if "auc_roc" in metrics or spec_wanted:
         fpr = np.r_[0.0, fp / N]
         tpr = np.r_[0.0, recall]
         if "auc_roc" in metrics:
             out["auc_roc"] = float(np.trapezoid(tpr, fpr))
-        if "sens_at_90spec" in metrics:
-            ok = (1.0 - fpr) >= _SPEC_LEVEL
-            out["sens_at_90spec"] = float(np.max(np.where(ok, tpr, -1.0))) if ok.any() else 0.0
+        for m in spec_wanted:
+            ok = (1.0 - fpr) >= _SPEC_METRICS[m]
+            out[m] = float(np.max(np.where(ok, tpr, -1.0))) if ok.any() else 0.0
     if "auprc" in metrics:
         ps = tp + fp
         precision = np.divide(tp, ps, out=np.zeros_like(tp), where=ps != 0)
@@ -198,8 +203,17 @@ def _verify_fast_path(y_true, probs, metrics, tol=1e-9) -> None:
 # --------------------------------------------------------------------------- #
 # Loading
 # --------------------------------------------------------------------------- #
-def load_run_predictions(run_dir: Path, subgroup_col: str | None):
-    """Read fold_*/predictions.csv -> (y_true, [y_prob per fold], subgroup or None).
+def _pred_suffix(pred_name: str) -> str:
+    """"" for predictions.csv, "_auprc" for predictions_auprc.csv, "_<stem>" otherwise."""
+    stem = Path(pred_name).stem
+    if stem == "predictions":
+        return ""
+    return stem[len("predictions"):] if stem.startswith("predictions_") else f"_{stem}"
+
+
+def load_run_predictions(run_dir: Path, subgroup_col: str | None,
+                          pred_name: str = "predictions.csv"):
+    """Read fold_*/<pred_name> (default predictions.csv) -> (y_true, [y_prob per fold], subgroup or None).
 
     Returns None if the run has no usable predictions. Enforces the shared-rows
     assumption: every fold must expose the same labels in the same order, which
@@ -210,7 +224,7 @@ def load_run_predictions(run_dir: Path, subgroup_col: str | None):
     probs, folds = [], []
 
     for fold_dir in sorted(run_dir.glob("fold_*")):
-        csv_path = fold_dir / "predictions.csv"
+        csv_path = fold_dir / pred_name
         if not csv_path.is_file():
             continue
         yt, yp, sg = [], [], []
@@ -229,7 +243,7 @@ def load_run_predictions(run_dir: Path, subgroup_col: str | None):
                 subgroup = np.asarray(sg, dtype=object)
         elif yt.shape != y_true_ref.shape or not np.array_equal(yt, y_true_ref):
             raise SystemExit(
-                f"{run_dir}: {fold_dir.name}/predictions.csv does not have the same "
+                f"{run_dir}: {fold_dir.name}/{pred_name} does not have the same "
                 "rows (or row order) as the first fold. The shared-index bootstrap "
                 "assumes all folds score the identical test set — refusing to guess."
             )
@@ -258,7 +272,7 @@ def _make_stratified_indices(mask: np.ndarray, n_boot: int, seed: int) -> np.nda
     return pos[rng.integers(0, len(pos), size=(n_boot, len(pos)), dtype=np.int64)]
 
 
-def bootstrap_run(y_true, probs, indices, metrics=METRICS, point_idx=None):
+def bootstrap_run(y_true, probs, indices, metrics=DEFAULT_METRICS, point_idx=None):
     """-> {metric: (point_estimate, replicate_vector)} using the fold-mean statistic.
 
     `point_idx` restricts the POINT estimate to a row subset, and must be passed
@@ -336,8 +350,14 @@ def main() -> None:
                          "comparing two KD runs to each other needs this. Names are the "
                          "run-dir names relative to --results-dir, e.g. "
                          "kd_maxvit_base_to_fastvit_sa12:kd_convnextv2_base_to_mobilenetv4_conv_medium")
-    ap.add_argument("--metrics", default=",".join(METRICS),
-                    help=f"Comma-separated subset of {','.join(METRICS)}")
+    ap.add_argument("--metrics", default=",".join(DEFAULT_METRICS),
+                    help=f"Comma-separated subset of {','.join(METRICS)} "
+                         f"(default {','.join(DEFAULT_METRICS)})")
+    ap.add_argument("--pred-name", default="predictions.csv",
+                    help="Per-fold predictions file to read (default predictions.csv). "
+                         "predictions_auprc.csv reads the best-by-val-AUPRC checkpoint "
+                         "(training.callbacks.checkpoint.extra_monitors); the default "
+                         "outputs then become bootstrap_ci_auprc.{json,md}.")
     ap.add_argument("--out-json", type=Path, default=None,
                     help="Default: <results-dir>/bootstrap_ci.json")
     ap.add_argument("--out-md", type=Path, default=None,
@@ -360,9 +380,9 @@ def main() -> None:
     # ---- 1. per-run CIs -------------------------------------------------- #
     loaded, boots, indices = {}, {}, None
     for rel, path in sorted(runs):
-        data = load_run_predictions(path, args.subgroup_col)
+        data = load_run_predictions(path, args.subgroup_col, args.pred_name)
         if data is None:
-            print(f"skip (no predictions.csv): {rel}", file=sys.stderr)
+            print(f"skip (no {args.pred_name}): {rel}", file=sys.stderr)
             continue
         y_true, probs, subgroup, folds = data
         if indices is None:
@@ -399,6 +419,8 @@ def main() -> None:
         "explicit_pairs_by_subgroup": {},
         "fairness_gaps": {},
     }
+    if args.pred_name != "predictions.csv":
+        report["pred_name"] = args.pred_name  # recorded only off the default
     for rel, res in boots.items():
         report["per_run"][rel] = {
             # Surfaced because not every run has all 5 folds — a 3-fold interval
@@ -588,8 +610,11 @@ def main() -> None:
             report["explicit_pairs_by_subgroup"][f"{a_rel} vs {b_rel}"] = entry
 
     # ---- write ------------------------------------------------------------ #
-    out_json = args.out_json or args.results_dir / "bootstrap_ci.json"
-    out_md = args.out_md or args.results_dir / "bootstrap_ci.md"
+    # A non-default --pred-name gets its own default output names, so a second
+    # checkpoint's CI never overwrites the main one.
+    stem = "bootstrap_ci" + _pred_suffix(args.pred_name)
+    out_json = args.out_json or args.results_dir / f"{stem}.json"
+    out_md = args.out_md or args.results_dir / f"{stem}.md"
     out_json.parent.mkdir(parents=True, exist_ok=True)
     out_json.write_text(json.dumps(report, indent=2))
 
@@ -599,6 +624,10 @@ def main() -> None:
         "",
         f"B = {args.n_boot} replicates, seed {args.seed}, {n_rows} test rows.",
         "",
+    ]
+    if args.pred_name != "predictions.csv":
+        lines += [f"**Predictions file:** `fold_*/{args.pred_name}` (not the main `predictions.csv`).", ""]
+    lines += [
         "**Fold convention:** each replicate draws one set of row indices, scores "
         "**every fold** on those same rows, and averages. Folds are five models on "
         "the *same* test set, so their predictions are never pooled (that would "

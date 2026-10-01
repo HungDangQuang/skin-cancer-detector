@@ -33,7 +33,7 @@ class Trainer:
         from src.training.losses import build_loss
         from src.training.optimizers import build_optimizer
         from src.training.schedulers import build_scheduler
-        from src.training.callbacks import EarlyStopping, ModelCheckpoint
+        from src.training.callbacks import EarlyStopping, ExtraCheckpoints, ModelCheckpoint
 
         self.criterion = build_loss(self.cfg)
         self.optimizer = build_optimizer(self.cfg, self.model)
@@ -50,6 +50,12 @@ class Trainer:
             monitor=cb_cfg.checkpoint.monitor,
             mode=cb_cfg.checkpoint.mode,
             save_last=cb_cfg.checkpoint.save_last,
+        ) if cb_cfg.checkpoint.enabled else None
+        # Optional best-by-<metric> checkpoints (e.g. [auprc]); [] = none.
+        self.extra_checkpoints = ExtraCheckpoints(
+            cb_cfg.checkpoint.get("extra_monitors", []),
+            checkpoint_dir=self.run_dir / "checkpoints",
+            run_dir=self.run_dir,
         ) if cb_cfg.checkpoint.enabled else None
 
         self.history = {"train_loss": [], "val_loss": [], "val_pauc": []}
@@ -102,6 +108,8 @@ class Trainer:
             monitor_val = val_metrics.get("pauc_at_tpr80", val_metrics["loss"])
             if self.checkpoint:
                 self.checkpoint.step(monitor_val, self.model, self.optimizer, epoch, val_metrics)
+            if self.extra_checkpoints:
+                self.extra_checkpoints.step(val_metrics, self.model, self.optimizer, epoch)
 
             # Track best-epoch val metrics (higher pauc is better), aligned to
             # the checkpoint's best_model.pth so val_metrics.json describes the
@@ -115,6 +123,8 @@ class Trainer:
                 break
 
         self._save_val_metrics()
+        if self.extra_checkpoints:
+            self.extra_checkpoints.save_val_metrics()
         return self.history
 
     def _save_val_metrics(self) -> None:

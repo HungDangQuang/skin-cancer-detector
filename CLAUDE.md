@@ -92,7 +92,7 @@ make train-all-students             # Run all three students sequentially
 python scripts/evaluate.py --model-name efficientnetv2_m --checkpoint path/to/best_model.pth
 
 # Tests
-make test                           # All tests with coverage
+make test                           # All tests with coverage (needs pytest-cov; on the server use `bash run/test.sh`)
 pytest tests/test_models.py -v      # Single test file
 pytest tests/test_losses.py::TestBinaryFocalLoss -v  # Single test class
 
@@ -176,7 +176,7 @@ Override at the CLI: `python scripts/train_student.py student=fastvit_sa12 train
 
 1. `scripts/prepare_data.py` creates fold CSVs via `StratifiedGroupKFold` (grouped by `patient_id` to prevent leakage) under `splits_dir/fold_{0..4}/train_split.csv` and `val_split.csv`, plus an **independent** `test_split.csv` — carved patient-disjoint + stratified *before* the CV (`test_holdout_splits`, default 6 ≈ 17%), so no fold trains on test patients. (Pre-2026-06-06 this was fold 0's val set → folds 1–4 leaked; see "Recurring gotchas".)
 2. `SkinLesionDataModule` reads those CSVs and wraps them in `SkinLesionDataset` (expects columns `image_path`, `label`).
-3. `DynamicUndersampledSampler` maintains a ~1:5 malignant:benign ratio, reshuffled each epoch via `datamodule.set_epoch(epoch)`.
+3. `DynamicUndersampledSampler` maintains a ~1:5 malignant:benign ratio, reshuffled each epoch via `datamodule.set_epoch(epoch)`. Its benign draw is source-blind by default (~14.5 PAD benign/epoch in fold 0 of the pre-DDI v2 splits); opt-in `data.sampler_stratify_by=source` keeps the total but gives each minority source (PAD, DDI) `min(ratio × its malignant, its benign)` — `docs/PREPROCESSING.md §3.1`.
 4. `build_transforms` returns Albumentations pipelines built **from `configs/augmentation/{light,heavy}.yaml`** (not hard-coded); PIL images are converted to numpy internally before being passed to Albumentations. `light` (default) = the original pipeline; `heavy` = a stronger anti-overfit variant. (A third preset, `domain`, was trained and **removed 2026-09-30** — the KD student got significantly worse on 5/5 cross-domain cells; the code lives in commit `0c308b5`, the record in `docs/domain_aug_plan.md`.) MixUp/CutMix/CutOut are forbidden in-code (`_FORBIDDEN_OPS` → `raise`). Optional `drop_path_rate` (stochastic depth) per model config, default 0.0/off. See `docs/PREPROCESSING.md §4.1–4.2`.
 
 ### Model registry
@@ -193,7 +193,7 @@ Primary metric: **pAUC@TPR≥80%** (ISIC 2024 official metric), normalized to [0
 
 External test sets (HAM10000, Fitzpatrick17k) are **never used for training** — only for post-hoc cross-domain and fairness evaluation. The path is three separate scripts, none of them the training ones: `run/download_external.sh` (raw bytes) → `run/prepare_external.sh` → `run/evaluate_external.sh`. Preparation (`scripts/prepare_external_data.py`, *not* `prepare_data.py`) produces **one `test_split.csv` per dataset plus sensitivity variants**, no folds; cleaning is **two-tier** (only integrity failures are dropped, `is_uninformative`/duplicate merely *flag* — `docs/PREPROCESSING.md §1.1`); and it ends in a leakage check (`reports/external_overlap_check_<ds>.md`) that **exits 2** on any overlap with the internal splits.
 
-Evaluation uses `scripts/evaluate_external.py`, which reads the external CSV directly (`SkinLesionDataModule` only knows the internal fold layout) and **freezes the decision threshold** from each run's own internal `val_predictions.csv` (Youden's J) — refitting it on the external set would violate the `do_not_use_for: threshold_selection` rule those configs declare. One launch sweeps every fold of every run-dir, writes `reports/external/<ds>/<variant>/<run_tag>/fold_N/` + `aggregated.{json,md}` (nothing is ever written inside `experiments/runs/`), and adds a per-subgroup table — `dx` for HAM10000, `tone_group` for Fitzpatrick17k.
+Evaluation uses `scripts/evaluate_external.py`, which reads the external CSV directly (`SkinLesionDataModule` only knows the internal fold layout) and **freezes the decision threshold** from each run's own internal `val_predictions.csv` (Youden's J) — refitting it on the external set would violate the `do_not_use_for: threshold_selection` rule those configs declare. One launch sweeps every fold of every run-dir, writes `reports/external/<ds>/<variant>/<run_tag>/fold_N/` + `aggregated.{json,md}` (nothing is ever written inside `experiments/runs/`), and adds a per-subgroup table — `dx` for HAM10000, `tone_group` for Fitzpatrick17k. A second checkpoint (`best_model_auprc.pth`, see `extra_monitors`) is scored with `--ckpt-name`/`--val-pred-name` (runner: `CKPT_NAME`/`VAL_PRED_NAME`) into its OWN `--out-root`; the script refuses a mismatched pair or an out-dir that already holds another checkpoint's results. `aggregate_folds.py --metrics-name` and `bootstrap_ci.py --pred-name` read the `_auprc` twins likewise (`run/README.md` §3).
 
 **Uncertainty.** `aggregated.md`'s `mean ± std over 5 folds` is the spread between the five *models*, not the test set's sampling error, so it cannot settle "is this gap real?". `scripts/bootstrap_ci.py` (`run/bootstrap_ci.sh RESULTS_DIR=…`) resamples the test **rows** out of the existing `predictions.csv` files — no re-inference — and emits a CI per run, a **paired** CI on each KD delta (`kd_<t>_to_<s>` vs `baseline_<s>`), and a **paired** CI on each subgroup gap. It works on both `experiments/runs/` and `reports/external/<ds>/<variant>/`. Quote the paired delta CI, not a win count: "ΔAUPRC +0.030 [+0.011, +0.048]" is a claim, "KD won 12/12" is a tally.
 
@@ -217,7 +217,11 @@ experiments/runs/
     predictions.csv            ← test y_true,y_prob,y_pred[,source] (offline PR/AUPRC/per-domain)
     val_predictions.csv        ← val fit-set for calibration (no sampler → true ~0.39% prevalence)
     training_curves.png
-  kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_{0..4}/...
+  kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_{0..4}/...   ← same files as above, plus
+    # only with training.callbacks.checkpoint.extra_monitors=[auprc] (default []), STUDENT folds:
+    checkpoints/best_model_auprc.pth + val_metrics_auprc.json + test_metrics_auprc.json
+    + predictions_auprc.csv + val_predictions_auprc.csv   ← best-by-val-AUPRC twin (run/README.md §3)
+    # (a teacher with the knob gets only best_model_auprc.pth + val_metrics_auprc.json — nothing scores it)
   kd_efficientnetv2_m_to_fastvit_sa12/fold_{0..4}/...
   kd_efficientnetv2_m_to_efficientformerv2_s2/fold_{0..4}/...
 ```
