@@ -1,0 +1,117 @@
+{
+  "results_dir": "reports/external_newsplit_srcsamp_auprc/ham10000/headline",
+  "n_boot": 2000,
+  "seed": 42,
+  "alpha": 0.05,
+  "n_test_rows": 7470,
+  "fold_convention": "shared row indices across folds; statistic = mean over folds (folds are models on the SAME test rows, so predictions are never pooled)",
+  "metrics": [
+    "auc_roc",
+    "auprc",
+    "pauc_at_tpr80",
+    "sens_at_90spec"
+  ],
+  "per_run": {
+    "baseline_mobilenetv4_conv_medium__srcsamp": {
+      "n_folds": 5,
+      "auc_roc": {
+        "point": 0.7442019129039629,
+        "lo": 0.7303095180260759,
+        "hi": 0.7568539963373847,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.38819133409602774,
+        "lo": 0.36340217098847866,
+        "hi": 0.4127331118604684,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.06303604096135837,
+        "lo": 0.05806942797732177,
+        "hi": 0.06806601137141374,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.39794696321642425,
+        "lo": 0.3730081948883209,
+        "hi": 0.4231645488950331,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    },
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp": {
+      "n_folds": 5,
+      "auc_roc": {
+        "point": 0.841562428004082,
+        "lo": 0.8306201346857839,
+        "hi": 0.8518198733406209,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.4996695968218562,
+        "lo": 0.4728343288466231,
+        "hi": 0.5266913319201564,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.10725689528282403,
+        "lo": 0.1019527264002011,
+        "hi": 0.11264832015123342,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.5320786997433704,
+        "lo": 0.5035291095453268,
+        "hi": 0.5604164194246118,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    }
+  },
+  "kd_deltas": {
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp": {
+      "kd_run": "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp",
+      "baseline_run": "baseline_mobilenetv4_conv_medium__srcsamp",
+      "auc_roc": {
+        "point": 0.09736051510011912,
+        "lo": 0.09000706136138233,
+        "hi": 0.10491661775879817,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.11147826272582845,
+        "lo": 0.09853507011922091,
+        "hi": 0.125697175167626,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.044220854321465664,
+        "lo": 0.04049628701570237,
+        "hi": 0.04784063818063554,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.13413173652694615,
+        "lo": 0.11518680835660353,
+        "hi": 0.15179229090745494,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    }
+  },
+  "ablation_deltas": {},
+  "ablation_deltas_by_subgroup": {},
+  "explicit_pairs": {},
+  "explicit_pairs_by_subgroup": {},
+  "fairness_gaps": {}
+}

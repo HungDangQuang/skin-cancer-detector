@@ -64,6 +64,15 @@ baseline's fold-to-fold std is within noise — say so rather than calling it a 
 
 ## Caveats to always surface
 
+- **"KD helps" / "best pair" is a comparison, not an acceptance verdict.** A pair can top both
+  rankings and still fail the deployment gates (e.g. near-chance on phone photos). Whether any pair
+  is *good enough* is decided only by [acceptance-gates.md](acceptance-gates.md).
+- **`experiments/runs/` is the splits-v1 matrix (patient leakage, discovered 2026-09-22)** — its
+  in-domain numbers are inflated. Rankings from it are fine as history; do not use them to back an
+  acceptance claim, and never compare them with `runs_newsplit_*` (splits v2).
+- **The script's tally and mean ± std are not significance tests.** For "did KD help" on a specific
+  pair, quote the paired bootstrap CI (`run/bootstrap_ci.sh PAIR=…`), per domain (`SUBGROUP=source`).
+
 - Pairing is by exact student name + `run_suffix`. A KD run with no matching `baseline_<student>` can't yield a delta — the script lists it under Ranking A but not B; mention if a baseline is missing so the user trains it.
 - Ablation runs (`__samp_off`, `__ratio3`, `__train_isic_only`, `__mselogit`, `__rkd`, `__focal_a075`, …) are excluded by default; only include them when the question is specifically about that ablation. `__mselogit` (MSE-logit KD) and `__rkd` (RKD feature-KD) are the KD-variant ablations from the 2026-07-15 audit.
 - This judges the merged-dataset held-out test. Cross-domain (HAM10000) and fairness (Fitzpatrick17k) are separate, post-hoc evaluations — don't conflate.

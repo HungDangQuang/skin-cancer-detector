@@ -101,7 +101,16 @@ At ~0.4 % prevalence, **AUPRC is the honest headline** (AUC-ROC is optimistic); 
 
 Read the JSON. Anchor on the prevalence floor — ISIC 2024's test split is ~0.5% malignant, so majority-class accuracy floor is ~0.995. **`accuracy` alone means nothing at this imbalance**; always anchor it against the floor.
 
-Scoring rubric on the test set (slightly stricter than training-time val):
+> **⛔ This rubric is a HEALTH HEURISTIC, not an acceptance verdict.** Its thresholds (AUC ≥ 0.92,
+> sens ≥ 0.85, …) are not sourced, and they are applied to a **pooled** in-domain JSON where an
+> "only guess ISIC-vs-PAD" model already reaches AUC 0.872 (v1 test; ~0.85 on v2) — so the v1 matrix
+> runs score "Good" on AUC / sens / spec / pAUC here (F1 ≈ 0.12–0.14 is the one axis that reads "Poor").
+> A "Good" from this table means *"the run is not broken and is worth comparing"*, **nothing more**.
+> If the question is "is the model good enough / đạt chưa / can it ship", stop and use
+> [acceptance-gates.md](acceptance-gates.md) — per-domain, CI-based labels, thresholds with a stated
+> source and sign-off status.
+
+Health rubric on the test set (slightly stricter than training-time val):
 
 | Axis | Good | Moderate | Poor |
 |---|---|---|---|
@@ -113,8 +122,8 @@ Scoring rubric on the test set (slightly stricter than training-time val):
 | **pAUC@TPR80** (ISIC metric, ≈[0.02,0.20]) | ≥ 0.13 | 0.08–0.13 | < 0.08 |
 | **AUPRC** (vs prevalence base) | clears base by a wide margin | modestly above base | ≈ base |
 
-Aggregate verdict:
-- **Good** — promote; if not yet thesis-reported, run the 5-fold sweep next to get mean ± std before quoting externally.
+Aggregate health verdict (never write it as "đạt yêu cầu" / "ready"):
+- **Good** — the run is healthy and worth carrying into comparisons/gates; if not yet thesis-reported, run the 5-fold sweep next to get mean ± std before quoting externally. It is **not** a promotion to "ship" — that needs every gate in `acceptance-gates.md`.
 - **Moderate** — usable, but identify the weakest axis and recommend the lever (see §3a).
 - **Poor** — re-check `experiments/<run>/config.yaml` first (the run's authoritative config), then consult `diagnose-training` if the training itself looks wrong.
 
@@ -171,7 +180,9 @@ Pick a baseline column for the Δ:
 - Cross-student → no implicit baseline; rank instead (see below) and omit the Δ column or compute Δ vs the leader.
 - Teacher vs student → baseline is the teacher (judges KD efficacy: a student close to the teacher is doing well).
 
-**Significance heuristic (for KD-vs-baseline only).** Without 5-fold std we can't bound noise. Quote the delta and warn: "single-checkpoint delta — run 5 folds via the array jobs before drawing a conclusion." Do not call it "robust" or "significant" on n=1.
+**Preferred: paired bootstrap CI.** When `predictions.csv` exists for both arms (it does for every run since 2026-06-21), the real test is `bash run/bootstrap_ci.sh RESULTS_DIR=… PAIR="<A>:<B>"` (add `SUBGROUP=source` for the ISIC/PAD split). Quote "Δ [lo, hi]" and call it significant only if the interval excludes 0. The pooled-std heuristic below is the fallback when no predictions exist. Overlapping *unpaired* intervals do **not** mean "no difference".
+
+**Significance heuristic (for KD-vs-baseline only, fallback).** Without 5-fold std we can't bound noise. Quote the delta and warn: "single-checkpoint delta — run 5 folds via the array jobs before drawing a conclusion." Do not call it "robust" or "significant" on n=1.
 
 **If the user has 5 folds for each run** (fed as multiple JSONs labeled `<label>_fold<i>.json`, or auto-detected from `experiments/runs/<run>/fold_*/test_metrics.json`), aggregate them into mean ± std per label *before* comparing. Then a pooled-std overlap check is meaningful:
 ```
@@ -183,9 +194,10 @@ significance = "robust"   if abs(delta) > 2 * pooled_std
 This is a heuristic, not a t-test — language is "robust", "marginal", "noise", never "p<0.05".
 
 **Ranking + verdict rules:**
-- For KD-vs-baseline: KD wins if `delta_auc > 0` AND `delta_sens > 0`. If sens worsens, KD did not win regardless of accuracy/specificity gains. (Domain priority: missing a malignant > false alarm.)
+- For KD-vs-baseline: with `predictions.csv` for both arms, KD wins **only if the paired CI of ΔAUPRC (and of the operating-point metric, e.g. Δsens_at_90spec) excludes 0 on the positive side**; a CI containing 0 is "indistinguishable", never "KD won". Point-estimate rule (fallback only, label it "point estimate, not tested"): `delta_auc > 0` AND `delta_sens > 0`; if sens worsens, KD did not win regardless of accuracy/specificity gains. (Domain priority: missing a malignant > false alarm.)
 - For cross-student: rank by **sensitivity first, then auc_roc**. Don't rank on accuracy — misleading at imbalance.
-- For teacher vs student: a Good student is one whose `sens` and `auc_roc` are within ~0.02 of the teacher's. Bigger gap → KD didn't transfer well.
+- For teacher vs student: a Good student is one whose `sens` and `auc_roc` are within ~0.02 of the teacher's. Bigger gap → KD didn't transfer well. (For model selection the author requires the student to **beat** the teacher — acceptance gate C2: paired CI lower bound of Δ(student − teacher) **> 0** on each gated domain, same splits and arm. "Within ~0.02" is only a health hint, never a pass.)
+- **None of these rankings is an acceptance verdict.** "KD wins" / "best pair" answers *which is better*; whether the winner is *good enough* is `acceptance-gates.md`.
 - Note any Pareto-dominated entry (worse on every metric than another) — those are clean losers.
 
 ### 5. Common output rules (all modes)
@@ -200,8 +212,10 @@ This is a heuristic, not a t-test — language is "robust", "marginal", "noise",
 ### 6. Report template
 
 ```
-Verdict: <Good | Moderate | Poor>   (Mode A only)
+Health verdict: <Good | Moderate | Poor>   (Mode A only — run health, NOT acceptance)
+Acceptance: <not assessed — see acceptance-gates.md | the `### Cổng chấp nhận` block from that file>
 Data tier: <Aggregated 5-fold | Single-checkpoint test JSON>
+Splits: <v1 (leaked, experiments/runs/) | v2 (patient-grouped, runs_newsplit_*)>
 Files read:
 - <path 1>
 - <path 2>   (if comparing)

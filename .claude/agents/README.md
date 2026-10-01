@@ -54,7 +54,9 @@ many runs.
 - **KD vs baseline:** "result-analyst: did KD help `mobilenetv4_conv_medium`?"
 - **Eval JSON / log:** "result-analyst on `reports/results/poc_kd_mnv4.json`"
 
-Returns: verdict (good/moderate/poor/inconclusive) + headline AUPRC (vs prevalence
+Returns: verdict (good/moderate/poor/inconclusive — **run health only**) + `ACCEPTANCE` (labels
+from `.claude/skills/eval-results/reference/acceptance-gates.md`, or "not assessed"; it never
+writes "đạt / ready to ship" on its own) + `SPLITS` (v1 leaked / v2) + headline AUPRC (vs prevalence
 baseline) + pAUC@TPR80 + sens/spec + aggregated mean±std (if present) + overfitting
 gap + KD delta + flags. It follows the project metric rules (quote `test_metrics.json`
 not val; AUPRC over AUC-ROC at ~0.4% prevalence; cite mean±std across folds).

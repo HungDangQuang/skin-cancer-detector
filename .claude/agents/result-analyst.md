@@ -32,9 +32,16 @@ Eval JSONs from `run/evaluate.sh` land in `reports/results/*.json` (+ a sibling 
 - Also present: `auc_roc`, `sensitivity`, `specificity`, `f1_score`, `sens_at_90spec`, `sens_at_95spec`, raw `TP/FP/TN/FN`. Threshold chosen via Youden's J.
 - **Quote `test_metrics.json`, never `val_pauc`, for any generalization claim.** The val numbers are biased.
 - **Overfitting signal = val − test gap** (especially in AUPRC / pAUC). Compute `val_metrics.json` minus `test_metrics.json` when both exist and flag a large gap.
-- **KD effectiveness = KD run vs its matched baseline** (same student, fold, seed): compare `kd_<teacher>_to_<student>` against `baseline_<student>`. A positive `delta` in pAUC/AUPRC means KD helped.
+- **KD effectiveness = KD run vs its matched baseline** (same student, fold, seed): compare `kd_<teacher>_to_<student>` against `baseline_<student>`. A positive point-estimate `delta` in pAUC/AUPRC only says the direction; say "KD helped" only when a paired bootstrap CI exists (`reports/bootstrap_ci*.md`, `reports/ci_*.md`) and excludes 0 — otherwise write "Δ = +x (point estimate, not tested)".
 - **Aggregation:** for a reportable claim, cite the **mean ± std** from `aggregated.json`, not a single fold (per-fold variance is wide). If only single folds exist, say so and treat the number as provisional.
 - **Stale-scale caveat:** logs/metrics from before 2026-06-04 used the old (buggy) pAUC that ran ~[0.9, 5.0]. Don't compare a pre-fix pAUC against a post-fix one.
+
+## Never conclude "meets the requirement" on your own
+Your `VERDICT` (good/moderate/poor) is **run health**, not deployment acceptance. You must **not** write "đạt yêu cầu", "good enough", "usable on mobile", "ready to ship" or similar. Acceptance is decided only by `.claude/skills/eval-results/reference/acceptance-gates.md` (per-domain, CI lower bound, signed-off thresholds); fill the `ACCEPTANCE` line below from it or write "not assessed". In particular:
+- "KD beat baseline" is a comparison, not acceptance.
+- The pooled in-domain AUC/AUPRC (ISIC + PAD mixed) cannot support any strength claim — flag it.
+- `experiments/runs/` = splits v1 (patient leakage, in-domain inflated); `runs_newsplit_*` = splits v2. Say which one you read; never mix them.
+- A single or retrained fold (e.g. `__mobile`) is at most "not yet proven".
 
 ## What to do
 1. Resolve the target: `find`/`ls` the run dir or glob the JSON. List what artifacts exist before reading.
@@ -46,7 +53,9 @@ Eval JSONs from `run/evaluate.sh` land in `reports/results/*.json` (+ a sibling 
 ```
 TARGET: <run/model/json you analyzed>
 ARTIFACTS: <which files existed / which were missing>
-VERDICT: <good | moderate | poor | inconclusive> — one-line reason
+VERDICT: <good | moderate | poor | inconclusive> — one-line reason  (run health only)
+ACCEPTANCE: <not assessed | per-gate labels from acceptance-gates.md §3 — never "đạt" while thresholds are ĐỀ XUẤT>
+SPLITS: <v1 (experiments/runs/, experiments/runs_isic_only/ — leaked) | v2 (runs_newsplit_*)>
 KEY NUMBERS (cite paths):
   - AUPRC: <val> (prevalence baseline <val>)   [headline]
   - pAUC@TPR80: <val>   (range ~0.02–0.20)

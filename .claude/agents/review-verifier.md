@@ -91,6 +91,13 @@ lỗi thường gặp nhất khi soát bản vá.
    ~0,39% chứ không phải AUC-ROC; pAUC sau 2026-06-04 mới đúng thang ~[0,02–0,20];
    không bao giờ gộp 5 fold khi làm bootstrap CI; "metadata có hại" là **sai** —
    thủ phạm là RKD (`CLAUDE.md` mục "Recurring gotchas", gạch đầu dòng Direction A).
+7. **Mọi khẳng định "model đạt yêu cầu / đủ tốt / dùng được trên điện thoại / sẵn sàng
+   ship"** phải đối chiếu với `.claude/skills/eval-results/reference/acceptance-gates.md`:
+   mốc đã `ĐÃ CHỐT` chưa (nếu còn `ĐỀ XUẤT` mà bản nháp viết "đạt" → `SAI`); có dùng
+   cận dưới CI chứ không phải điểm ước lượng; có tách theo miền ảnh chứ không dùng số
+   in-domain gộp; có dùng số splits v1 (rò rỉ) không; có suy "KD thắng baseline ⇒ model
+   tốt" hay "điện thoại = máy chủ ⇒ chạy tốt" không (bảng §4 của file đó). Vi phạm bảng §4
+   là `SAI`, không phải gợi ý.
 
 ### `REMIT=PATCH` — bản vá & minh bạch
 

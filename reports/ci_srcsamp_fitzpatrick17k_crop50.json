@@ -1,0 +1,1500 @@
+{
+  "results_dir": "/workspace/skin-cancer-detector/.tmp/ci_srcsamp/fitzpatrick17k_crop50",
+  "n_boot": 2000,
+  "seed": 42,
+  "alpha": 0.05,
+  "n_test_rows": 4320,
+  "fold_convention": "shared row indices across folds; statistic = mean over folds (folds are models on the SAME test rows, so predictions are never pooled)",
+  "metrics": [
+    "auc_roc",
+    "auprc",
+    "pauc_at_tpr80",
+    "sens_at_90spec"
+  ],
+  "per_run": {
+    "baseline_mobilenetv4_conv_medium": {
+      "n_folds": 5,
+      "auc_roc": {
+        "point": 0.6383335905349794,
+        "lo": 0.6243662352200379,
+        "hi": 0.6526460307558967,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.6259579152274688,
+        "lo": 0.6073599021974909,
+        "hi": 0.6457683999678424,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.04249061213991767,
+        "lo": 0.03889655057579679,
+        "hi": 0.046297554528831164,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.2189814814814815,
+        "lo": 0.2023197352617205,
+        "hi": 0.24030140176432732,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    },
+    "baseline_mobilenetv4_conv_medium__srcsamp": {
+      "n_folds": 5,
+      "auc_roc": {
+        "point": 0.685299961419753,
+        "lo": 0.6707059165056941,
+        "hi": 0.6996941611892596,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.6729723479307721,
+        "lo": 0.6541665614462466,
+        "hi": 0.6936432529835275,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.05134019204389573,
+        "lo": 0.04736609880661497,
+        "hi": 0.055563647529061684,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.2777777777777778,
+        "lo": 0.25274155848379654,
+        "hi": 0.30277691681711616,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    },
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium": {
+      "n_folds": 5,
+      "auc_roc": {
+        "point": 0.6746253215020576,
+        "lo": 0.6601196412572954,
+        "hi": 0.6891357746186559,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.6661402665358949,
+        "lo": 0.6472585154556544,
+        "hi": 0.6862717081607523,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.04606953017832645,
+        "lo": 0.04229648073721359,
+        "hi": 0.05008237163023068,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.2809259259259259,
+        "lo": 0.25540401957974107,
+        "hi": 0.3062505005720824,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    },
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp": {
+      "n_folds": 5,
+      "auc_roc": {
+        "point": 0.7043104852537723,
+        "lo": 0.6905658084168464,
+        "hi": 0.7184603870976299,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.7021303770445866,
+        "lo": 0.6837539123481248,
+        "hi": 0.7216328230408056,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.052100222908093255,
+        "lo": 0.047860259219238276,
+        "hi": 0.05658563757908807,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.3239814814814815,
+        "lo": 0.29933984355767806,
+        "hi": 0.3492352707045015,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    }
+  },
+  "kd_deltas": {
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium": {
+      "kd_run": "kd_efficientnetv2_m_to_mobilenetv4_conv_medium",
+      "baseline_run": "baseline_mobilenetv4_conv_medium",
+      "auc_roc": {
+        "point": 0.03629173096707816,
+        "lo": 0.02879027954615594,
+        "hi": 0.04362350467066803,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.04018235130842607,
+        "lo": 0.03016269376433434,
+        "hi": 0.04955703900297511,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.0035789180384087765,
+        "lo": 0.0013856592168438487,
+        "hi": 0.005755952217101838,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.06194444444444441,
+        "lo": 0.04214449732257761,
+        "hi": 0.07852907077213105,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    },
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp": {
+      "kd_run": "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp",
+      "baseline_run": "baseline_mobilenetv4_conv_medium__srcsamp",
+      "auc_roc": {
+        "point": 0.019010523834019244,
+        "lo": 0.013042499020389902,
+        "hi": 0.02492450445158358,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.029158029113814488,
+        "lo": 0.021401716394706775,
+        "hi": 0.03696591170925118,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.0007600308641975279,
+        "lo": -0.0018882476686616226,
+        "hi": 0.0033641227567266616,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.04620370370370369,
+        "lo": 0.030746529431594477,
+        "hi": 0.06177532761436967,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    }
+  },
+  "ablation_deltas": {
+    "baseline_mobilenetv4_conv_medium__srcsamp": {
+      "ablated_run": "baseline_mobilenetv4_conv_medium__srcsamp",
+      "main_run": "baseline_mobilenetv4_conv_medium",
+      "suffix": "__srcsamp",
+      "auc_roc": {
+        "point": -0.04696637088477362,
+        "lo": -0.055734918607235444,
+        "hi": -0.03840300428047822,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": -0.0470144327033033,
+        "lo": -0.05643164552887748,
+        "hi": -0.03705553849705667,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": -0.008849579903978055,
+        "lo": -0.012187346263443994,
+        "hi": -0.005518565721197192,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": -0.05879629629629629,
+        "lo": -0.07497866129909132,
+        "hi": -0.038672418404271415,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    },
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp": {
+      "ablated_run": "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp",
+      "main_run": "kd_efficientnetv2_m_to_mobilenetv4_conv_medium",
+      "suffix": "__srcsamp",
+      "auc_roc": {
+        "point": -0.029685163751714705,
+        "lo": -0.03409762445148689,
+        "hi": -0.025496097225753512,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": -0.03599011050869172,
+        "lo": -0.041915414652216584,
+        "hi": -0.029974232796303193,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": -0.006030692729766807,
+        "lo": -0.007807554080251701,
+        "hi": -0.0043249314133630415,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": -0.04305555555555557,
+        "lo": -0.05697323815827701,
+        "hi": -0.030112097068559687,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    }
+  },
+  "ablation_deltas_by_subgroup": {
+    "baseline_mobilenetv4_conv_medium__srcsamp": {
+      "ablated_run": "baseline_mobilenetv4_conv_medium__srcsamp",
+      "main_run": "baseline_mobilenetv4_conv_medium",
+      "suffix": "__srcsamp",
+      "by_group": {
+        "dark": {
+          "auc_roc": {
+            "point": -0.04637410003789311,
+            "lo": -0.07750704530211149,
+            "hi": -0.014747466370284587,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": -0.06356723208652937,
+            "lo": -0.09253942511354653,
+            "hi": -0.03221164774057491,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.004501705191360374,
+            "lo": -0.007075529793622943,
+            "hi": 0.014890311685478724,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": -0.1105769230769231,
+            "lo": -0.17622924432395798,
+            "hi": -0.04834043089039999,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "light": {
+          "auc_roc": {
+            "point": -0.0405793196615194,
+            "lo": -0.05198604312481147,
+            "hi": -0.029675865723854465,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": -0.04057563320869273,
+            "lo": -0.05335970234612441,
+            "hi": -0.028214669714989697,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": -0.00868228980993302,
+            "lo": -0.013176791044772755,
+            "hi": -0.00441543910831452,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": -0.0592468619246862,
+            "lo": -0.08036376431760821,
+            "hi": -0.030688622690089633,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "medium": {
+          "auc_roc": {
+            "point": -0.05013115906331089,
+            "lo": -0.06476560493650506,
+            "hi": -0.03469031033579081,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": -0.04567596618069503,
+            "lo": -0.06150071530743609,
+            "hi": -0.028467695787803293,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": -0.011632491049492134,
+            "lo": -0.01702238210687636,
+            "hi": -0.0057035077955321315,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": -0.03883751651254952,
+            "lo": -0.07148696574468445,
+            "hi": -0.014343223128405838,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      }
+    },
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp": {
+      "ablated_run": "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp",
+      "main_run": "kd_efficientnetv2_m_to_mobilenetv4_conv_medium",
+      "suffix": "__srcsamp",
+      "by_group": {
+        "dark": {
+          "auc_roc": {
+            "point": -0.033151762031072396,
+            "lo": -0.047874305433594715,
+            "hi": -0.018680995224822052,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": -0.03039954415363666,
+            "lo": -0.050720572207468645,
+            "hi": -0.011352642905580341,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": -0.0059615384615384626,
+            "lo": -0.012778821507865764,
+            "hi": 0.0006544846256692747,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": -0.07884615384615384,
+            "lo": -0.12146670254929783,
+            "hi": -0.033329493087557616,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "light": {
+          "auc_roc": {
+            "point": -0.026954087472090493,
+            "lo": -0.03264249885829872,
+            "hi": -0.02138848146275379,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": -0.03341512195618623,
+            "lo": -0.04072387706437182,
+            "hi": -0.025617371065177242,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": -0.005442107435690562,
+            "lo": -0.008005788410737937,
+            "hi": -0.003023596893491323,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": -0.04970711297071129,
+            "lo": -0.06593893512354292,
+            "hi": -0.030016290566632256,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "medium": {
+          "auc_roc": {
+            "point": -0.03356307087923638,
+            "lo": -0.040732679898196976,
+            "hi": -0.025939414916223633,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": -0.04297146086084347,
+            "lo": -0.053071476066076,
+            "hi": -0.03147734360067915,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": -0.007280332102278977,
+            "lo": -0.01002698338696522,
+            "hi": -0.004473665168825991,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": -0.03936591809775436,
+            "lo": -0.05920247978436661,
+            "hi": -0.019190496048294235,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      }
+    }
+  },
+  "explicit_pairs": {
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp vs kd_efficientnetv2_m_to_mobilenetv4_conv_medium": {
+      "run_a": "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp",
+      "run_b": "kd_efficientnetv2_m_to_mobilenetv4_conv_medium",
+      "sign": "a_minus_b",
+      "auc_roc": {
+        "point": 0.029685163751714705,
+        "lo": 0.025496097225753512,
+        "hi": 0.03409762445148688,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.03599011050869172,
+        "lo": 0.029974232796303193,
+        "hi": 0.04191541465221658,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.006030692729766807,
+        "lo": 0.004324931413363041,
+        "hi": 0.007807554080251699,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.04305555555555557,
+        "lo": 0.030112097068559662,
+        "hi": 0.056973238158277,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    },
+    "baseline_mobilenetv4_conv_medium__srcsamp vs baseline_mobilenetv4_conv_medium": {
+      "run_a": "baseline_mobilenetv4_conv_medium__srcsamp",
+      "run_b": "baseline_mobilenetv4_conv_medium",
+      "sign": "a_minus_b",
+      "auc_roc": {
+        "point": 0.04696637088477362,
+        "lo": 0.038403004280478215,
+        "hi": 0.05573491860723543,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.0470144327033033,
+        "lo": 0.037055538497056666,
+        "hi": 0.05643164552887748,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.008849579903978055,
+        "lo": 0.005518565721197187,
+        "hi": 0.012187346263443994,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.05879629629629629,
+        "lo": 0.038672418404271394,
+        "hi": 0.07497866129909132,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    }
+  },
+  "explicit_pairs_by_subgroup": {
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp vs kd_efficientnetv2_m_to_mobilenetv4_conv_medium": {
+      "run_a": "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp",
+      "run_b": "kd_efficientnetv2_m_to_mobilenetv4_conv_medium",
+      "sign": "a_minus_b",
+      "by_group": {
+        "dark": {
+          "auc_roc": {
+            "point": 0.033151762031072396,
+            "lo": 0.018680995224822042,
+            "hi": 0.047874305433594715,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.03039954415363666,
+            "lo": 0.01135264290558032,
+            "hi": 0.050720572207468624,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.0059615384615384626,
+            "lo": -0.0006544846256692877,
+            "hi": 0.012778821507865764,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.07884615384615384,
+            "lo": 0.033329493087557595,
+            "hi": 0.12146670254929783,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "light": {
+          "auc_roc": {
+            "point": 0.026954087472090493,
+            "lo": 0.021388481462753788,
+            "hi": 0.03264249885829872,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.03341512195618623,
+            "lo": 0.025617371065177242,
+            "hi": 0.04072387706437182,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.005442107435690562,
+            "lo": 0.003023596893491323,
+            "hi": 0.008005788410737937,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.04970711297071129,
+            "lo": 0.03001629056663225,
+            "hi": 0.06593893512354292,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "medium": {
+          "auc_roc": {
+            "point": 0.03356307087923638,
+            "lo": 0.025939414916223633,
+            "hi": 0.04073267989819696,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.04297146086084347,
+            "lo": 0.03147734360067914,
+            "hi": 0.05307147606607599,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.007280332102278977,
+            "lo": 0.0044736651688259904,
+            "hi": 0.010026983386965218,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.03936591809775436,
+            "lo": 0.019190496048294224,
+            "hi": 0.059202479784366595,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      }
+    },
+    "baseline_mobilenetv4_conv_medium__srcsamp vs baseline_mobilenetv4_conv_medium": {
+      "run_a": "baseline_mobilenetv4_conv_medium__srcsamp",
+      "run_b": "baseline_mobilenetv4_conv_medium",
+      "sign": "a_minus_b",
+      "by_group": {
+        "dark": {
+          "auc_roc": {
+            "point": 0.04637410003789311,
+            "lo": 0.014747466370284573,
+            "hi": 0.07750704530211147,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.06356723208652937,
+            "lo": 0.0322116477405749,
+            "hi": 0.09253942511354651,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": -0.004501705191360374,
+            "lo": -0.014890311685478734,
+            "hi": 0.0070755297936229335,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.1105769230769231,
+            "lo": 0.04834043089039998,
+            "hi": 0.1762292443239579,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "light": {
+          "auc_roc": {
+            "point": 0.0405793196615194,
+            "lo": 0.029675865723854458,
+            "hi": 0.05198604312481146,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.04057563320869273,
+            "lo": 0.02821466971498969,
+            "hi": 0.0533597023461244,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.00868228980993302,
+            "lo": 0.004415439108314515,
+            "hi": 0.013176791044772752,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.0592468619246862,
+            "lo": 0.030688622690089623,
+            "hi": 0.08036376431760821,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "medium": {
+          "auc_roc": {
+            "point": 0.05013115906331089,
+            "lo": 0.03469031033579079,
+            "hi": 0.06476560493650506,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.04567596618069503,
+            "lo": 0.02846769578780329,
+            "hi": 0.06150071530743608,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.011632491049492134,
+            "lo": 0.005703507795532131,
+            "hi": 0.01702238210687636,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.03883751651254952,
+            "lo": 0.014343223128405835,
+            "hi": 0.07148696574468445,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      }
+    }
+  },
+  "fairness_gaps": {
+    "baseline_mobilenetv4_conv_medium": {
+      "n_per_group": {
+        "dark": 411,
+        "light": 2310,
+        "medium": 1599
+      },
+      "per_group": {
+        "dark": {
+          "auc_roc": {
+            "point": 0.6455215043577113,
+            "lo": 0.5998086977066248,
+            "hi": 0.6895277264377726,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.6420091078296861,
+            "lo": 0.5841288493229883,
+            "hi": 0.7041926282664474,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.05251799924213716,
+            "lo": 0.04090023609157869,
+            "hi": 0.06473802355025245,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.21057692307692308,
+            "lo": 0.16741798642533937,
+            "hi": 0.2758158742949233,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "light": {
+          "auc_roc": {
+            "point": 0.655039645758673,
+            "lo": 0.634660585907495,
+            "hi": 0.6752621623664938,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.6526223037709473,
+            "lo": 0.6258299733194594,
+            "hi": 0.6802000217165504,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.04543565303863255,
+            "lo": 0.04010066755831953,
+            "hi": 0.05138299466961932,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.22443514644351464,
+            "lo": 0.19981743942118332,
+            "hi": 0.2585191668968252,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "medium": {
+          "auc_roc": {
+            "point": 0.6186093687734745,
+            "lo": 0.5948039427708324,
+            "hi": 0.6421884569032265,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.5915357678434873,
+            "lo": 0.5594748965331247,
+            "hi": 0.6264641405938499,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.036773424287018706,
+            "lo": 0.03114656205326151,
+            "hi": 0.04307024577840723,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.22166446499339498,
+            "lo": 0.1881415775551266,
+            "hi": 0.24980435374149654,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      },
+      "gaps": {
+        "dark_minus_light": {
+          "auc_roc": {
+            "point": -0.009518141400961744,
+            "lo": -0.060621548165122725,
+            "hi": 0.03924266120999901,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": -0.0106131959412612,
+            "lo": -0.07345993123296465,
+            "hi": 0.05509598908381463,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.007082346203504612,
+            "lo": -0.006413680035040741,
+            "hi": 0.0207587722127168,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": -0.013858223366591566,
+            "lo": -0.07120247983744933,
+            "hi": 0.051761379468387256,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "dark_minus_medium": {
+          "auc_roc": {
+            "point": 0.026912135584236774,
+            "lo": -0.025019128602296735,
+            "hi": 0.0770309351250095,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.05047333998619885,
+            "lo": -0.018704702768318524,
+            "hi": 0.11814579938206769,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.015744574955118454,
+            "lo": 0.0029132107302386563,
+            "hi": 0.029248675674770568,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": -0.011087541916471905,
+            "lo": -0.06166200302247396,
+            "hi": 0.0628520033772886,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "light_minus_medium": {
+          "auc_roc": {
+            "point": 0.03643027698519852,
+            "lo": 0.0064483507375368105,
+            "hi": 0.06677951651184759,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.06108653592746005,
+            "lo": 0.017880494979189608,
+            "hi": 0.10393667340155494,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.008662228751613842,
+            "lo": 0.0006042613425535601,
+            "hi": 0.01687409881530274,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.002770681450119661,
+            "lo": -0.033227210534269566,
+            "hi": 0.052367844468156906,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      }
+    },
+    "baseline_mobilenetv4_conv_medium__srcsamp": {
+      "n_per_group": {
+        "dark": 411,
+        "light": 2310,
+        "medium": 1599
+      },
+      "per_group": {
+        "dark": {
+          "auc_roc": {
+            "point": 0.6918956043956044,
+            "lo": 0.6466161753885116,
+            "hi": 0.735343228346064,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.7055763399162155,
+            "lo": 0.6503874572867451,
+            "hi": 0.7625368882805099,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.04801629405077679,
+            "lo": 0.03621020248889801,
+            "hi": 0.06221885934434228,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.3211538461538462,
+            "lo": 0.24907271241830067,
+            "hi": 0.4073375733855184,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "light": {
+          "auc_roc": {
+            "point": 0.6956189654201924,
+            "lo": 0.6766083833284207,
+            "hi": 0.715473038124318,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.69319793697964,
+            "lo": 0.6662951104437373,
+            "hi": 0.7212347932566743,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.05411794284856557,
+            "lo": 0.048769016730508936,
+            "hi": 0.06058239137021231,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.28368200836820084,
+            "lo": 0.24881371852537174,
+            "hi": 0.31974472858602065,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "medium": {
+          "auc_roc": {
+            "point": 0.6687405278367854,
+            "lo": 0.6453734475469637,
+            "hi": 0.692329708624915,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.6372117340241823,
+            "lo": 0.6029150802344476,
+            "hi": 0.6727657060183265,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.04840591533651084,
+            "lo": 0.04222659051864439,
+            "hi": 0.05518253569765015,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.2605019815059445,
+            "lo": 0.22422654819072946,
+            "hi": 0.3002746567013462,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      },
+      "gaps": {
+        "dark_minus_light": {
+          "auc_roc": {
+            "point": -0.0037233610245880344,
+            "lo": -0.054128696499191144,
+            "hi": 0.04607876774730076,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.012378402936575439,
+            "lo": -0.050720586557865724,
+            "hi": 0.07701147563245019,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": -0.006101648797788781,
+            "lo": -0.019326937075730397,
+            "hi": 0.009299777826333983,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.037471837785645334,
+            "lo": -0.040505316209747344,
+            "hi": 0.13627774573416868,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "dark_minus_medium": {
+          "auc_roc": {
+            "point": 0.023155076558818988,
+            "lo": -0.029590930258576405,
+            "hi": 0.07570520517379613,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.06836460589203319,
+            "lo": 0.0018216445639367364,
+            "hi": 0.1358600155228696,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": -0.0003896212857340542,
+            "lo": -0.014108416772886458,
+            "hi": 0.015034373034637904,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.060651864647901677,
+            "lo": -0.01964149404517876,
+            "hi": 0.1556864030312919,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "light_minus_medium": {
+          "auc_roc": {
+            "point": 0.026878437583407022,
+            "lo": -0.002219225009351364,
+            "hi": 0.058366209230850084,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.05598620295545775,
+            "lo": 0.01309950342354721,
+            "hi": 0.10044054367162789,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.0057120275120547265,
+            "lo": -0.0025858496876772046,
+            "hi": 0.015260202625078255,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.023180026862256342,
+            "lo": -0.029700633471847076,
+            "hi": 0.0723330794580498,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      }
+    },
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium": {
+      "n_per_group": {
+        "dark": 411,
+        "light": 2310,
+        "medium": 1599
+      },
+      "per_group": {
+        "dark": {
+          "auc_roc": {
+            "point": 0.6950644183402803,
+            "lo": 0.6508001252312036,
+            "hi": 0.7395945792751769,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.7059280035536555,
+            "lo": 0.6490655419914063,
+            "hi": 0.763061511654187,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.053287230011367925,
+            "lo": 0.04163051376012917,
+            "hi": 0.0667188282620042,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.32403846153846155,
+            "lo": 0.2502244897959184,
+            "hi": 0.4060711279461279,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "light": {
+          "auc_roc": {
+            "point": 0.6882033135073268,
+            "lo": 0.6687139859327202,
+            "hi": 0.7078049341972782,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.691738938686633,
+            "lo": 0.6646073641524503,
+            "hi": 0.7205929047281412,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.0488387714130251,
+            "lo": 0.04336314291341306,
+            "hi": 0.05509580580945306,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.29338912133891215,
+            "lo": 0.26060531238309015,
+            "hi": 0.33109309807839216,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "medium": {
+          "auc_roc": {
+            "point": 0.6504778833813937,
+            "lo": 0.626681457117183,
+            "hi": 0.6747118991673757,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.6209307177802329,
+            "lo": 0.587874639357096,
+            "hi": 0.6569274497878983,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.04055375482040933,
+            "lo": 0.03455554594171451,
+            "hi": 0.047006185925706115,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.2520475561426684,
+            "lo": 0.21900670990829793,
+            "hi": 0.2897447643979057,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      },
+      "gaps": {
+        "dark_minus_light": {
+          "auc_roc": {
+            "point": 0.006861104832953546,
+            "lo": -0.040699708899922075,
+            "hi": 0.05528940267234635,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.014189064867022427,
+            "lo": -0.049325972843819864,
+            "hi": 0.07730045748539133,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.004448458598342822,
+            "lo": -0.008413228938339665,
+            "hi": 0.01916071717445127,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.030649340199549402,
+            "lo": -0.052249648556749045,
+            "hi": 0.12303366983215412,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "dark_minus_medium": {
+          "auc_roc": {
+            "point": 0.04458653495888665,
+            "lo": -0.006132800215645079,
+            "hi": 0.0940464351126199,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.08499728577342258,
+            "lo": 0.017107017048704404,
+            "hi": 0.14914410552859533,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.012733475190958597,
+            "lo": -0.00040732771990758176,
+            "hi": 0.02791746685979216,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.07199090539579317,
+            "lo": -0.010789567619638223,
+            "hi": 0.15820581900520297,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "light_minus_medium": {
+          "auc_roc": {
+            "point": 0.0377254301259331,
+            "lo": 0.008689068528649872,
+            "hi": 0.06854648045466964,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.07080822090640015,
+            "lo": 0.026494692497797026,
+            "hi": 0.11579948760691115,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.008285016592615775,
+            "lo": -0.00024054133669874176,
+            "hi": 0.016708982465562346,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.04134156519624377,
+            "lo": -0.012843051254876373,
+            "hi": 0.0921208610238047,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      }
+    },
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp": {
+      "n_per_group": {
+        "dark": 411,
+        "light": 2310,
+        "medium": 1599
+      },
+      "per_group": {
+        "dark": {
+          "auc_roc": {
+            "point": 0.7282161803713527,
+            "lo": 0.6840453110014254,
+            "hi": 0.7721854432340164,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.7363275477072921,
+            "lo": 0.6796003757103213,
+            "hi": 0.7955745104333796,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.05924876847290639,
+            "lo": 0.04599283667750401,
+            "hi": 0.07437374032552214,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.4028846153846154,
+            "lo": 0.31726634181742785,
+            "hi": 0.48043143348320533,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "light": {
+          "auc_roc": {
+            "point": 0.7151574009794173,
+            "lo": 0.6961982751734207,
+            "hi": 0.7344930461776672,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.7251540606428193,
+            "lo": 0.6992726717640825,
+            "hi": 0.7526557105301038,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.054280878848715665,
+            "lo": 0.048475365512361285,
+            "hi": 0.06102850002885823,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.34309623430962344,
+            "lo": 0.30800327316578296,
+            "hi": 0.37796583320941235,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "medium": {
+          "auc_roc": {
+            "point": 0.68404095426063,
+            "lo": 0.6593072663664156,
+            "hi": 0.708114763026137,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.6639021786410764,
+            "lo": 0.6297741019289752,
+            "hi": 0.6997394536563935,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.047834086922688306,
+            "lo": 0.04131338284413802,
+            "hi": 0.05501656144716931,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.29141347424042274,
+            "lo": 0.257520802898093,
+            "hi": 0.33203909343959975,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      },
+      "gaps": {
+        "dark_minus_light": {
+          "auc_roc": {
+            "point": 0.013058779391935449,
+            "lo": -0.034988380512960986,
+            "hi": 0.06250389285979924,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.011173487064472853,
+            "lo": -0.05031748735787839,
+            "hi": 0.07445440473205102,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.004967889624190723,
+            "lo": -0.009209456832541393,
+            "hi": 0.020758612240585738,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.05978838107499196,
+            "lo": -0.031833891357197615,
+            "hi": 0.14576050032683485,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "dark_minus_medium": {
+          "auc_roc": {
+            "point": 0.044175226110722665,
+            "lo": -0.007881260090432121,
+            "hi": 0.09527370700493638,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.07242536906621577,
+            "lo": 0.003900120127097909,
+            "hi": 0.13918827797286976,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.011414681550218082,
+            "lo": -0.0034079001588603443,
+            "hi": 0.027959136926787642,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.11147114114419265,
+            "lo": 0.01649903562184373,
+            "hi": 0.19510295690871587,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "light_minus_medium": {
+          "auc_roc": {
+            "point": 0.031116446718787216,
+            "lo": 0.0023748982806055586,
+            "hi": 0.06198615494257395,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.06125188200174292,
+            "lo": 0.018799682503126244,
+            "hi": 0.1047588567191288,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.006446791926027359,
+            "lo": -0.00241338427313483,
+            "hi": 0.015461000570259719,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.051682760069200695,
+            "lo": -0.003522422439874405,
+            "hi": 0.10005233251158077,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      }
+    }
+  }
+}

@@ -48,6 +48,11 @@ This is a thesis artifact. The `feedback_no_hallucination` memory applies in ful
   was read — results change as folds finish.
 - If something can't be verified, write "unknown / not yet measured" in the answer
   rather than filling the gap.
+- **"Is the model good enough / đạt chưa / usable on a phone" is an acceptance question.**
+  Answer it only through `.claude/skills/eval-results/reference/acceptance-gates.md` (per-domain,
+  CI lower bound, signed-off thresholds, verdict labels in its §3). "KD beat the baseline" or
+  "phone = server" never answers it, and while the thresholds are `ĐỀ XUẤT` the answer must say
+  `CHƯA CÓ TIÊU CHÍ CHỐT`, not "đạt".
 
 ## Procedure
 

@@ -91,8 +91,8 @@ For KD runs, also check:
 - `soft_loss` and `hard_loss` should both be > 0 and trending down. If `soft_loss` is flat from epoch 1, the teacher's signal isn't helping — teacher may be miscalibrated or `temperature` too high.
 - `hard_loss` ≪ `soft_loss` is normal when `alpha=0.3` (hard weight 0.3 vs soft 0.7) — that's the configured weighting in `configs/training/distillation.yaml`, not a bug.
 
-Aggregate verdict:
-- **Good** — promote to test evaluation (`run/evaluate.sh`). Don't keep tuning.
+Aggregate verdict (this scores **training health from val/log**, never whether the model meets the deployment requirement — that is `acceptance-gates.md`, on test, per domain, with CIs):
+- **Good** — promote to test evaluation (`run/evaluate.sh`). Don't keep tuning. "Good" here ≠ "đạt yêu cầu".
 - **Moderate** — try one targeted change from §4 and re-train.
 - **Poor** — multiple axes failing; usually a setup issue. Re-check `experiments/<run>/config.yaml` first, then consult `diagnose-training`.
 
