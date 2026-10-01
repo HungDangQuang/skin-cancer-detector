@@ -26,7 +26,8 @@
 #   ALPHA        1-ALPHA interval                    (default 0.05 -> 95%)
 #   SUBGROUP     predictions.csv column for fairness gaps (default: none)
 #                e.g. tone_group on Fitzpatrick17k
-#   METRICS      comma-separated subset              (default all four)
+#   METRICS      comma-separated subset              (default auc_roc,auprc,pauc_at_tpr80,sens_at_90spec;
+#                add sens_at_80spec for the acceptance gates B2–B4 / C4a)
 #   PAIR         "RUN_A:RUN_B" — paired delta between TWO named run-dirs, signed
 #                A - B. Semicolon-separate several. Sections 2/3 only pair
 #                kd-vs-baseline and suffix-vs-main, so comparing two KD runs to

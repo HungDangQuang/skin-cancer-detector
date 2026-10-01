@@ -73,9 +73,13 @@ from src.evaluation.metrics import pauc_at_tpr, sensitivity_at_specificity
 sys.path.insert(0, str(Path(__file__).parent))
 from compare_kd_results import find_run_dirs, parse_run_name  # noqa: E402
 
-METRICS = ("auc_roc", "auprc", "pauc_at_tpr80", "sens_at_90spec")
+# Sensitivity at a fixed specificity floor: metric name -> floor.
+_SPEC_METRICS = {"sens_at_80spec": 0.80, "sens_at_90spec": 0.90}
+# Every metric the tool can bootstrap, and the default subset (unchanged since
+# before sens_at_80spec existed, so default reports reproduce byte-for-byte).
+METRICS = ("auc_roc", "auprc", "pauc_at_tpr80", "sens_at_90spec", "sens_at_80spec")
+DEFAULT_METRICS = ("auc_roc", "auprc", "pauc_at_tpr80", "sens_at_90spec")
 _MIN_TPR = 0.80
-_SPEC_LEVEL = 0.90
 
 
 # --------------------------------------------------------------------------- #
@@ -97,8 +101,8 @@ def _metric(name: str, y_true: np.ndarray, y_prob: np.ndarray) -> float:
         return float(average_precision_score(y_true, y_prob))
     if name == "pauc_at_tpr80":
         return float(pauc_at_tpr(y_true, y_prob, min_tpr=_MIN_TPR))
-    if name == "sens_at_90spec":
-        return float(sensitivity_at_specificity(y_true, y_prob, (_SPEC_LEVEL,))["sens_at_90spec"])
+    if name in _SPEC_METRICS:
+        return float(sensitivity_at_specificity(y_true, y_prob, (_SPEC_METRICS[name],))[name])
     raise ValueError(f"unknown metric {name!r}")
 
 
@@ -151,14 +155,15 @@ def _fast_metrics(curve: _SortedCurve, flipped: _SortedCurve,
 
     out = {}
     recall = tp / P
-    if "auc_roc" in metrics or "sens_at_90spec" in metrics:
+    spec_wanted = [m for m in metrics if m in _SPEC_METRICS]
+    if "auc_roc" in metrics or spec_wanted:
         fpr = np.r_[0.0, fp / N]
         tpr = np.r_[0.0, recall]
         if "auc_roc" in metrics:
             out["auc_roc"] = float(np.trapezoid(tpr, fpr))
-        if "sens_at_90spec" in metrics:
-            ok = (1.0 - fpr) >= _SPEC_LEVEL
-            out["sens_at_90spec"] = float(np.max(np.where(ok, tpr, -1.0))) if ok.any() else 0.0
+        for m in spec_wanted:
+            ok = (1.0 - fpr) >= _SPEC_METRICS[m]
+            out[m] = float(np.max(np.where(ok, tpr, -1.0))) if ok.any() else 0.0
     if "auprc" in metrics:
         ps = tp + fp
         precision = np.divide(tp, ps, out=np.zeros_like(tp), where=ps != 0)
@@ -267,7 +272,7 @@ def _make_stratified_indices(mask: np.ndarray, n_boot: int, seed: int) -> np.nda
     return pos[rng.integers(0, len(pos), size=(n_boot, len(pos)), dtype=np.int64)]
 
 
-def bootstrap_run(y_true, probs, indices, metrics=METRICS, point_idx=None):
+def bootstrap_run(y_true, probs, indices, metrics=DEFAULT_METRICS, point_idx=None):
     """-> {metric: (point_estimate, replicate_vector)} using the fold-mean statistic.
 
     `point_idx` restricts the POINT estimate to a row subset, and must be passed
@@ -345,8 +350,9 @@ def main() -> None:
                          "comparing two KD runs to each other needs this. Names are the "
                          "run-dir names relative to --results-dir, e.g. "
                          "kd_maxvit_base_to_fastvit_sa12:kd_convnextv2_base_to_mobilenetv4_conv_medium")
-    ap.add_argument("--metrics", default=",".join(METRICS),
-                    help=f"Comma-separated subset of {','.join(METRICS)}")
+    ap.add_argument("--metrics", default=",".join(DEFAULT_METRICS),
+                    help=f"Comma-separated subset of {','.join(METRICS)} "
+                         f"(default {','.join(DEFAULT_METRICS)})")
     ap.add_argument("--pred-name", default="predictions.csv",
                     help="Per-fold predictions file to read (default predictions.csv). "
                          "predictions_auprc.csv reads the best-by-val-AUPRC checkpoint "

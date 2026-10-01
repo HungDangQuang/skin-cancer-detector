@@ -61,7 +61,7 @@ def youden_threshold(y_true: np.ndarray, y_prob: np.ndarray) -> float:
 def sensitivity_at_specificity(
     y_true: np.ndarray,
     y_prob: np.ndarray,
-    spec_levels: tuple[float, ...] = (0.90, 0.95),
+    spec_levels: tuple[float, ...] = (0.80, 0.90, 0.95),
 ) -> dict:
     """
     Sensitivity (TPR) reachable at fixed-specificity operating points.
@@ -73,6 +73,9 @@ def sensitivity_at_specificity(
     (and the threshold that achieves it) among them.
 
     Returns a flat dict, e.g. {"sens_at_90spec": .., "thresh_at_90spec": ..}.
+    0.80 (added 2026-10-01) is the operating point of the acceptance gates
+    B2–B4 / C4a (`.claude/skills/eval-results/reference/acceptance-gates.md`):
+    the clinician benchmarks they compare against report sensitivity at ~80% specificity.
     Thresholds are clamped to <= 1.0 (roc_curve emits an inf sentinel first).
     """
     y_true = np.asarray(y_true)
