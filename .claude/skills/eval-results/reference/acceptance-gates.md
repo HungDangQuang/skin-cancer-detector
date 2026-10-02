@@ -31,8 +31,14 @@ trước** — đó là câu (2). Khi trích sang câu (3), viết "endpoint ite
 mọi mốc khác vẫn ĐỀ XUẤT.** Cổng mang mốc đề xuất được báo cáo "so với mốc đề xuất" kèm cờ
 `CHƯA CÓ TIÊU CHÍ CHỐT` (§3 bước 3). Phán quyết tổng theo §3 bước 4: một cổng bắt buộc `KHÔNG ĐẠT` với mốc
 đã chốt ⇒ `KHÔNG ĐẠT YÊU CẦU` dù các mốc khác còn đề xuất; nếu không có cổng như vậy ⇒ `CHƯA CÓ TIÊU CHÍ CHỐT`.
-Không bao giờ viết "model đạt yêu cầu" khi còn mốc đề xuất. Phán quyết hiện hành:
-`reports/2026-10-02_acceptance_verdict_srcsamp.md` — **KHÔNG ĐẠT YÊU CẦU** (B4).
+Không bao giờ viết "model đạt yêu cầu" khi còn mốc đề xuất.
+
+**02/10/2026 (tác giả): B4 chuyển từ "bắt buộc" sang "BÁO CÁO" — post-hoc** (quyết định sau khi đã thấy B4
+`KHÔNG ĐẠT` của ứng viên ship; lý do: app nhận ảnh camera, HAM10000 là dermoscopy, train không có ảnh
+dermoscopy nào). B4 vẫn được đo, ghi nhãn và báo cáo như cũ, chỉ không còn quyết định chọn model. Các mốc
+đề xuất còn lại giữ nguyên (tác giả: "giữ các mốc đề xuất thử xem"), kể cả tập miền PAD · Fitz · HAM của C2.
+Phán quyết hiện hành: `reports/2026-10-02_acceptance_verdict_srcsamp.md` — **CHƯA CÓ TIÊU CHÍ CHỐT**
+(trước 02/10: KHÔNG ĐẠT YÊU CẦU vì B4).
 
 Khi tác giả chốt: sửa cột "Mốc", ghi ngày chốt vào bảng dưới, đổi trạng thái thành `ĐÃ CHỐT`.
 Mốc chốt sau khi đã nhìn thấy kết quả của chính model đang chấm phải được khai là *post-hoc*.
@@ -43,6 +49,7 @@ Mốc chốt sau khi đã nhìn thấy kết quả của chính model đang ch�
 | Mốc số của từng cổng (§2 A/B/C) | ĐỀ XUẤT — tác giả **đã ghi nhận** 01/10/2026, **post-hoc** (sau khi đã thấy mọi kết quả B/C của ứng viên ship, `reports/ci_gates_srcsamp_*.md`); các dòng CHỜ QUYẾT bên dưới vẫn mở; B2, B4, metric C2 đã chốt ở các dòng kế tiếp | 01/10/2026 (ghi nhận) | tác giả |
 | B2: mốc quyết định = **mục tiêu ≥ 0,81** (sàn 0,47 chỉ báo cáo) | **ĐÃ CHỐT — post-hoc** | 01/10/2026 (tối) | tác giả |
 | B4 (HAM10000): mốc quyết định = **mục tiêu ≥ 0,81** | **ĐÃ CHỐT — post-hoc** | 01/10/2026 (tối) | tác giả |
+| B4: **vai = BÁO CÁO** (không còn bắt buộc; mốc 0,81 giữ để ghi nhãn) | **ĐÃ CHỐT — post-hoc** | 02/10/2026 | tác giả |
 | C2 "vượt teacher": cách hiểu (đề xuất: vượt trội có ý nghĩa, `lo > 0`), metric (đề xuất ΔAUPRC), tập miền (đề xuất PAD · Fitz · HAM; ISIC bỏ vì đề xuất xoay quanh ảnh kiểu điện thoại và xuyên miền) | **metric = ΔAUPRC: ĐÃ CHỐT — post-hoc** (01/10/2026 tối, tác giả); cách hiểu `lo > 0` và tập miền PAD·Fitz·HAM: vẫn là đề xuất, đang được dùng | 01/10/2026 tối (metric) | tác giả |
 | C4a "tốt trên mọi tông da": mỗi nhóm đạt sàn 0,47 hay mức cao hơn | CHỜ QUYẾT | — | — |
 | δ của C4b (đề xuất 0,02 AUC — không có nguồn) | CHỜ QUYẾT | — | — |
@@ -60,7 +67,7 @@ Một model chỉ được chọn (ship / gọi là "đạt yêu cầu") khi đ�
 | 3 | Tốc độ chấp nhận được trên mobile | A1 | ✅ |
 | 4 | Khả năng hoạt động trên mobile được đảm bảo | A3 · **A4** (+ A2 báo cáo) | ✅ |
 | 5 | Hoạt động tốt trên các tông da khác nhau | **C4a** (mỗi nhóm tông đạt sàn) · C4b (chênh lệch — báo cáo) | ✅ C4a |
-| 6 | Chỉ số evaluation chấp nhận được trên HAM10000 | **B4** | ✅ |
+| 6 | Chỉ số evaluation chấp nhận được trên HAM10000 | **B4** | **báo cáo** (từ 02/10/2026, post-hoc — §1) |
 
 C1 (KD > baseline) **không** nằm trong sáu tiêu chí chọn model: nó là bằng chứng *giải pháp KD có hiệu
 quả* cho luận văn (câu hỏi (2) ở §0), vẫn phải báo cáo nhưng không quyết định chọn model.
@@ -145,8 +152,8 @@ chưa phủ bước đổi kích thước ảnh camera (L3, `docs/MOBILE_EVAL_PL
   mục 4). Ngoài ra chênh sáng − trung bình có ý nghĩa (khác 0) ở **cả 6 arm splits v2, kể cả teacher**.
   Vì vậy tiêu chí 5 được chấm bằng C4a; C4b báo cáo kèm nhãn tham khảo, và nếu C4b `KHÔNG ĐẠT`
   (cả CI nằm ngoài ±δ) thì phải nêu rõ là hạn chế. Đừng nới luật cho vừa.
-- **Luật gộp (theo sáu tiêu chí §2.0):** A1 + A3 + A4 + B1 + B2 + B3 + B4 + C2 + C4a đều phải `ĐẠT`.
-  C1, C3, C4b, A2 bắt buộc **báo cáo** nhưng không quyết định chọn.
+- **Luật gộp (theo sáu tiêu chí §2.0):** A1 + A3 + A4 + B1 + B2 + B3 + C2 + C4a đều phải `ĐẠT`.
+  C1, C3, C4b, A2 và (từ 02/10/2026) **B4** bắt buộc **báo cáo** nhưng không quyết định chọn.
 
 ### Báo cáo bắt buộc (không phải cổng, nhưng KHÔNG được bỏ)
 
