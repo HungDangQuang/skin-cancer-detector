@@ -1,0 +1,506 @@
+{
+  "results_dir": ".tmp/ci_srcsamp/auprc_indomain",
+  "n_boot": 2000,
+  "seed": 42,
+  "alpha": 0.05,
+  "n_test_rows": 59093,
+  "fold_convention": "shared row indices across folds; statistic = mean over folds (folds are models on the SAME test rows, so predictions are never pooled)",
+  "metrics": [
+    "auc_roc",
+    "auprc",
+    "pauc_at_tpr80",
+    "sens_at_90spec",
+    "sens_at_80spec"
+  ],
+  "per_run": {
+    "baseline_mobilenetv4_conv_medium__srcsamp": {
+      "n_folds": 5,
+      "auc_roc": {
+        "point": 0.9654012721448264,
+        "lo": 0.9555675403006499,
+        "hi": 0.9743734879243964,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.5242584106284134,
+        "lo": 0.4695796518124976,
+        "hi": 0.5767506299995514,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.16848024493534713,
+        "lo": 0.15965336278748138,
+        "hi": 0.17699188711746858,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.9169811320754718,
+        "lo": 0.8908365703851261,
+        "hi": 0.942500932835821,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_80spec": {
+        "point": 0.9562264150943397,
+        "lo": 0.9367251214434421,
+        "hi": 0.9740770609318996,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    },
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp": {
+      "n_folds": 5,
+      "auc_roc": {
+        "point": 0.9824695274102565,
+        "lo": 0.9754935821515746,
+        "hi": 0.9887911390696217,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.6609150450674743,
+        "lo": 0.6034078357326668,
+        "hi": 0.7144809443607882,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.183336115134495,
+        "lo": 0.17683328472149107,
+        "hi": 0.18938603442678514,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.9562264150943397,
+        "lo": 0.9341561276723878,
+        "hi": 0.9755743500183094,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_80spec": {
+        "point": 0.9788679245283021,
+        "lo": 0.964438063063063,
+        "hi": 0.9916357731305451,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    }
+  },
+  "kd_deltas": {
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp": {
+      "kd_run": "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp",
+      "baseline_run": "baseline_mobilenetv4_conv_medium__srcsamp",
+      "auc_roc": {
+        "point": 0.0170682552654301,
+        "lo": 0.011933563963906543,
+        "hi": 0.022686205696001948,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.13665663443906095,
+        "lo": 0.10830782661464795,
+        "hi": 0.16529680527035118,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.014855870199147858,
+        "lo": 0.009977663973314253,
+        "hi": 0.019820596553123213,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.03924528301886787,
+        "lo": 0.022541818181818166,
+        "hi": 0.05703710389089468,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_80spec": {
+        "point": 0.02264150943396237,
+        "lo": 0.01048494214945069,
+        "hi": 0.03597600148663365,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    }
+  },
+  "ablation_deltas": {},
+  "ablation_deltas_by_subgroup": {},
+  "explicit_pairs": {
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp vs baseline_mobilenetv4_conv_medium__srcsamp": {
+      "run_a": "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp",
+      "run_b": "baseline_mobilenetv4_conv_medium__srcsamp",
+      "sign": "a_minus_b",
+      "auc_roc": {
+        "point": 0.0170682552654301,
+        "lo": 0.011933563963906543,
+        "hi": 0.022686205696001948,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "auprc": {
+        "point": 0.13665663443906095,
+        "lo": 0.10830782661464795,
+        "hi": 0.16529680527035118,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.014855870199147858,
+        "lo": 0.009977663973314253,
+        "hi": 0.019820596553123213,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_90spec": {
+        "point": 0.03924528301886787,
+        "lo": 0.022541818181818166,
+        "hi": 0.05703710389089468,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "sens_at_80spec": {
+        "point": 0.02264150943396237,
+        "lo": 0.01048494214945069,
+        "hi": 0.03597600148663365,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    }
+  },
+  "explicit_pairs_by_subgroup": {
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp vs baseline_mobilenetv4_conv_medium__srcsamp": {
+      "run_a": "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp",
+      "run_b": "baseline_mobilenetv4_conv_medium__srcsamp",
+      "sign": "a_minus_b",
+      "by_group": {
+        "isic2024": {
+          "auc_roc": {
+            "point": 0.03305325109087964,
+            "lo": 0.019165478752366138,
+            "hi": 0.04792690427723147,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.02818846574286798,
+            "lo": 0.0038996258363110355,
+            "hi": 0.05978197218336801,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.023407382966115386,
+            "lo": 0.011999327434526624,
+            "hi": 0.03403651239096689,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.0842105263157894,
+            "lo": 0.034666666666666734,
+            "hi": 0.13043921916592713,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_80spec": {
+            "point": 0.05789473684210533,
+            "lo": 0.015188914461066442,
+            "hi": 0.09999999999999998,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "pad_ufes_20": {
+          "auc_roc": {
+            "point": -0.00019841269841247566,
+            "lo": -0.01363484790829489,
+            "hi": 0.013365753241541599,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": -0.0008340780845594864,
+            "lo": -0.01990809739206415,
+            "hi": 0.018700710628446974,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": -0.0012108262108262158,
+            "lo": -0.00990110470078381,
+            "hi": 0.007021683845949345,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": -0.024338624338624326,
+            "lo": -0.08360290857497558,
+            "hi": 0.06421330335889988,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_80spec": {
+            "point": 0.013756613756613745,
+            "lo": -0.029545454545454545,
+            "hi": 0.06083043950081386,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      }
+    }
+  },
+  "fairness_gaps": {
+    "baseline_mobilenetv4_conv_medium__srcsamp": {
+      "n_per_group": {
+        "isic2024": 58696,
+        "pad_ufes_20": 397
+      },
+      "per_group": {
+        "isic2024": {
+          "auc_roc": {
+            "point": 0.9106542360250678,
+            "lo": 0.8801243100410288,
+            "hi": 0.9356667965202193,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.0390709906199729,
+            "lo": 0.024844235193648125,
+            "hi": 0.07147462596813298,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.13458880568873563,
+            "lo": 0.11282302376228275,
+            "hi": 0.15437215875879223,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.7710526315789474,
+            "lo": 0.6974242424242424,
+            "hi": 0.8444517543859649,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_80spec": {
+            "point": 0.8710526315789474,
+            "lo": 0.8074029451137885,
+            "hi": 0.9238128772635814,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "pad_ufes_20": {
+          "auc_roc": {
+            "point": 0.8781084656084654,
+            "lo": 0.848561533568609,
+            "hi": 0.9054347747489365,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.8592412650093296,
+            "lo": 0.8146877002453196,
+            "hi": 0.8984960466128431,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.12438339438339434,
+            "lo": 0.1088226405217642,
+            "hi": 0.13951502800150284,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.6317460317460317,
+            "lo": 0.5527619279191657,
+            "hi": 0.7154650201223881,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_80spec": {
+            "point": 0.8042328042328043,
+            "lo": 0.7244421416234887,
+            "hi": 0.8694371576609917,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      },
+      "gaps": {
+        "isic2024_minus_pad_ufes_20": {
+          "auc_roc": {
+            "point": 0.03254577041660234,
+            "lo": -0.009028523364624647,
+            "hi": 0.07068524433336512,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": -0.8201702743893567,
+            "lo": -0.8604851280034471,
+            "hi": -0.7655503431626991,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.010205411305341291,
+            "lo": -0.016185821390420088,
+            "hi": 0.035928527593358246,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.1393065998329157,
+            "lo": 0.02326539506742561,
+            "hi": 0.24136414740608683,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_80spec": {
+            "point": 0.06681982734614311,
+            "lo": -0.02575860700602065,
+            "hi": 0.16220409196067084,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      }
+    },
+    "kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp": {
+      "n_per_group": {
+        "isic2024": 58696,
+        "pad_ufes_20": 397
+      },
+      "per_group": {
+        "isic2024": {
+          "auc_roc": {
+            "point": 0.9437074871159474,
+            "lo": 0.9226787715923922,
+            "hi": 0.9616349972751471,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.06725945636284088,
+            "lo": 0.039376111180406626,
+            "hi": 0.11650484616166212,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.15799618865485102,
+            "lo": 0.14179614923765296,
+            "hi": 0.17298998654043282,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.8552631578947368,
+            "lo": 0.7854991948470209,
+            "hi": 0.9116279069767442,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_80spec": {
+            "point": 0.9289473684210527,
+            "lo": 0.8771037998146433,
+            "hi": 0.9694125816993464,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "pad_ufes_20": {
+          "auc_roc": {
+            "point": 0.877910052910053,
+            "lo": 0.8452991241281378,
+            "hi": 0.9082502638217486,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": 0.8584071869247701,
+            "lo": 0.8098908012105395,
+            "hi": 0.9015361179981232,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.12317256817256812,
+            "lo": 0.10545330595330593,
+            "hi": 0.14025066082619111,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.6074074074074074,
+            "lo": 0.5172650560121677,
+            "hi": 0.7381462190316835,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_80spec": {
+            "point": 0.817989417989418,
+            "lo": 0.7406151221264367,
+            "hi": 0.8785903830806066,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      },
+      "gaps": {
+        "isic2024_minus_pad_ufes_20": {
+          "auc_roc": {
+            "point": 0.06579743420589446,
+            "lo": 0.0281504909860264,
+            "hi": 0.10113610794074962,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "auprc": {
+            "point": -0.7911477305619292,
+            "lo": -0.8421135570095845,
+            "hi": -0.7232266219918545,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.034823620482282894,
+            "lo": 0.011407225789660367,
+            "hi": 0.05706993513159037,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_90spec": {
+            "point": 0.24785575048732944,
+            "lo": 0.09127797643029811,
+            "hi": 0.34948502618647415,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "sens_at_80spec": {
+            "point": 0.1109579504316347,
+            "lo": 0.028851135248816294,
+            "hi": 0.19823630174652163,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      }
+    }
+  },
+  "pred_name": "predictions_auprc.csv"
+}
