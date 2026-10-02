@@ -109,7 +109,7 @@ fold_2 31/29, fold_3 42/34, **fold_4 12/36**.
   **fold_4 0,7018** · fold_0 0,7688 · fold_3 0,7691 ⇒ **fold_4**, best epoch 36.
 - `.pte`: `exports/executorch_srcsamp/mobilenetv4_conv_medium__srcsamp_auprc_fold4.pte` (server), export từ
   `fold_4/checkpoints/best_model_auprc.pth`; benchmark set + logit tham chiếu dựng bằng **cùng** checkpoint
-  (`data/benchmark_set_srcsamp`, server; driver `.tmp_s5s6_srcsamp.sh`).
+  (`data/benchmark_set_srcsamp`, server; driver `.tmp/archived_root_drivers_20261002/.tmp_s5s6_srcsamp.sh` (local, untracked)).
 - Parity lớp 1: **PASS**, max|Δlogit| = 6,311e-06, 0/100 vượt 1e-3
   (`reports/mobile_benchmark/parity_mobilenetv4_conv_medium__srcsamp_auprc_fold4.json`).
 
@@ -142,7 +142,7 @@ Ngưỡng đóng băng từ val in-domain gắn cờ gần như mọi ảnh ngo�
 
 - Bảng §1: chỉ có trong log khởi động trên server.
 - `.pte` và `data/benchmark_set_srcsamp`: chỉ có trên server; việc hai thứ dựng từ cùng checkpoint dựa trên driver
-  `.tmp_s5s6_srcsamp.sh` và bằng chứng gián tiếp (AUPRC in-domain của bundle 0,6588 = `test_metrics_auprc.json`
+  `.tmp/archived_root_drivers_20261002/.tmp_s5s6_srcsamp.sh` (local, untracked) và bằng chứng gián tiếp (AUPRC in-domain của bundle 0,6588 = `test_metrics_auprc.json`
   fold_4; parity 6e-06).
 - Thứ tự chạy tuần tự hai runtime ở S6: log trên server (`.tmp/s5s6_srcsamp.log`).
 

@@ -27,9 +27,12 @@ trước** — đó là câu (2). Khi trích sang câu (3), viết "endpoint ite
 
 ## 1. Trạng thái các mốc
 
-**⚠️ Các mốc ở §2 đang ở trạng thái ĐỀ XUẤT (01/10/2026), CHƯA được tác giả chốt.**
-Khi còn ở trạng thái này, phán quyết tổng **bắt buộc** là `CHƯA CÓ TIÊU CHÍ CHỐT` — được báo cáo
-từng cổng "so với mốc đề xuất", nhưng **không** được viết "model đạt yêu cầu".
+**⚠️ Trạng thái (cập nhật 01/10/2026, tối): B2, B4 (mục tiêu 0,81) và metric C2 (ΔAUPRC) ĐÃ CHỐT — post-hoc;
+mọi mốc khác vẫn ĐỀ XUẤT.** Cổng mang mốc đề xuất được báo cáo "so với mốc đề xuất" kèm cờ
+`CHƯA CÓ TIÊU CHÍ CHỐT` (§3 bước 3). Phán quyết tổng theo §3 bước 4: một cổng bắt buộc `KHÔNG ĐẠT` với mốc
+đã chốt ⇒ `KHÔNG ĐẠT YÊU CẦU` dù các mốc khác còn đề xuất; nếu không có cổng như vậy ⇒ `CHƯA CÓ TIÊU CHÍ CHỐT`.
+Không bao giờ viết "model đạt yêu cầu" khi còn mốc đề xuất. Phán quyết hiện hành:
+`reports/2026-10-02_acceptance_verdict_srcsamp.md` — **KHÔNG ĐẠT YÊU CẦU** (B4).
 
 Khi tác giả chốt: sửa cột "Mốc", ghi ngày chốt vào bảng dưới, đổi trạng thái thành `ĐÃ CHỐT`.
 Mốc chốt sau khi đã nhìn thấy kết quả của chính model đang chấm phải được khai là *post-hoc*.
@@ -37,10 +40,10 @@ Mốc chốt sau khi đã nhìn thấy kết quả của chính model đang ch�
 | Hạng mục | Trạng thái | Ngày chốt | Người chốt |
 |---|---|---|---|
 | **Sáu tiêu chí chọn model** (§2.0) | **ĐÃ CHỐT** — đây là danh sách *cái gì* phải đạt | 01/10/2026 | tác giả |
-| Mốc số của từng cổng (§2 A/B/C) | ĐỀ XUẤT — tác giả **đã ghi nhận** 01/10/2026, **post-hoc** (sau khi đã thấy mọi kết quả B/C của ứng viên ship, `reports/ci_gates_srcsamp_*.md`); các dòng CHỜ QUYẾT bên dưới vẫn mở, nên phán quyết tổng vẫn là `CHƯA CÓ TIÊU CHÍ CHỐT` | 01/10/2026 (ghi nhận) | tác giả |
-| B2: mốc quyết định = **mục tiêu ≥ 0,81** (sàn 0,47 chỉ báo cáo) | **ĐÃ CHỐT — post-hoc** | 02/10/2026 | tác giả |
-| B4 (HAM10000): mốc quyết định = **mục tiêu ≥ 0,81** | **ĐÃ CHỐT — post-hoc** | 02/10/2026 | tác giả |
-| C2 "vượt teacher": cách hiểu (đề xuất: vượt trội có ý nghĩa, `lo > 0`), metric (đề xuất ΔAUPRC), tập miền (đề xuất PAD · Fitz · HAM; ISIC bỏ vì đề xuất xoay quanh ảnh kiểu điện thoại và xuyên miền) | **metric = ΔAUPRC: ĐÃ CHỐT — post-hoc** (02/10/2026, tác giả); cách hiểu `lo > 0` và tập miền PAD·Fitz·HAM: vẫn là đề xuất, đang được dùng | 02/10/2026 (metric) | tác giả |
+| Mốc số của từng cổng (§2 A/B/C) | ĐỀ XUẤT — tác giả **đã ghi nhận** 01/10/2026, **post-hoc** (sau khi đã thấy mọi kết quả B/C của ứng viên ship, `reports/ci_gates_srcsamp_*.md`); các dòng CHỜ QUYẾT bên dưới vẫn mở; B2, B4, metric C2 đã chốt ở các dòng kế tiếp | 01/10/2026 (ghi nhận) | tác giả |
+| B2: mốc quyết định = **mục tiêu ≥ 0,81** (sàn 0,47 chỉ báo cáo) | **ĐÃ CHỐT — post-hoc** | 01/10/2026 (tối) | tác giả |
+| B4 (HAM10000): mốc quyết định = **mục tiêu ≥ 0,81** | **ĐÃ CHỐT — post-hoc** | 01/10/2026 (tối) | tác giả |
+| C2 "vượt teacher": cách hiểu (đề xuất: vượt trội có ý nghĩa, `lo > 0`), metric (đề xuất ΔAUPRC), tập miền (đề xuất PAD · Fitz · HAM; ISIC bỏ vì đề xuất xoay quanh ảnh kiểu điện thoại và xuyên miền) | **metric = ΔAUPRC: ĐÃ CHỐT — post-hoc** (01/10/2026 tối, tác giả); cách hiểu `lo > 0` và tập miền PAD·Fitz·HAM: vẫn là đề xuất, đang được dùng | 01/10/2026 tối (metric) | tác giả |
 | C4a "tốt trên mọi tông da": mỗi nhóm đạt sàn 0,47 hay mức cao hơn | CHỜ QUYẾT | — | — |
 | δ của C4b (đề xuất 0,02 AUC — không có nguồn) | CHỜ QUYẾT | — | — |
 
@@ -104,9 +107,9 @@ chưa phủ bước đổi kích thước ảnh camera (L3, `docs/MOBILE_EVAL_PL
 | # | Miền | Metric | Mốc đề xuất | Nguồn mốc |
 |---|---|---|---|---|
 | B1 | ISIC (crop 3D-TBP) | AUC-ROC · pAUC@TPR80 | ≥ 0,922 · ≥ 0,142 | Kurtansky 2025 (npj Digit Med, PMC12639164), **Bảng 3**: biến thể chỉ dùng ảnh (tiles) AUC 0,922 · pAUC 0,142 (model thắng giải, ảnh + metadata: 0,9668 · 0,1726). Assistant đối chiếu toàn văn qua Europe PMC ngày 01/10/2026; verifier không kiểm được (không có web). Đo trên tập test của cuộc thi, không phải phần ISIC của splits v2 |
-| B2 | **Ảnh điện thoại (PAD)** — cổng quan trọng nhất | độ nhạy @ độ đặc hiệu 80% | mục tiêu ≥ 0,81 · sàn ≥ 0,47 | Cochrane Dinnes 2018 (CD011902.pub2): đánh giá **trên ảnh**, độ nhạy ở độ đặc hiệu cố định 80%: dermoscopy **81%**, nhìn bằng mắt (ảnh thường) **47%**. Đích chẩn đoán: melanoma xâm lấn + biến thể hắc tố trong biểu bì không điển hình (**chỉ melanoma**; nhãn dương của dự án gồm cả BCC/SCC). Mục tiêu 0,81 là mức đọc **dermoscopy**, đang áp cho ảnh điện thoại. Assistant đối chiếu tóm tắt qua Europe PMC 01/10/2026; verifier không kiểm được |
+| B2 | **Ảnh điện thoại (PAD)** — cổng quan trọng nhất | độ nhạy @ độ đặc hiệu 80% | **mục tiêu ≥ 0,81 (ĐÃ CHỐT, post-hoc)** · sàn ≥ 0,47 (chỉ báo cáo) | Cochrane Dinnes 2018 (CD011902.pub2): đánh giá **trên ảnh**, độ nhạy ở độ đặc hiệu cố định 80%: dermoscopy **81%**, nhìn bằng mắt (ảnh thường) **47%**. Đích chẩn đoán: melanoma xâm lấn + biến thể hắc tố trong biểu bì không điển hình (**chỉ melanoma**; nhãn dương của dự án gồm cả BCC/SCC). Mục tiêu 0,81 là mức đọc **dermoscopy**, đang áp cho ảnh điện thoại. Assistant đối chiếu tóm tắt qua Europe PMC 01/10/2026; verifier không kiểm được |
 | B3 | Ảnh lâm sàng đa dạng (Fitzpatrick17k headline) | độ nhạy @ độ đặc hiệu 80% | sàn ≥ 0,47 (không có mục tiêu) | như B2 (chưa có mốc riêng cho bộ này) |
-| B4 | **HAM10000 headline** (dermoscopy, xuyên miền) — tiêu chí 6 | độ nhạy @ độ đặc hiệu 80% | mục tiêu ≥ 0,81 (bác sĩ đọc **ảnh dermoscopy** — đúng loại ảnh của HAM); sàn: chờ chốt | Cochrane Dinnes 2018, như B2; chỉ melanoma, trong khi nhãn ác tính của HAM gồm nhiều loại |
+| B4 | **HAM10000 headline** (dermoscopy, xuyên miền) — tiêu chí 6 | độ nhạy @ độ đặc hiệu 80% | **mục tiêu ≥ 0,81 — ĐÃ CHỐT, post-hoc** (bác sĩ đọc **ảnh dermoscopy** — đúng loại ảnh của HAM); sàn: không dùng — mục tiêu đã chốt là mốc quyết định | Cochrane Dinnes 2018, như B2; chỉ melanoma, trong khi nhãn ác tính của HAM gồm nhiều loại |
 
 - AUPRC **không** làm cổng B: không có mốc ngoài và không so được giữa các bộ (nền = prevalence).
 - **Độ nhạy @ đặc hiệu 80% đã có** từ 01/10/2026 (commit `9535b23`): `compute_metrics` ghi
@@ -121,7 +124,7 @@ chưa phủ bước đổi kích thước ảnh camera (L3, `docs/MOBILE_EVAL_PL
 | # | Câu hỏi | Mốc đề xuất |
 |---|---|---|
 | C1 | KD có giúp không? (`kd` − `baseline`, cùng student/splits/seed) — **bằng chứng luận văn, không phải tiêu chí chọn** | CI ghép cặp ΔAUPRC > 0 trên PAD **và** Fitzpatrick |
-| C2 | **Student vượt teacher** (tiêu chí 2) — student − teacher, **cùng splits, cùng arm** | CI ghép cặp **ΔAUPRC > 0** (cận dưới > 0) trên **từng** miền PAD · Fitzpatrick · HAM10000 (metric và tập miền: đề xuất, chờ chốt) |
+| C2 | **Student vượt teacher** (tiêu chí 2) — student − teacher, **cùng splits, cùng arm** | CI ghép cặp **ΔAUPRC > 0** (cận dưới > 0) trên **từng** miền PAD · Fitzpatrick · HAM10000 (metric ΔAUPRC: **ĐÃ CHỐT, post-hoc**; cách hiểu `lo > 0` và tập miền: đề xuất) |
 | C3 | Nén được bao nhiêu? | chỉ báo cáo tỉ lệ tham số / dung lượng / FLOPs (`reports/benchmark/*.json`) |
 | C4a | **Mỗi nhóm tông da** (sáng · trung bình · tối, Fitzpatrick17k) tự đạt sàn (tiêu chí 5) | độ nhạy @ đặc hiệu 80% của **từng** nhóm ≥ sàn B3 (0,47) |
 | C4b | Chênh lệch giữa các nhóm tông | **báo cáo** CI của mọi cặp chênh AUC; nhãn tương đương (±δ) chỉ để tham khảo — xem dưới |
@@ -133,7 +136,7 @@ chưa phủ bước đổi kích thước ảnh camera (L3, `docs/MOBILE_EVAL_PL
   chính teacher — teacher không có bản `_auprc` và brief cấm train lại teacher.
   "Vượt" = vượt trội có ý nghĩa (`lo > 0`) là **diễn giải** của bản này cho chữ "vượt qua teacher";
   tác giả có thể chốt cách hiểu khác (§1). Lần đo đầu (01/10/2026, ứng viên ship `__srcsamp` checkpoint AUPRC vs
-  `runs_newsplit_ddi/teacher/efficientnetv2_m`): `reports/ci_gates_srcsamp_*.md` (driver `.tmp_ci_gates.sh`).
+  `runs_newsplit_ddi/teacher/efficientnetv2_m`): `reports/ci_gates_srcsamp_*.md` (driver `.tmp/archived_root_drivers_20261002/.tmp_ci_gates.sh` (local, untracked)).
 - C4a là cổng một phía trên từng nhóm — đạt được nếu model đủ tốt ở cả ba nhóm, kể cả khi nhóm tối
   chỉ có n = 411 (CI rộng hơn, nên cần điểm ước lượng cao hơn sàn một khoảng).
 - C4b là phép kiểm **tương đương** (hai phía). Với cỡ mẫu Fitzpatrick hiện tại nó **không thể
@@ -246,7 +249,7 @@ Lệnh còn thiếu để đo đủ: <…>
   (`scripts/bootstrap_ci.py` §3 đòi khớp "kind"; memory `project_domain_aug_arm`).
 - B2/B3/B4/C4a: thêm `sens_at_80spec` vào `METRICS=` (có từ commit `9535b23`); C4a dùng `SUBGROUP=tone_group`
   trên cây Fitzpatrick (mục 4 của báo cáo cho từng nhóm). Mẫu đầy đủ, kể cả C2 với checkpoint AUPRC của student:
-  `.tmp_ci_gates.sh` → `reports/ci_gates_srcsamp_*.md`.
+  `.tmp/archived_root_drivers_20261002/.tmp_ci_gates.sh` (local, untracked) → `reports/ci_gates_srcsamp_*.md`.
 
 ## 7. Chưa verify được (khi soạn file này)
 
@@ -257,8 +260,9 @@ Lệnh còn thiếu để đo đủ: <…>
 - δ = 0,02: đề xuất, không có nguồn.
 - §4 #12, #13, #14, #16, #17, #18 là **phòng ngừa** — chưa có tiền lệ được kiểm trong memory/repo;
   các dòng còn lại có tiền lệ (memory/transcript).
-- Ánh xạ tiêu chí → cổng là **diễn giải của bản này**, chờ tác giả chốt (§1): "vượt qua teacher" →
-  vượt trội có ý nghĩa `lo > 0` (C2); "hoạt động tốt trên các tông da" → mỗi nhóm đạt sàn 0,47 (C4a);
-  "chấp nhận được trên HAM" → mục tiêu 0,81 (B4).
+- Ánh xạ tiêu chí → cổng là **diễn giải của bản này**: "chấp nhận được trên HAM" → mục tiêu 0,81 (B4)
+  **đã được tác giả chốt** 01/10/2026 tối (post-hoc); "vượt qua teacher" → vượt trội có ý nghĩa `lo > 0` (C2,
+  metric ΔAUPRC đã chốt, cách hiểu còn đề xuất) và "hoạt động tốt trên các tông da" → mỗi nhóm đạt sàn 0,47
+  (C4a) vẫn chờ tác giả chốt (§1).
 - Con số "~0,85" (sàn đoán nguồn ảnh trên test v2): tính tay trong lượt kiểm chéo, chưa có artifact.
 - "205/208 ảnh PAD lành bị gắn cờ": nguồn là brief item 2/3 (`:12`) và memory, số của **một** checkpoint.
