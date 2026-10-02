@@ -410,7 +410,8 @@ def main() -> None:
                 continue
             agg = aggregate(per_fold)
             (out_dir / "aggregated.json").write_text(json.dumps(agg, indent=2))
-            write_markdown_summary(agg, out_dir, out_dir / "aggregated.md")
+            write_markdown_summary(agg, out_dir, out_dir / "aggregated.md",
+                                   test_fitted_threshold=False)  # threshold frozen from val
             headline = agg["metrics"]
             logger.info(
                 f"{run_tag} | {args.dataset}:{variant_key} | {agg['n_folds']} folds | "

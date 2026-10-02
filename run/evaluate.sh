@@ -7,6 +7,9 @@
 #   CKPT   path to the .pth checkpoint          [required]
 #   OUT    output json  (default reports/results/${MODEL}_metrics.json)
 #   GPU    physical GPU id / "auto" / "cpu"     (default auto)
+#   VAL_PRED  val_predictions*.csv of the SAME checkpoint -> valthr_* keys
+#          (default: <fold>/val_predictions<tag>.csv next to the checkpoint, if any;
+#           the plain sensitivity/specificity keys use a threshold fitted on test)
 #
 # Usage:
 #   bash run/evaluate.sh MODEL=mobilenetv4_conv_medium \
@@ -22,11 +25,16 @@ select_gpu
 : "${MODEL:?MODEL env var required (e.g. mobilenetv4_conv_medium)}"
 : "${CKPT:?CKPT env var required (path to .pth)}"
 OUT="${OUT:-reports/results/${MODEL}_metrics.json}"
+if [ -n "${VAL_PRED:-}" ] && [ ! -s "${VAL_PRED}" ]; then
+    echo "[run] ERROR: VAL_PRED not found or empty: ${VAL_PRED}" >&2
+    exit 2
+fi
 
 echo "[run] Evaluating ${MODEL} from ${CKPT} -> ${OUT}"
 mkdir -p "$(dirname "${OUT}")"
 python scripts/evaluate.py \
     --model-name "${MODEL}" \
     --checkpoint "${CKPT}" \
-    --output "${OUT}"
+    --output "${OUT}" \
+    ${VAL_PRED:+--threshold-from "${VAL_PRED}"}
 echo "[run] DONE"

@@ -11,9 +11,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import pandas as pd
+
 from src.data.datamodule import SkinLesionDataModule
 from src.evaluation.confusion_matrix import plot_confusion_matrix
 from src.evaluation.evaluator import Evaluator
+from src.evaluation.metrics import metrics_at_frozen_threshold, youden_threshold
 from src.models.registry import MODEL_REGISTRY, build_model_from_name
 from src.utils.checkpoint import load_checkpoint
 from src.utils.config import load_config
@@ -21,6 +24,22 @@ from src.utils.logger import get_logger
 from src.utils.seed import set_seed
 
 logger = get_logger(__name__)
+
+
+def _val_predictions_for(checkpoint: str, explicit: str | None) -> Path | None:
+    """--threshold-from if given (must exist); else the trainer's own file for
+    this checkpoint: <fold>/checkpoints/best_model<tag>.pth -> <fold>/val_predictions<tag>.csv."""
+    if explicit:
+        path = Path(explicit)
+        if not path.is_file():
+            raise FileNotFoundError(f"--threshold-from not found: {path}")
+        return path
+    ckpt = Path(checkpoint)
+    tag = ckpt.stem[len("best_model"):] if ckpt.stem.startswith("best_model") else None
+    if tag is None or ckpt.parent.name != "checkpoints":
+        return None
+    path = ckpt.parent.parent / f"val_predictions{tag}.csv"
+    return path if path.is_file() else None
 
 
 def main():
@@ -32,7 +51,13 @@ def main():
     parser.add_argument("--fold", type=int, default=0, help="Which fold's test split to use")
     parser.add_argument("--config", default="configs/config.yaml")
     parser.add_argument("--output", default="reports/results/test_metrics.json")
+    parser.add_argument("--threshold-from", default=None,
+                        help="val_predictions*.csv of the SAME checkpoint; adds valthr_* keys "
+                             "(default: <fold>/val_predictions<tag>.csv next to "
+                             "<fold>/checkpoints/best_model<tag>.pth, when it exists)")
     args = parser.parse_args()
+    # Resolve (and fail on a missing --threshold-from) BEFORE the test-set pass.
+    val_pred = _val_predictions_for(args.checkpoint, args.threshold_from)
 
     cfg = load_config(args.config)
     set_seed(cfg.seed)
@@ -52,6 +77,17 @@ def main():
         sources=datamodule.test_sources(),
         metadata=test_meta,
     )
+    # The plain sensitivity/specificity/f1/threshold keys use Youden's J fitted
+    # on this test set (optimistic); add the same rates at the val-Youden
+    # threshold of the same checkpoint as valthr_* when its val predictions exist.
+    if val_pred is not None:
+        val = pd.read_csv(val_pred)
+        val_thr = youden_threshold(val["y_true"].values, val["y_prob"].values)
+        metrics.update(metrics_at_frozen_threshold(metrics["_y_true"], metrics["_y_prob"], val_thr))
+        logger.info(f"valthr_* added from {val_pred} (threshold={val_thr:.4f})")
+    else:
+        logger.warning("No val_predictions for this checkpoint: valthr_* not written; "
+                       "sensitivity/specificity use a threshold fitted on the test set.")
     evaluator.save_metrics(metrics, args.output)
     evaluator.save_predictions(
         metrics, Path(args.output).with_name(Path(args.output).stem + "_predictions.csv")

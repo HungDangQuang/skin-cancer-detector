@@ -238,6 +238,35 @@ của một phân hoạch dữ liệu khác, phải đổi cây ra (`OUT=exports
 hai model khác nhau dùng một tên — đúng loại lỗi mà cổng parity không bắt được vì nó so đúng cặp
 file mình được trỏ tới.
 
+### `sensitivity`/`specificity`/`f1_score` trong `test_metrics*.json` chọn ngưỡng trên CHÍNH tập test (ghi 2026-10-02)
+
+`train_teacher.py` và `train_student.py` gọi `Evaluator(model, ...)` không truyền `threshold`, nên
+`compute_metrics` lấy ngưỡng Youden's J **trên tập test đang chấm** (`src/evaluation/metrics.py`,
+nhánh `threshold is None`). Các key `threshold`, `sensitivity`, `specificity`, `precision`, `recall`,
+`f1_score`, `accuracy`, `tp/fp/tn/fn` và cột `y_pred` của `predictions*.csv` vì vậy **lạc quan**
+(ngưỡng đã nhìn nhãn test). Metric xếp hạng (AUPRC, pAUC, AUC) và `sens_at_{80,90,95}spec` không bị
+ảnh hưởng (không phụ thuộc một ngưỡng chọn trước).
+
+Hai script train (khi bản vá này đã có trên server) ghi **thêm** `valthr_threshold`, `valthr_sensitivity`,
+`valthr_specificity`, `valthr_precision`, `valthr_recall`, `valthr_f1_score`, `valthr_accuracy`,
+`valthr_tp/fp/tn/fn` — cùng các tỉ lệ nhưng ở ngưỡng Youden lấy từ **val** của chính checkpoint đó
+(`metrics_at_frozen_threshold()`). Key cũ giữ nguyên để run cũ còn so được; run cũ **không** có
+`valthr_*` (muốn có thì tính offline từ `val_predictions*.csv` + `predictions*.csv`). Khi trích độ
+nhạy/độ đặc hiệu ở một ngưỡng, dùng `valthr_*`. Ngưỡng của app (`make_app_config` — trên nhánh `feat/app-config`,
+`evaluate_external.py`) vốn đã đóng băng từ val, không bị ảnh hưởng.
+
+Run cũ (kể cả ứng viên ship và mọi số trong luận văn) không có `valthr_*` trong JSON — tính bù offline
+bằng `bash run/backfill_valthr.sh RESULTS_DIR=<cây> [PRED_NAME=predictions_auprc.csv]`: đọc
+`predictions*.csv` + `val_predictions*.csv` có sẵn, không chạy suy luận, chỉ ghi `reports/valthr/`,
+tách theo `source`; fold thiếu `val_predictions*.csv` được liệt kê ở mục "Coverage" (run trước khi
+trainer ghi file này sẽ thiếu — đừng trích run đó). `scripts/evaluate.py` (chấm một checkpoint) cũng
+thêm `valthr_*` khi tìm thấy `<fold>/val_predictions<tag>.csv` cạnh checkpoint hoặc qua
+`--threshold-from` (`run/evaluate.sh VAL_PRED=`); không có thì cảnh báo và chỉ ghi key cũ.
+`aggregated.md` (`aggregate_folds.py`) đưa `valthr_*` lên bảng headline kèm chú thích "ngưỡng chọn
+trên test" cho key thường (không in chú thích này cho kết quả external, vì ở đó ngưỡng đã đóng băng
+từ val). **Chưa đổi:** `compare_kd_results.py` và `analyze_pad_ablation.py` vẫn so `sensitivity`/
+`specificity` thường — số độ nhạy của chúng vẫn là số ngưỡng-trên-test.
+
 ## Operational / postmortems
 
 ### Track your own jobs — the box is shared

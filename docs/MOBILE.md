@@ -127,7 +127,9 @@ val input = loadBin(File(inputsDir, "0001.bin"))
 val t = Tensor.fromBlob(input, longArrayOf(1, 3, 224, 224))
 val logit = module.forward(EValue.from(t))[0].toTensor().dataAsFloatArray[0]
 val prob = 1f / (1f + kotlin.math.exp(-logit))
-// quyết định: prob >= youden_threshold (từ test_metrics.json), KHÔNG dùng 0.5
+// quyết định: prob >= ngưỡng đóng băng từ val (Youden trên val_predictions.csv của chính checkpoint,
+// hoặc config.json của app), KHÔNG dùng 0.5 và KHÔNG dùng `threshold` trong test_metrics.json
+// (ngưỡng đó chọn trên chính tập test — docs/GOTCHAS.md)
 ```
 
 ### 4.4 (a) Đo latency

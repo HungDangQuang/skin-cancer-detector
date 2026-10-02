@@ -56,13 +56,14 @@ still tees.
 | `srcsamp_eval.sh` | Arm C (source-stratified sampler) after training: aggregate + HAM/Fitzpatrick for both checkpoints + paired CIs vs the control (`reports/ci_srcsamp_*`) |
 | `ablation_pad.sh` | Data-strategy ablation B — PAD mixing (ISIC-only vs ISIC+PAD) |
 | `aggregate.sh` | fold_*/test_metrics.json → mean ± std (`aggregated.{json,md}`) |
-| `evaluate.sh` | Evaluate one checkpoint on the held-out test set |
+| `evaluate.sh` | Evaluate one checkpoint on the held-out test set (adds `valthr_*` when the checkpoint's `val_predictions*.csv` is found, or `VAL_PRED=`) |
 | `evaluate_external.sh` | Cross-domain / fairness eval on HAM10000 / Fitzpatrick17k (frozen threshold) |
 | `plot_pareto.sh` | Pareto figure: in-domain AUPRC (bootstrap CI) vs measured Pixel 6a latency — CPU-only, joins existing artifacts |
 | `plot_ham_summary.sh` | HAM10000 cross-domain summary figure (3 panels: KD forest plot · score-vs-gain · operating-point collapse) — CPU-only, joins two bootstrap reports |
 | `plot_fitzpatrick_summary.sh` | Fitzpatrick17k fairness summary figure (3 panels: tone-group gaps · prevalence trap · teacher-vs-student) — CPU-only, reads prevalence from a predictions.csv |
 | `plot_calibration_summary.sh` | Probability-calibration summary figure (3 panels: one-constant-per-domain · subgroup break · teacher→student inheritance) — CPU-only, derives every prevalence from the artifacts |
 | `bootstrap_ci.sh` | Bootstrap CIs from `predictions.csv`: per-run, paired KD delta, paired ablation delta (`__suffix` forks), named A-vs-B pairs (`PAIR=`), paired fairness gap, per-subgroup variants (`SUBGROUP=`) |
+| `backfill_valthr.sh` | Offline: sensitivity/specificity/F1 at the val-Youden threshold vs the test-fitted one, per run × fold × `source`, from existing `predictions*.csv` + `val_predictions*.csv` (CPU, writes only `reports/valthr/`) |
 | `attach_metadata.sh` | Add ISIC metadata columns to existing splits + `predictions.csv` (no GPU, no re-train) — unblocks subgroup calibration |
 | `make_benchmark_set.sh` | Build the fixed **100-image, class-balanced** set for latency/parity work (ids are NOT stable between calls — `docs/GOTCHAS.md`) |
 | `make_mobile_eval_bundle.sh` | Build the **mobile-evaluation bundle**: one zip of every image to be scored, manifest in split-file order, no balancing (spec: `docs/MOBILE_EVAL_PIPELINE.md`) |
@@ -209,6 +210,24 @@ brings `best_model_<m>.pth` along with `best_model.pth`. Cost: each extra monito
 more test + val inference pass per fold. A default run's result files are unchanged; its
 `config.yaml` only gains the `extra_monitors: []` line.
 
+**Threshold keys in `test_metrics*.json`.** `sensitivity`/`specificity`/`f1_score`/`threshold`
+(and `y_pred` in `predictions*.csv`) use Youden's J fitted on the test set itself, so they are
+optimistic. Runs trained by a trainer that includes this change also carry `valthr_*` keys — the same rates at the
+val-Youden threshold of the same checkpoint (`docs/GOTCHAS.md`). Quote `valthr_*`. Older runs do
+not have them in their JSON — back-fill them offline (no inference, output under `reports/valthr/`,
+nothing written inside the run-dirs; folds without `val_predictions*.csv` are listed under
+"Coverage", exit 1 if nothing was scored):
+
+```bash
+bash run/backfill_valthr.sh RESULTS_DIR=experiments/runs_newsplit_ddi                 # -> reports/valthr/runs_newsplit_ddi.{csv,md}
+bash run/backfill_valthr.sh RESULTS_DIR=experiments/runs_newsplit_ddi \
+     PRED_NAME=predictions_auprc.csv                                       # -> reports/valthr/runs_newsplit_ddi_auprc.{csv,md}
+```
+
+`run/evaluate.sh` (one checkpoint) adds `valthr_*` too when `<fold>/val_predictions<tag>.csv`
+sits next to the checkpoint, or from `VAL_PRED=<csv>`; without either it warns and writes only
+the test-fitted keys.
+
 The downstream tools read the `_<m>` twins only when told to — every default is the main
 checkpoint, and every non-default name gets its own output so nothing is overwritten:
 
@@ -301,6 +320,10 @@ symlinks under `.tmp/ci_srcsamp/` holding only the arm and its control.
 bash run/evaluate.sh MODEL=mobilenetv4_conv_medium \
      CKPT=experiments/runs/kd_efficientnetv2_m_to_mobilenetv4_conv_medium/fold_0/checkpoints/best_model.pth
 ```
+
+Adds `valthr_*` (val-Youden threshold) when `<fold>/val_predictions<tag>.csv` sits next to the
+checkpoint; `VAL_PRED=<csv>` overrides (checked before inference; a missing file exits 2).
+Without either, only the test-fitted `sensitivity`/`specificity` are written, with a warning.
 
 ### 5b. External evaluation — cross-domain (HAM10000) & fairness (Fitzpatrick17k)
 

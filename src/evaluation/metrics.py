@@ -211,18 +211,7 @@ def compute_metrics(
     # Threshold-free operating points clinicians actually pick (sens @ fixed spec)
     metrics.update(sensitivity_at_specificity(y_true, y_prob))
 
-    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
-    metrics["sensitivity"] = float(tp / (tp + fn)) if (tp + fn) > 0 else 0.0  # recall / TPR
-    metrics["specificity"] = float(tn / (tn + fp)) if (tn + fp) > 0 else 0.0  # TNR
-    metrics["precision"] = float(tp / (tp + fp)) if (tp + fp) > 0 else 0.0    # PPV
-    metrics["recall"] = metrics["sensitivity"]                                # alias for clarity
-    metrics["f1_score"] = float(f1_score(y_true, y_pred, zero_division=0))
-    total = tp + fp + tn + fn
-    metrics["accuracy"] = float((tp + tn) / total) if total > 0 else 0.0
-    metrics["tp"] = int(tp)
-    metrics["fp"] = int(fp)
-    metrics["tn"] = int(tn)
-    metrics["fn"] = int(fn)
+    metrics.update(_confusion_metrics(y_true, y_pred))
 
     # Calibration diagnostics (RAW — sigmoid output as-is). These are the only
     # metrics here sensitive to probability *magnitude* (not just ranking), so
@@ -233,6 +222,46 @@ def compute_metrics(
     metrics["ece"] = expected_calibration_error(y_true, y_prob)
 
     return metrics
+
+
+def _confusion_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict:
+    """Threshold-dependent rates + raw counts for one hard prediction vector."""
+    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
+    out = {}
+    out["sensitivity"] = float(tp / (tp + fn)) if (tp + fn) > 0 else 0.0  # recall / TPR
+    out["specificity"] = float(tn / (tn + fp)) if (tn + fp) > 0 else 0.0  # TNR
+    out["precision"] = float(tp / (tp + fp)) if (tp + fp) > 0 else 0.0    # PPV
+    out["recall"] = out["sensitivity"]                                    # alias for clarity
+    out["f1_score"] = float(f1_score(y_true, y_pred, zero_division=0))
+    total = tp + fp + tn + fn
+    out["accuracy"] = float((tp + tn) / total) if total > 0 else 0.0
+    out["tp"] = int(tp)
+    out["fp"] = int(fp)
+    out["tn"] = int(tn)
+    out["fn"] = int(fn)
+    return out
+
+
+def metrics_at_frozen_threshold(
+    y_true: list[int],
+    y_prob: np.ndarray,
+    threshold: float,
+    prefix: str = "valthr_",
+) -> dict:
+    """
+    Threshold-dependent metrics at a threshold chosen ELSEWHERE (e.g. Youden's J
+    on the val set), keys prefixed so they sit beside compute_metrics' own.
+
+    compute_metrics(threshold=None) picks Youden's J on the very set it scores,
+    so its sensitivity/specificity/f1 on the test set are optimistic. This is the
+    honest counterpart: the same rates with the threshold frozen before seeing
+    the test labels. Ranking metrics are threshold-free and are not repeated.
+    """
+    y_true = np.array(y_true)
+    y_prob = np.array(y_prob)
+    y_pred = (y_prob >= threshold).astype(int)
+    out = {"threshold": float(threshold), **_confusion_metrics(y_true, y_pred)}
+    return {f"{prefix}{k}": v for k, v in out.items()}
 
 
 def compute_kd_delta(metrics_no_kd: dict, metrics_with_kd: dict) -> dict:

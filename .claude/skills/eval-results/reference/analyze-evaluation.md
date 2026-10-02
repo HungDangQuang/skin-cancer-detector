@@ -195,7 +195,7 @@ This is a heuristic, not a t-test — language is "robust", "marginal", "noise",
 
 **Ranking + verdict rules:**
 - For KD-vs-baseline: with `predictions.csv` for both arms, KD wins **only if the paired CI of ΔAUPRC (and of the operating-point metric, e.g. Δsens_at_90spec) excludes 0 on the positive side**; a CI containing 0 is "indistinguishable", never "KD won". Point-estimate rule (fallback only, label it "point estimate, not tested"): `delta_auc > 0` AND `delta_sens > 0`; if sens worsens, KD did not win regardless of accuracy/specificity gains. (Domain priority: missing a malignant > false alarm.)
-- For cross-student: rank by **sensitivity first, then auc_roc**. Don't rank on accuracy — misleading at imbalance.
+- For cross-student: rank by **sensitivity first, then auc_roc**. Don't rank on accuracy — misleading at imbalance. `sensitivity` in `test_metrics*.json` uses Youden's J fitted on the test set (optimistic) — prefer `valthr_sensitivity` when the run has it, otherwise flag the number as test-threshold (`docs/GOTCHAS.md`).
 - For teacher vs student: a Good student is one whose `sens` and `auc_roc` are within ~0.02 of the teacher's. Bigger gap → KD didn't transfer well. (For model selection the author requires the student to **beat** the teacher — acceptance gate C2: paired CI lower bound of Δ(student − teacher) **> 0** on each gated domain, same splits and arm. "Within ~0.02" is only a health hint, never a pass.)
 - **None of these rankings is an acceptance verdict.** "KD wins" / "best pair" answers *which is better*; whether the winner is *good enough* is `acceptance-gates.md`.
 - Note any Pareto-dominated entry (worse on every metric than another) — those are clean losers.

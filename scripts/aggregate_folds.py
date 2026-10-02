@@ -68,7 +68,8 @@ def aggregate(per_fold: dict[int, dict]) -> dict:
 
 
 def write_markdown_summary(agg: dict, run_dir: Path, out_path: Path,
-                           metrics_name: str = "test_metrics.json") -> None:
+                           metrics_name: str = "test_metrics.json",
+                           test_fitted_threshold: bool = True) -> None:
     """Thesis-grade markdown report. Lists EVERY metric from every fold —
     headline rates first, then confusion counts, then anything else, then a
     per-fold matrix so the reader can recompute mean/std and verify."""
@@ -76,9 +77,11 @@ def write_markdown_summary(agg: dict, run_dir: Path, out_path: Path,
         "pauc_at_tpr80", "auc_roc", "auprc", "accuracy",
         "precision", "recall",
         "sensitivity", "specificity", "f1_score",
+        "valthr_sensitivity", "valthr_specificity", "valthr_f1_score",
         "sens_at_90spec", "sens_at_95spec",
     ]
-    count_metrics = ["tp", "fp", "tn", "fn", "threshold"]
+    count_metrics = ["tp", "fp", "tn", "fn", "threshold",
+                     "valthr_tp", "valthr_fp", "valthr_tn", "valthr_fn", "valthr_threshold"]
 
     lines = []
     lines.append(f"# 5-fold CV aggregate — `{run_dir.name}`")
@@ -98,6 +101,14 @@ def write_markdown_summary(agg: dict, run_dir: Path, out_path: Path,
             continue
         m = agg["metrics"][k]
         lines.append(f"| {k} | {m['mean']:.4f} | {m['std']:.4f} | {m['min']:.4f} | {m['max']:.4f} |")
+    if test_fitted_threshold:
+        # The trainers score test with Youden fitted on test; evaluate_external.py
+        # freezes the threshold from val and passes False.
+        lines.append("")
+        lines.append("`sensitivity`/`specificity`/`f1_score`/`threshold` (and tp/fp/tn/fn) use Youden's J "
+                 "fitted on the test set itself (optimistic). `valthr_*` = the same at the "
+                 "val-Youden threshold; quote those. Folds trained before `valthr_*` existed lack "
+                 "them (`run/backfill_valthr.sh`).")
 
     listed = set(headline_metrics)
 
