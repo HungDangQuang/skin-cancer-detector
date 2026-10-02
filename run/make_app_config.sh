@@ -20,13 +20,18 @@
 #   CKPT_TAG           "" or _auprc                              (default _auprc)
 #   PHONE_SENS_TARGET  sensitivity target of the phone point     (default 0.90)
 #   DEFAULT_OP         default operating point id                (default: the phone point)
-#   BENCHMARK_JSON     params/GFLOPs/size source  (default reports/benchmark/mobilenetv4_conv_medium.json)
+#   BENCHMARK_JSON     params/GFLOPs/size source  (default reports/benchmark/<student>.json of the run)
+#   PI_TRAIN           training prior for the prior shift  (default 1/(1+undersample_ratio); guide §1)
+#   BACKEND            xnnpack | portable                  (default xnnpack)
+#   THRESHOLD_NOTE     provenance appended to the phone point (e.g. a report path)
 #   FORCE              1 = overwrite OUT                         (default 0)
 # ============================================================================
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 for arg in "$@"; do export "${arg?}"; done
 start_log "make_app_config"
 activate_venv
+# CPU only; keep it off a card a training job may be using.
+export CUDA_VISIBLE_DEVICES=""
 
 : "${RUN_DIR:?RUN_DIR required}"
 : "${FOLD:?FOLD required}"
@@ -42,16 +47,21 @@ activate_venv
 CKPT_TAG="${CKPT_TAG-_auprc}"
 PHONE_SENS_TARGET="${PHONE_SENS_TARGET:-0.90}"
 DEFAULT_OP="${DEFAULT_OP:-}"
-BENCHMARK_JSON="${BENCHMARK_JSON:-reports/benchmark/mobilenetv4_conv_medium.json}"
+BENCHMARK_JSON="${BENCHMARK_JSON:-}"
+PI_TRAIN="${PI_TRAIN:-}"
+BACKEND="${BACKEND:-xnnpack}"
+THRESHOLD_NOTE="${THRESHOLD_NOTE:-}"
 FORCE="${FORCE:-0}"
 
 ARGS=(--run-dir "${RUN_DIR}" --fold "${FOLD}" --ckpt-tag "${CKPT_TAG}" --pte "${PTE}"
       --executorch-version "${EXECUTORCH_VERSION}" --model-id "${MODEL_ID}"
       --model-version "${MODEL_VERSION}" --display-name "${DISPLAY_NAME}"
       --phone-sens-target "${PHONE_SENS_TARGET}" --phone-prevalence "${PHONE_PREVALENCE}"
-      --global-prevalence "${GLOBAL_PREVALENCE}" --pi-target "${PI_TARGET}" --out "${OUT}")
+      --global-prevalence "${GLOBAL_PREVALENCE}" --pi-target "${PI_TARGET}" --out "${OUT}"
+      --backend "${BACKEND}" --threshold-note "${THRESHOLD_NOTE}")
 if [ -n "${DEFAULT_OP}" ]; then ARGS+=(--default-op "${DEFAULT_OP}"); fi
-if [ -f "${BENCHMARK_JSON}" ]; then ARGS+=(--benchmark-json "${BENCHMARK_JSON}"); fi
+if [ -n "${BENCHMARK_JSON}" ]; then ARGS+=(--benchmark-json "${BENCHMARK_JSON}"); fi
+if [ -n "${PI_TRAIN}" ]; then ARGS+=(--pi-train "${PI_TRAIN}"); fi
 if [ "${FORCE}" = "1" ]; then ARGS+=(--force); fi
 
 echo "[run] app config | run=${RUN_DIR} fold=${FOLD} ckpt_tag='${CKPT_TAG}' out=${OUT}"

@@ -28,10 +28,10 @@ tác giả** nên script bắt buộc truyền vào và dừng nếu thiếu.
 | # | Quyết định | Tham số | Ghi chú |
 |---|---|---|---|
 | 1 | Run, fold, checkpoint ship | `RUN_DIR`, `FOLD`, `CKPT_TAG` | Hiện tại: `runs_newsplit_ddi/kd_…__srcsamp`, fold 4 (trung vị val AUPRC), `CKPT_TAG=_auprc` |
-| 2 | `.pte` đã qua parity | `PTE`, `EXECUTORCH_VERSION` | Phải là `.pte` export **từ đúng checkpoint đó** và đã PASS `run/check_pte_parity.sh`. Phiên bản lấy từ `.venv-export` (`pip show executorch`); hiện là 1.5.1, đã chạy được trên `executorch-android:1.4.0` |
+| 2 | `.pte` đã qua parity | `PTE`, `EXECUTORCH_VERSION` | Phải là `.pte` export **từ đúng checkpoint đó** và đã PASS `run/check_pte_parity.sh`. Phiên bản lấy từ `.venv-export` (`pip show executorch`); hiện là 1.5.1, đã chạy được trên `executorch-android:1.4.0`. Đây là **ngoại lệ đã đo** của quy tắc "phiên bản phải trùng" (`ANDROID_APP_SPEC.md` §3.6); Gradle ghim đúng bản AAR đã kiểm (1.4.0). Đổi phiên bản nào cũng phải chạy lại parity trên máy. `BACKEND=portable` nếu `.pte` đã lùi về portable |
 | 3 | Tỉ lệ bệnh của ảnh camera trong thực tế | `PHONE_PREVALENCE` | Dùng cho PPV/NPV của điểm điện thoại. **Đừng** dùng 0,476 (tỉ lệ của test PAD — quần thể phòng khám chuyển tuyến, đã chọn lọc). Nếu chưa có số đáng tin, chọn một giá trị thận trọng và ghi nguồn |
 | 4 | Tỉ lệ bệnh tham chiếu | `GLOBAL_PREVALENCE` | Dùng cho điểm toàn cục và `metrics.prevalence`; test in-domain đo được 0,0045 |
-| 5 | Tỉ lệ đích để hiển thị "% rủi ro" | `PI_TARGET` | Prior-shift chỉ đổi con số hiển thị, **không** đổi quyết định (§3.4, I1–I2). Một prior chung làm hiệu chuẩn nhóm ảnh PAD xấu đi ở 17/19 lượt chạy (`reports/2026-09-09_calibration_findings.md`), nên nếu app chỉ nhận ảnh camera thì đặt bằng quyết định 3 |
+| 5 | Tỉ lệ đích để hiển thị "% rủi ro" | `PI_TARGET` | Prior-shift chỉ đổi con số hiển thị, **không** đổi quyết định (§3.4, I1–I2). Một prior chung làm hiệu chuẩn nhóm ảnh PAD xấu đi ở 17/19 lượt chạy (`reports/2026-09-09_calibration_findings.md`), nên nếu app chỉ nhận ảnh camera thì đặt bằng quyết định 3  **Lưu ý `PI_TRAIN`:** mặc định là `1/(1+undersample_ratio)` = 1/6, đúng cho toàn bộ ảnh của một epoch. Với arm `sampler_stratify_by=source`, riêng ảnh PAD trong mỗi epoch có tỉ lệ ác khác hẳn: fold 4 (bản split trên Mac, trước khi thêm DDI) có 690 ác và 818 lành PAD ⇒ khoảng 0,458 mỗi epoch. Nếu điểm mặc định là `phone_sens90`, cân nhắc `PI_TRAIN=<tỉ lệ đó>` để "% rủi ro" của ảnh camera không lệch. Quyết định không đổi (I1) |
 
 ## 2. Chạy (trên server)
 
@@ -80,3 +80,16 @@ không phát hành).
   điện thoại. Số theo miền nằm ở `reports/ci_gates_srcsamp_*.md`.
 - Ứng viên hiện tại **KHÔNG ĐẠT YÊU CẦU** theo cổng chấp nhận: B4 (HAM10000) dưới mục tiêu đã chốt 0,81.
   Phát hành để thử nghiệm phải ghi rõ điều này.
+
+## 6. Điều kiện dừng — báo lại, không tự xoay xở
+
+- Bất kỳ kiểm nào ở §3 lệch giá trị kỳ vọng.
+- Script dừng với lỗi I3, lỗi ghép val ↔ `val_split.csv`, hoặc dải rủi ro không tăng dần. Đừng sửa tay số trong file.
+- Thiếu `aggregated<tag>.json`: chạy `bash run/aggregate.sh RUN_DIR=<run> METRICS_NAME=test_metrics<tag>.json` trước.
+- App từ chối nạp `config.json` (thiếu trường bắt buộc, `schemaVersion` khác 1).
+- Có ý định chọn lại ngưỡng sau khi nhìn số trên test hay trên điện thoại. Việc đó là post-hoc và phải khai.
+
+## 7. Ghi chú về các file liên quan
+
+`docs/L3_CAMERA_EVAL_GUIDE.md` và `reports/2026-10-02_acceptance_verdict_srcsamp.md` nằm ở branch
+`docs/gates-signoff-and-guides`; merge cả hai branch thì mọi tham chiếu trong file này mới mở được.

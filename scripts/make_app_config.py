@@ -12,7 +12,7 @@ val_predictions*.csv has no source column; its rows follow
 Prevalences and the calibration target are DECISIONS, not constants, so they have no
 default: --phone-prevalence, --global-prevalence, --pi-target. See docs/APP_CONFIG_GUIDE.md.
 
-Usage (on the server; numpy/pandas/sklearn/omegaconf only, no torch):
+Usage (on the server, in .venv-linux — importing src.evaluation pulls in torch; CPU only):
     python scripts/make_app_config.py \
         --run-dir experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp \
         --fold 4 --ckpt-tag _auprc --pte exports/executorch_srcsamp/<model>.pte \
@@ -85,8 +85,11 @@ def threshold_for_specificity(y_true: np.ndarray, y_prob: np.ndarray, target: fl
     neg = np.sort(y_prob[y_true == 0])
     if neg.size == 0:
         sys.exit("ERROR: no benign rows to set a specificity threshold on")
-    k = int(math.ceil(round(neg.size * target, 9)))
-    return float(neg[k]) if k < neg.size else float(np.nextafter(neg[-1], 1.0))
+    k = int(math.ceil(round(neg.size * target, 9)))  # benign rows that must fall below t
+    if k <= 0:
+        return float(neg[0])
+    # Just above the k-th smallest benign score, so ties at that score stay below t.
+    return float(np.nextafter(neg[k - 1], np.inf))
 
 
 def rates(y_true: np.ndarray, y_prob: np.ndarray, thr: float) -> tuple[float, float, int, int]:
@@ -108,11 +111,12 @@ def ppv_npv(sens: float, spec: float, prev: float) -> tuple[float, float]:
 def operating_point(op_id, label, thr, test, prevalence, shift, source_desc, eval_desc):
     sens, spec, n_pos, n_neg = rates(test["y_true"].to_numpy(), test["y_prob"].to_numpy(), thr)
     ppv, npv = ppv_npv(sens, spec, prevalence)
+    thr_w = round(thr, 6)  # the value written to the file; I3 is defined on what the app reads
     return {
         "id": op_id,
         "label": label,
-        "threshold": round(thr, 6),
-        "calibratedThreshold": round(_sigmoid(_logit(thr) + shift), 6),
+        "threshold": thr_w,
+        "calibratedThreshold": round(_sigmoid(_logit(thr_w) + shift), 8),
         "sensitivity": round(sens, 4),
         "specificity": round(spec, 4),
         "prevalenceForPpv": prevalence,
@@ -148,6 +152,11 @@ def main() -> None:
                     help="calibration target prior for the displayed risk (prior shift)")
     ap.add_argument("--default-op", default=None, help="default operating point id (default: the phone point)")
     ap.add_argument("--benchmark-json", type=Path, default=None)
+    ap.add_argument("--pi-train", type=float, default=None,
+                    help="training prior for the prior shift (default 1/(1+data.undersample_ratio)); see the guide for phone photos")
+    ap.add_argument("--backend", default="xnnpack", help="backend the .pte was lowered to (xnnpack | portable)")
+    ap.add_argument("--threshold-note", default="",
+                    help="extra provenance appended to the phone point's thresholdSource (e.g. a report path)")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--force", action="store_true", help="overwrite an existing --out")
     args = ap.parse_args()
@@ -171,10 +180,14 @@ def main() -> None:
     if "source" not in test.columns:
         sys.exit(f"ERROR: predictions{tag}.csv has no source column")
     agg_path = args.run_dir / f"aggregated{tag}.json"
-    agg = json.loads(agg_path.read_text()) if agg_path.is_file() else {}
+    if not agg_path.is_file():
+        sys.exit(f"ERROR: missing {agg_path} — run run/aggregate.sh (METRICS_NAME=test_metrics{tag}.json) first")
+    agg = json.loads(agg_path.read_text())
 
     ratio = float(cfg.data.get("undersample_ratio", 5))
-    pi_train = 1.0 / (1.0 + ratio)
+    pi_train = args.pi_train if args.pi_train is not None else 1.0 / (1.0 + ratio)
+    if not 0.0 < pi_train < 1.0:
+        sys.exit(f"ERROR: piTrain must be in (0, 1), got {pi_train}")
     shift = _logit(args.pi_target) - _logit(pi_train)
 
     vp = val[val["source"] == PHONE_SOURCE]
@@ -190,7 +203,7 @@ def main() -> None:
         operating_point(
             phone_id, "Camera photos", t_phone, tp, args.phone_prevalence, shift,
             f"sensitivity {pct}% on the {PHONE_SOURCE} rows of fold_{args.fold} val_predictions{tag}.csv "
-            f"(n={len(vp)}); post-hoc choice, see reports/2026-10-01_pad_threshold/",
+            f"(n={len(vp)})" + (f"; {args.threshold_note}" if args.threshold_note else ""),
             f"test {PHONE_SOURCE} rows of fold_{args.fold} predictions{tag}.csv"),
         operating_point(
             "global_youden", "Reference (all images)", t_global, test, args.global_prevalence, shift,
@@ -208,7 +221,9 @@ def main() -> None:
     cuts_raw = [threshold_for_sensitivity(y, p, 0.99),
                 t_phone if default_op == phone_id else t_global,
                 threshold_for_specificity(y, p, 0.95)]
-    cuts = [round(_sigmoid(_logit(c) + shift), 6) for c in cuts_raw]
+    cuts = [round(_sigmoid(_logit(c) + shift), 8) for c in cuts_raw]
+    # Spec §3.2: "moderate" ends exactly at the default point's calibratedThreshold.
+    cuts[1] = next(o["calibratedThreshold"] for o in ops if o["id"] == default_op)
     if not (cuts[0] < cuts[1] < cuts[2] < 1.0):
         sys.exit(f"ERROR: risk-band cut points are not increasing ({cuts}); set them by hand")
     risk_bands = [
@@ -226,15 +241,24 @@ def main() -> None:
     val_norm = next((t for t in cfg.augmentation.val if t.name == "Normalize"), None)
     if val_norm is None:
         sys.exit("ERROR: no Normalize step in augmentation.val of the run config")
-    bench = json.loads(args.benchmark_json.read_text()) if args.benchmark_json else {}
+    bench_path = args.benchmark_json
+    if bench_path is None and "student" in cfg:
+        guess = Path("reports/benchmark") / f"{cfg.student.name}.json"  # same architecture as the run
+        bench_path = guess if guess.is_file() else None
+    if bench_path is None:
+        print("WARN: no benchmark JSON for this architecture — params/GFLOPs/size left out")
+    bench = json.loads(bench_path.read_text()) if bench_path else {}
     metrics = {"prevalence": args.global_prevalence, "nFolds": agg.get("n_folds")}
     for out_key, key in [("paucAtTpr80", "pauc_at_tpr80"), ("aucRoc", "auc_roc"), ("auprc", "auprc"),
-                         ("sensAt80Spec", "sens_at_80spec"), ("brier", "brier"), ("ece", "ece")]:
+                         ("sensAt80Spec", "sens_at_80spec"), ("sensitivity", "sensitivity"),
+                         ("specificity", "specificity"), ("precision", "precision"),
+                         ("brier", "brier"), ("ece", "ece")]:
         v = agg_metric(agg, key)
         if v:
             metrics[out_key] = v
     metrics["note"] = ("5-fold test means of the threshold-free metrics, whole in-domain test set "
-                       "(ISIC + PAD pooled); per-domain numbers: reports/ci_gates_srcsamp_*.md")
+                       "(ISIC + PAD pooled). sensitivity/specificity/precision are at the TEST-set Youden threshold "
+                       "(optimistic); the operating points above are the deployment numbers.")
     for out_key, key in [("paramsMillions", "params_millions"), ("gflops", "gflops"),
                          ("fp32SizeMb", "fp32_size_mb")]:
         if key in bench:
@@ -251,7 +275,7 @@ def main() -> None:
         "exportedAt": datetime.fromtimestamp(args.pte.stat().st_mtime, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "executorchVersion": args.executorch_version,
         "pteSha256": hashlib.sha256(args.pte.read_bytes()).hexdigest(),
-        "backend": "xnnpack",
+        "backend": args.backend,
         "asset": "model.pte",
         "input": {
             "size": int(cfg.data.image_size), "channels": 3, "channelOrder": "RGB", "layout": "CHW",
@@ -263,7 +287,7 @@ def main() -> None:
         "output": {"count": 1, "names": ["logit"], "activation": "sigmoid", "positiveClass": "malignant"},
         "calibration": {
             "method": "prior_shift", "piTrain": round(pi_train, 8), "piTarget": args.pi_target,
-            "logitShift": round(shift, 5),
+            "logitShift": shift,  # full precision: the app checks I3 against this value
             "note": "logit_cal = logit + logit(piTarget) - logit(piTrain); monotone, does not change decisions",
         },
         "defaultOperatingPoint": default_op,
@@ -275,7 +299,7 @@ def main() -> None:
                 "note": "Requires a 2-output GatedModel .pte — see docs/ood_gate_plan.md §5."},
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(config, indent=2) + "\n")
+    args.out.write_text(json.dumps(config, indent=2, allow_nan=False) + "\n")
     print(f"Wrote {args.out}")
     for o in ops:
         print(f"  {o['id']:<14} thr={o['threshold']:.4f} sens={o['sensitivity']:.3f} "
