@@ -1,0 +1,15 @@
+# Chỗ cần sửa trong luận văn — CHỈ GHI CHÚ, CHƯA SỬA
+
+> Tác giả (02/10/2026): "ở đoạn nào cần sửa trong luận văn thì remark cần sửa thôi, chưa sửa ngay".
+> Luận văn chỉ sửa khi đã có kết quả ổn. Số dòng tính trên `thesis/LUAN_VAN.md` ở commit `cca085f` (30/09/2026);
+> sửa luận văn ở chỗ khác thì số dòng có thể lệch — tìm theo trích dẫn.
+
+| # | Chỗ | Vấn đề | Cần làm | Nguồn |
+|---|---|---|---|---|
+| 1 | `:1412` "việc hiệu chỉnh lại xác suất hiển thị ở Mục 3.11 có thể làm hoàn toàn về sau" | Mục 3.11 hiện là "Đưa mô hình lên thiết bị", không có phần hiệu chuẩn (đã gỡ 09/09). App giờ chỉ đưa ra kết luận nhị phân | Bỏ tham chiếu treo; nói app quyết định trên `rawProb ≥ ngưỡng` và không hiển thị xác suất | `docs/ANDROID_APP_SPEC.md` §3.4a |
+| 2 | `:1514` "… phải được hiệu chỉnh lại, và đó chính là lý do tồn tại của Mục 3.11" | như #1 | Viết lại: xác suất thô bị phóng đại (π_train = 1/6) nên app **không hiển thị** nó; chỉ hiện kết luận | như trên |
+| 3 | Mục 3.11 (`:1597`) | Chưa mô tả chế độ hiển thị và ngưỡng của app | Thêm: chế độ nhị phân; ngưỡng `phone_sens90` chọn trên ảnh PAD của val (**post-hoc**); ngưỡng Youden toàn cục vô dụng trên ảnh điện thoại (báo nhầm 207/208); ảnh kiểu ISIC gần như bị bỏ sót ở ngưỡng PAD | `reports/2026-10-02_threshold_options/README.md` |
+| 4 | Độ nhạy/độ đặc hiệu ở ngưỡng Youden: Bảng 4.3 cột Sensitivity (`:1683-1689`), Bảng 4.5 dòng Sensitivity (`:1741`), "2,45 ca"/"5,2 ca" (`:1802`), baseline 91,2–92,3% (`:1804`), Bảng A.1 cột Sens/Spec (`:2295` trở đi), bảng metric (`:1571`) | Ngưỡng Youden được chọn **trên chính tập test** → số lạc quan; `:963` và `:1800` không nói điều này | Thay bằng `valthr_*` (ngưỡng chọn trên val) — tính bằng `run/backfill_valthr.sh`; ma trận v1 chỉ còn trên Mac, phải đẩy lên server trước. Hoặc khai rõ ngưỡng chọn trên test | `docs/GOTCHAS.md` (mục test-Youden); memory `project_test_youden_threshold` |
+| 5 | Mục 4.6.1 PAD ablation, câu ConvNeXtV2 "độ nhạy toàn tập giảm −0,0199" (`:1912`) và mọi kết luận "thắng" theo ΔSens | `analyze_pad_ablation.py` cũ chọn Youden trên **từng tập con của test**; trên một phép thử đường code nó đảo kết luận ở tập con ISIC | Chạy lại `scripts/analyze_pad_ablation.py` (đã sửa, PR #16) và cập nhật các kết luận dựa trên độ nhạy | `docs/GOTCHAS.md` |
+| 6 | Phần cổng chấp nhận (khi đưa vào luận văn) | Điểm vận hành "độ nhạy tại độ đặc hiệu 80%" chọn để khớp mốc Cochrane, nhưng bảng cổng soạn **sau** khi đã thấy kết quả sens@90spec | Khai rõ thời điểm chọn; nêu sens@90spec bên cạnh (PAD 0,6074, Fitzpatrick 0,3415) | `.claude/skills/eval-results/reference/acceptance-gates.md:43, :110` |
+| 7 | Chương 4 / kết luận (khi viết lại trên splits v2) | Phán quyết ứng viên ship: **KHÔNG ĐẠT YÊU CẦU** (B4); C1 ô PAD = chưa chứng minh; lợi ích KD in-domain nằm ở miền ISIC | Trích theo `reports/2026-10-02_acceptance_verdict_srcsamp.md` và `reports/2026-10-02_c1_pad_cell_srcsamp.md`; không suy "KD tốt hơn baseline" thành "đạt" | `acceptance-gates.md` §0, §4 |
