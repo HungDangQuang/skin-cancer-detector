@@ -50,6 +50,7 @@ Quote metrics in this order (the script already orders them this way):
 1. **AUPRC** — the headline at ~0.4% prevalence; AUC-ROC is optimistic here. Compare against `prevalence` (its random baseline).
 2. **pAUC@TPR80** — the official ISIC 2024 metric, range ≈ [0.02, 0.20].
 3. **AUC-ROC**, then **sensitivity** and the fixed-specificity operating points `sens_at_95spec` / `sens_at_90spec` (catching malignant matters most), then specificity / F1.
+   The plain `sensitivity`/`specificity`/`f1_score` keys use Youden's J fitted on the **test set itself** (optimistic); quote `valthr_*` (val-frozen threshold; trainers with this change, or back-filled by `run/backfill_valthr.sh`) when present, and say so when only the plain keys exist (`docs/GOTCHAS.md`).
 
 Always cite **mean ± std across folds**, never a single fold. A delta smaller than the
 baseline's fold-to-fold std is within noise — say so rather than calling it a win.

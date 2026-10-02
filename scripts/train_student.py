@@ -20,6 +20,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from src.data.datamodule import SkinLesionDataModule
 from src.evaluation.evaluator import Evaluator
+from src.evaluation.metrics import metrics_at_frozen_threshold
 from src.models.registry import build_model
 from src.training.kd_trainer import KDTrainer
 from src.training.trainer import Trainer
@@ -143,6 +144,13 @@ def _evaluate_checkpoint(cfg, student_cfg, student, datamodule, run_dir: Path, t
         # source of the frozen Youden threshold in scripts/evaluate_external.py.
         val_metrics = evaluator.evaluate(datamodule.val_dataloader())
         evaluator.save_predictions(val_metrics, run_dir / f"val_predictions{tag}.csv")
+        # test_metrics' own sensitivity/specificity/f1 use Youden's J fitted on
+        # the TEST set (optimistic). Add the same rates at the val-Youden
+        # threshold as valthr_* keys; the existing keys stay as they were so
+        # older runs remain comparable.
+        test_metrics.update(metrics_at_frozen_threshold(
+            test_metrics["_y_true"], test_metrics["_y_prob"], val_metrics["threshold"]))
+        evaluator.save_metrics(test_metrics, run_dir / f"test_metrics{tag}.json")
     else:
         logger.warning(f"No best checkpoint at {best_ckpt}; skipping test-set evaluation.")
 

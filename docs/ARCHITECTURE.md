@@ -69,7 +69,7 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | | `distillation.py` | `BinaryDistillationLoss` (T=4.0, alpha=0.3; `soft_loss_type` = `bce` mặc định / `mse`) |
 | | `feature_distillation.py` | `RKDLoss` (Park 2019 — distance+angle, opt-in qua `distillation_rkd.yaml`) |
 | | `callbacks.py` / `optimizers.py` / `schedulers.py` | early stopping/checkpoint, optimizer, LR schedule |
-| `src/evaluation/` | `metrics.py` | `compute_metrics()` → `pauc_at_tpr80`, `auc_roc`, `auprc`(+`prevalence`), sensitivity/specificity, `sens_at_{90,95}spec`, TP/FP/TN/FN, `brier`/`ece` (calibration RAW) |
+| `src/evaluation/` | `metrics.py` | `compute_metrics()` → `pauc_at_tpr80`, `auc_roc`, `auprc`(+`prevalence`), sensitivity/specificity, `sens_at_{80,90,95}spec`, TP/FP/TN/FN, `brier`/`ece` (calibration RAW); `metrics_at_frozen_threshold()` → the same threshold rates as `valthr_*` at a val-chosen threshold (the trainers add these to `test_metrics*.json`, since the plain keys use Youden on test) |
 | | `evaluator.py` | `Evaluator.evaluate()`, `save_predictions()` (ghi `predictions.csv`; train scripts cũng ghi `val_predictions.csv` = fit-set cho calibration) |
 | | `confusion_matrix.py` / `grad_cam.py` | trực quan hoá |
 | `src/inference/` | `predictor.py` / `ensemble.py` | inference đơn / ensemble. **(PLANNED)** `ood_gate.py` — cổng Mahalanobis từ chối ảnh không hợp lệ, post-hoc/opt-in, xem [docs/ood_gate_plan.md](ood_gate_plan.md) |
