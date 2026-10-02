@@ -23,7 +23,7 @@
   **Logit của model cũ là lượt chạy ngày 29/09**, dùng lại nguyên (trùng byte với
   `eval-results/2026-09-29-pixel6a/processed224/mobilenetv4_ddi_fold0.csv`); chỉ model mới chạy ngày 01/10.
 - Cùng Pixel 6a (Tensor G1), `executorch-android-1.4.0`, 4 luồng, batch 1, cùng bundle 70.883 ảnh (manifest `2128e9ac…`).
-- Chấm lại trên server bằng `run/eval_from_logits.sh` + `run/bootstrap_ci.sh` qua driver `.tmp_pixel_cmp.sh`
+- Chấm lại trên server bằng `run/eval_from_logits.sh` + `run/bootstrap_ci.sh` qua driver `.tmp/archived_root_drivers_20261002/.tmp_pixel_cmp.sh` (local, untracked)
   (**untracked**); kết quả `reports/mobile_eval_pixel6a_20261001/`. Trong `comparison.md` ở đó, cả hai cột đều có nhãn
   `mobile`: **cột 1 = model cũ, cột 2 = model mới, Δ = mới − cũ**.
 
