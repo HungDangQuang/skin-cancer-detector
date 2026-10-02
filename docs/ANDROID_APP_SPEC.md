@@ -481,7 +481,7 @@ Worked examples (use them as test vectors):
 
 `fold_N/test_metrics.json["threshold"]` is chosen by maximizing Youden's J **on the test set** — fine for reporting, optimistic for deployment. The shipped threshold must instead be derived from `fold_4/val_predictions.csv` (written by the training scripts precisely for this) and `thresholdSource` in the config must say so.
 
-Repo-side follow-up (not part of the Android work, but the app blocks on the config): add `scripts/make_app_config.py` that reads `aggregated.json` + the chosen fold's `val_predictions.csv` / `test_metrics.json` and emits the model's `config.json`. Until it exists, hand-write the config from the numbers in §2 and set `"thresholdSource": "TEMPORARY: test-set Youden of fold 4 — replace before release"`.
+Repo side: `scripts/make_app_config.py` (runner `run/make_app_config.sh`, guide `docs/APP_CONFIG_GUIDE.md`, added 2026-10-02) emits the model's `config.json` from `aggregated<tag>.json`, the chosen fold's `val_predictions<tag>.csv` (thresholds) and `predictions<tag>.csv` (reported sensitivity/specificity). It does **not** read `test_metrics.json`. Never hand-write thresholds.
 
 ### 3.5a Phone photos need their OWN operating point (measured 2026-10-01)
 
@@ -517,8 +517,11 @@ Ship it as an extra `operatingPoints` entry (e.g. `"id": "phone_sens90"`) and ma
 §3.2 also needs `label`, `calibratedThreshold`, `sensitivity`, `specificity`, `ppvAtPrevalence`,
 `npvAtPrevalence`, `falseAlarmsPer1000` for this entry (PPV/NPV must use the phone-photo prevalence,
 not 0.0039), `riskBands` must be re-cut around the new default's `calibratedThreshold`, and
-`thresholdSource` must name both sources. Those values belong to `scripts/make_app_config.py` (§3.5),
-which does not exist yet.
+`thresholdSource` must name both sources. `scripts/make_app_config.py` (§3.5) now emits all of these;
+the three prevalences (`PHONE_PREVALENCE`, `GLOBAL_PREVALENCE`, `PI_TARGET`) are author decisions it requires.
+The `.pte` of the current candidate was exported with ExecuTorch 1.5.1 and ran on `executorch-android:1.4.0`
+(Pixel 6a, 2026-10-01) — an exception to §3.6's "versions must match", measured, not assumed; pin the AAR
+you verified.
 
 ### 3.6 Version pinning between export and runtime
 
@@ -1644,7 +1647,7 @@ app/src/main/assets/models/catalog.json              # add the entry, set active
 app/src/androidTest/assets/parity/<model-id>/        # ref.csv + 5 × .bin (MA9)
 ```
 
-The per-model `config.json` is hand-written for now from §2 + the chosen fold's `test_metrics.json`; replace it with the output of `scripts/make_app_config.py` once that script exists (§3.5). Nothing in the Kotlin sources changes for any of this.
+The per-model `config.json` is the output of `scripts/make_app_config.py` (§3.5, `docs/APP_CONFIG_GUIDE.md`). Nothing in the Kotlin sources changes for any of this.
 
 ### 15.5 Source-of-truth index (where each constant came from)
 
