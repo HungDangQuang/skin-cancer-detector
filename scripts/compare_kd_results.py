@@ -41,11 +41,16 @@ PRIORITY_METRICS = [
     "pauc_at_tpr80",
     "auc_roc",
     "sensitivity",
+    "valthr_sensitivity",
     "sens_at_95spec",
     "sens_at_90spec",
     "specificity",
+    "valthr_specificity",
     "f1_score",
 ]
+# `sensitivity`/`specificity`/`f1_score` use Youden's J fitted on the TEST set (the
+# trainers pass no threshold) — optimistic. `valthr_*` is the same at the val-Youden
+# threshold; older runs lack it (run/backfill_valthr.sh), so it shows "—" there.
 # Ranking keys (in tie-break order) for the two views.
 PERF_KEYS = ["auprc", "pauc_at_tpr80"]
 DELTA_KEYS = ["auprc", "pauc_at_tpr80"]
@@ -150,6 +155,14 @@ def fmt(agg: dict, key: str) -> str:
     return f"{e['mean']:.4f} ± {e['std']:.4f}" if e else "—"
 
 
+def sens_key(aggs: list) -> tuple[str, str]:
+    """Sensitivity column for a table: `valthr_sensitivity` only when EVERY run in the
+    table has it, so one column never mixes val-frozen and test-fitted thresholds."""
+    if aggs and all("valthr_sensitivity" in a["metrics"] for a in aggs):
+        return "valthr_sensitivity", "Sensitivity (val thr)"
+    return "sensitivity", "Sensitivity (test-fitted thr)"
+
+
 def fmt_delta(d) -> str:
     if d is None:
         return "—"
@@ -249,36 +262,39 @@ def render_md(pairs, teachers, runs_dir: Path) -> str:
     L.append("")
 
     # 2. Ranking A — by student performance
+    sk, sk_label = sens_key([p["kd"] for p in pairs])
     L += ["## 2. Ranking A — best student performance (KD runs, by AUPRC then pAUC)", "",
-          "| rank | teacher → student | AUPRC | pAUC@TPR80 | AUC-ROC | Sensitivity |",
+          f"| rank | teacher → student | AUPRC | pAUC@TPR80 | AUC-ROC | {sk_label} |",
           "|---|---|---|---|---|---|"]
     for i, p in enumerate(rank_perf(pairs), 1):
         L.append(f"| {i} | `{p['teacher']}`→`{p['student']}`{p['suffix']} | "
                  f"{fmt(p['kd'],'auprc')} | {fmt(p['kd'],'pauc_at_tpr80')} | "
-                 f"{fmt(p['kd'],'auc_roc')} | {fmt(p['kd'],'sensitivity')} |")
+                 f"{fmt(p['kd'],'auc_roc')} | {fmt(p['kd'], sk)} |")
     L.append("")
 
     # 3. Ranking B — by KD improvement
     rd = rank_delta(pairs)
+    dk, dk_label = sens_key([a for p in rd for a in (p["kd"], p["baseline"])])
     L += ["## 3. Ranking B — biggest KD improvement (Δ vs same student's baseline)", "",
-          "| rank | teacher → student | ΔAUPRC | ΔpAUC@TPR80 | ΔAUC-ROC | ΔSensitivity |",
+          f"| rank | teacher → student | ΔAUPRC | ΔpAUC@TPR80 | ΔAUC-ROC | Δ{dk_label} |",
           "|---|---|---|---|---|---|"]
     for i, p in enumerate(rd, 1):
         L.append(f"| {i} | `{p['teacher']}`→`{p['student']}`{p['suffix']} | "
                  f"{fmt_delta(p['deltas'].get('auprc'))} | {fmt_delta(p['deltas'].get('pauc_at_tpr80'))} | "
-                 f"{fmt_delta(p['deltas'].get('auc_roc'))} | {fmt_delta(p['deltas'].get('sensitivity'))} |")
+                 f"{fmt_delta(p['deltas'].get('auc_roc'))} | {fmt_delta(p['deltas'].get(dk))} |")
     if not rd:
         L.append("| — | (no matching baseline_<student> runs to compare) | — | — | — | — |")
     L.append("")
 
     # 4. Teacher reference
     if teachers:
+        tk, tk_label = sens_key(list(teachers.values()))
         L += ["## 4. Teacher reference (standalone, for teacher vs student gap)", "",
-              "| teacher | AUPRC | pAUC@TPR80 | AUC-ROC | Sensitivity |",
+              f"| teacher | AUPRC | pAUC@TPR80 | AUC-ROC | {tk_label} |",
               "|---|---|---|---|---|"]
         for (name, suffix), agg in sorted(teachers.items()):
             L.append(f"| `{name}`{suffix} | {fmt(agg,'auprc')} | {fmt(agg,'pauc_at_tpr80')} | "
-                     f"{fmt(agg,'auc_roc')} | {fmt(agg,'sensitivity')} |")
+                     f"{fmt(agg,'auc_roc')} | {fmt(agg, tk)} |")
         L.append("")
 
     # 5. Verdict
