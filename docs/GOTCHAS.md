@@ -264,8 +264,11 @@ thêm `valthr_*` khi tìm thấy `<fold>/val_predictions<tag>.csv` cạnh checkp
 `--threshold-from` (`run/evaluate.sh VAL_PRED=`); không có thì cảnh báo và chỉ ghi key cũ.
 `aggregated.md` (`aggregate_folds.py`) đưa `valthr_*` lên bảng headline kèm chú thích "ngưỡng chọn
 trên test" cho key thường (không in chú thích này cho kết quả external, vì ở đó ngưỡng đã đóng băng
-từ val). **Chưa đổi:** `compare_kd_results.py` và `analyze_pad_ablation.py` vẫn so `sensitivity`/
-`specificity` thường — số độ nhạy của chúng vẫn là số ngưỡng-trên-test.
+từ val). `compare_kd_results.py` hiện cả `valthr_*`; các bảng xếp hạng chỉ dùng `valthr_sensitivity` khi
+**mọi** run trong bảng có nó, nếu không thì giữ key cũ và ghi nhãn "test-fitted thr" (không trộn hai
+loại trong một cột). `analyze_pad_ablation.py` chấm từng tập con ở ngưỡng Youden của val của fold đó
+(trước đây chọn ngưỡng trên chính tập con của test — còn lạc quan hơn) và kết luận theo
+`valthr_sensitivity` khi cả hai arm có `val_predictions.csv`.
 
 ## Operational / postmortems
 

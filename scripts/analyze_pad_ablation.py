@@ -33,11 +33,15 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from src.evaluation.metrics import compute_metrics  # noqa: E402
+from src.evaluation.metrics import (  # noqa: E402
+    compute_metrics, metrics_at_frozen_threshold, youden_threshold,
+)
 
 # Metrics reported in the comparison tables (headline first).
+# `sensitivity`/`specificity` use Youden fitted on the scored test subset itself
+# (optimistic); `valthr_*` use the fold's val-Youden threshold (val_predictions.csv).
 REPORTED = ["auprc", "pauc_at_tpr80", "auc_roc", "sensitivity", "specificity",
-            "sens_at_95spec", "prevalence"]
+            "valthr_sensitivity", "valthr_specificity", "sens_at_95spec", "prevalence"]
 SUBSETS = ["all", "isic2024", "pad_ufes_20"]
 
 
@@ -57,8 +61,9 @@ def _load_predictions(fold_dir: Path) -> list[dict]:
     return rows
 
 
-def _metrics_for_subset(rows: list[dict], subset: str) -> dict | None:
-    """compute_metrics over one source subset ('all' = whole test)."""
+def _metrics_for_subset(rows: list[dict], subset: str, val_thr: float | None = None) -> dict | None:
+    """compute_metrics over one source subset ('all' = whole test), plus valthr_* at
+    the fold's val-Youden threshold when one is given."""
     if subset != "all":
         rows = [r for r in rows if r["source"] == subset]
     if not rows:
@@ -68,7 +73,21 @@ def _metrics_for_subset(rows: list[dict], subset: str) -> dict | None:
     # A subset with only one class can't yield AUC/AUPRC — skip it loudly.
     if len(set(y_true)) < 2:
         return None
-    return compute_metrics(y_true, y_prob)
+    m = compute_metrics(y_true, y_prob)
+    if val_thr is not None:
+        m.update(metrics_at_frozen_threshold(y_true, y_prob, val_thr))
+    return m
+
+
+def _val_threshold(fold_dir: Path) -> float | None:
+    """Youden's J on the fold's own val_predictions.csv (what the app would freeze)."""
+    csv_path = fold_dir / "val_predictions.csv"
+    if not csv_path.is_file():
+        return None
+    with csv_path.open() as fh:
+        rows = list(csv.DictReader(fh))
+    return youden_threshold(np.array([int(r["y_true"]) for r in rows]),
+                            np.array([float(r["y_prob"]) for r in rows]))
 
 
 def _arm_summary(run_dir: Path) -> dict[str, dict[str, dict]]:
@@ -85,8 +104,9 @@ def _arm_summary(run_dir: Path) -> dict[str, dict[str, dict]]:
         if not rows:
             continue
         n_folds_used += 1
+        val_thr = _val_threshold(fd)
         for subset in SUBSETS:
-            m = _metrics_for_subset(rows, subset)
+            m = _metrics_for_subset(rows, subset, val_thr)
             if m is None:
                 continue
             for k in REPORTED:
@@ -133,16 +153,20 @@ def build_report(with_pad: dict, no_pad: dict, name: str) -> str:
             delta = f"{b['mean'] - a['mean']:+.4f}" if (a and b) else "—"
             lines.append(f"| {k} | {_fmt(a)} | {_fmt(b)} | {delta} |")
 
-        # Verdict for this subset (win iff ΔAUPRC>0 AND ΔSens>0).
+        # Verdict for this subset (win iff ΔAUPRC>0 AND ΔSens>0). Sensitivity at the
+        # val-frozen threshold when BOTH arms have it; else the test-fitted one, labelled.
         a_ap, b_ap = np_.get("auprc"), wp.get("auprc")
-        a_se, b_se = np_.get("sensitivity"), wp.get("sensitivity")
+        se_key = ("valthr_sensitivity" if np_.get("valthr_sensitivity") and wp.get("valthr_sensitivity")
+                  else "sensitivity")
+        se_tag = "val thr" if se_key == "valthr_sensitivity" else "test-fitted thr"
+        a_se, b_se = np_.get(se_key), wp.get(se_key)
         if a_ap and b_ap and a_se and b_se:
             d_ap = b_ap["mean"] - a_ap["mean"]
             d_se = b_se["mean"] - a_se["mean"]
             win = d_ap > 0 and d_se > 0
             verdict = "✅ PAD HELPS" if win else "❌ no clear win"
             lines.append(f"\n**Verdict:** {verdict} "
-                         f"(ΔAUPRC={d_ap:+.4f}, ΔSens={d_se:+.4f}; "
+                         f"(ΔAUPRC={d_ap:+.4f}, ΔSens [{se_tag}]={d_se:+.4f}; "
                          f"win iff both > 0)")
     lines.append("")
     return "\n".join(lines)
