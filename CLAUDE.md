@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Progress tracker
+
+**What is running and what is next lives in [docs/PROGRESS.md](docs/PROGRESS.md)** — read it first, and update it whenever a task changes state.
+
 ## ⚠️ CRITICAL — running jobs on the shared GPU server
 
 Two rules that have cost real work before. Treat them as the highest-priority rule set, not gotchas. Both are linted by `validate-pipeline §3d/§3e`. Full detail: [docs/GOTCHAS.md](docs/GOTCHAS.md); review checklist in [code-change/reference/review-runner.md](.claude/skills/code-change/reference/review-runner.md).
