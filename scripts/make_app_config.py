@@ -278,12 +278,18 @@ def main() -> None:
                          ("sensAt80Spec", "sens_at_80spec"), ("sensitivity", "sensitivity"),
                          ("specificity", "specificity"), ("precision", "precision"),
                          ("brier", "brier"), ("ece", "ece")]:
+        # binary (spec §3.4a): precision is a PPV and brier/ece grade displayed probabilities —
+        # none of them may reach a screen that shows neither.
+        if binary and key in ("precision", "brier", "ece"):
+            continue
         v = agg_metric(agg, key)
         if v:
             metrics[out_key] = v
     metrics["note"] = ("5-fold test means of the threshold-free metrics, whole in-domain test set "
                        "(ISIC + PAD pooled). sensitivity/specificity/precision are at the TEST-set Youden threshold "
                        "(optimistic); the operating points above are the deployment numbers.")
+    if binary:
+        metrics["note"] = metrics["note"].replace("sensitivity/specificity/precision are", "sensitivity/specificity are")
     for out_key, key in [("paramsMillions", "params_millions"), ("gflops", "gflops"),
                          ("fp32SizeMb", "fp32_size_mb")]:
         if key in bench:
@@ -311,20 +317,23 @@ def main() -> None:
         },
         "output": {"count": 1, "names": ["logit"], "activation": "sigmoid", "positiveClass": "malignant"},
         "displayMode": "binary" if binary else "calibrated",
-        "defaultOperatingPoint": default_op,
-        "thresholdSource": "; ".join(f"{o['id']}: {o['thresholdSource']}" for o in ops),
-        "operatingPoints": ops,
-        "metrics": metrics,
-        "ood": {"enabled": False, "outputIndex": 1, "threshold": None, "idKeep": 0.95,
-                "note": "Requires a 2-output GatedModel .pte — see docs/ood_gate_plan.md §5."},
     }
-    if not binary:  # calibrated mode only (spec §3.4a): the displayed-risk machinery
+    # Key order kept as before §3.4a, so a calibrated config differs from an older one only by
+    # displayMode. calibration and riskBands exist in calibrated mode only (spec §3.4a).
+    if not binary:
         config["calibration"] = {
             "method": "prior_shift", "piTrain": round(pi_train, 8), "piTarget": args.pi_target,
             "logitShift": shift,  # full precision: the app checks I3 against this value
             "note": "logit_cal = logit + logit(piTarget) - logit(piTrain); monotone, does not change decisions",
         }
+    config["defaultOperatingPoint"] = default_op
+    config["thresholdSource"] = "; ".join(f"{o['id']}: {o['thresholdSource']}" for o in ops)
+    config["operatingPoints"] = ops
+    config["metrics"] = metrics
+    if not binary:
         config["riskBands"] = risk_bands
+    config["ood"] = {"enabled": False, "outputIndex": 1, "threshold": None, "idKeep": 0.95,
+                     "note": "Requires a 2-output GatedModel .pte — see docs/ood_gate_plan.md §5."}
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(config, indent=2, allow_nan=False) + "\n")
     print(f"Wrote {args.out} (displayMode={config['displayMode']})")

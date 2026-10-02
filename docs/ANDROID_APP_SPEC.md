@@ -504,7 +504,18 @@ Rules for `"binary"`:
   key is rejected (`ModelConfigException`), and so is a `"calibrated"` one missing a required key — a
   half-calibrated config must never fall back silently in either direction.
 - `scripts/make_app_config.py` writes `"binary"` when none of `--phone-prevalence`, `--global-prevalence`,
-  `--pi-target` is given (`docs/APP_CONFIG_GUIDE.md` §0).
+  `--pi-target` is given (`docs/APP_CONFIG_GUIDE.md` §0). Its `metrics` block then also leaves out
+  `prevalence`, `precision` (a PPV), `brier` and `ece` (they grade displayed probabilities).
+- **`riskBand == null` no longer means `INVALID_INPUT`.** In a binary config every `ScanResult` has
+  `calibratedProb == null` and `riskBand == null`, whatever the decision. Screens must branch on
+  `decision` (and on `displayMode`), never infer the decision from a missing band — a
+  `result.riskBand ?: return InvalidInput` shortcut turns every binary SUSPICIOUS result into "invalid image".
+- Not yet carried through the rest of this document (decide when M3 persistence is built): the §3.3
+  Kotlin sketch and the §3.7 validation table (the reader code is the reference: `validateCalibrated` /
+  `validateBinary`); §9.1 `ScanEntity` (`calibratedProb`, `calibrationMethod`, `logitShift`, `riskBandId`
+  are non-null there — a binary scan has none of them, so they become nullable or binary scans store a
+  marker); MA7 (store `displayMode` with the model identity); R-RES-07 (technical details: raw values only),
+  R-HOME-02/03 and R-HIS-01 (decision icon instead of band ring/label/chip).
 
 ### 3.5 Threshold provenance (must-fix before release)
 

@@ -27,19 +27,23 @@ count() {  # $1 file (y_true,prob), $2 threshold -> "tp m fp b"
         END { printf "%d %d %d %d", tp+0, m+0, fp+0, b+0 }' "$1"
 }
 sens_thr() {  # $1 file, $2 target sensitivity -> highest t with sens >= target
+    # Same rule as scripts/make_app_config.py::threshold_for_sensitivity: k = floor(n*(1-s)) positives
+    # may fall below t (1e-9 absorbs float error at integers), t = the (k+1)-th smallest positive.
     awk -F, '$1==1{print $2}' "$1" | sort -g \
-      | awk -v s="$2" '{a[NR]=$1} END{k=int(NR*(1-s))+1; if (k<1) k=1; printf "%.10g", a[k]}'
+      | awk -v s="$2" '{a[NR]=$1} END{k=int(NR*(1-s)+1e-9); if (k>NR-1) k=NR-1; printf "%.17g", a[k+1]}'
 }
 spec_thr() {  # $1 file, $2 target specificity -> lowest t with spec >= target
+    # Same rule as scripts/make_app_config.py::threshold_for_specificity: k = ceil(n*s) benign rows
+    # must fall below t, so t sits just ABOVE the k-th smallest benign score (ties stay below).
     awk -F, '$1==0{print $2}' "$1" | sort -g \
-      | awk -v s="$2" '{a[NR]=$1} END{k=int(NR*s); if (k*1.0 < NR*s) k++; if (k>=NR) {printf "%.10g", a[NR]+1e-9} else {printf "%.10g", a[k+1]}}'
+      | awk -v s="$2" '{a[NR]=$1} END{k=int(NR*s-1e-9)+1; if (k<1) {printf "%.17g", a[1]} else {printf "%.17g", a[k]+1e-12}}'
 }
 youden_thr() {  # $1 file -> t maximising sens+spec-1 over the observed scores
     sort -t, -k2,2g "$1" | awk -F, '{y[NR]=$1; p[NR]=$2; if ($1==1) M++; else B++}
         END { tp=M; fp=B; best=-1;
               for (i=1;i<=NR;i++) { j=(tp/M)+(1-fp/B)-1; if (j>best) {best=j; bt=p[i]}
                                     if (y[i]==1) tp--; else fp-- }
-              printf "%.10g", bt }'
+              printf "%.17g", bt }'
 }
 
 echo "fold,rule,threshold,val_tp,val_pos,val_fp,val_neg,pad_tp,pad_pos,pad_fp,pad_neg,fitz_tp,fitz_pos,fitz_fp,fitz_neg,isic_tp,isic_pos,isic_fp,isic_neg" > $W/summary.csv
