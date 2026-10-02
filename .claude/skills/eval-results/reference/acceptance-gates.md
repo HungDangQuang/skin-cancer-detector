@@ -45,7 +45,7 @@ Mốc chốt sau khi đã nhìn thấy kết quả của chính model đang ch�
 
 | Hạng mục | Trạng thái | Ngày chốt | Người chốt |
 |---|---|---|---|
-| **Sáu tiêu chí chọn model** (§2.0) | **ĐÃ CHỐT** — đây là danh sách *cái gì* phải đạt | 01/10/2026 | tác giả |
+| **Sáu tiêu chí chọn model** (§2.0) | **ĐÃ CHỐT** — đây là danh sách *cái gì* phải đạt (tiêu chí 6 chỉ báo cáo từ 02/10/2026) | 01/10/2026 | tác giả |
 | Mốc số của từng cổng (§2 A/B/C) | ĐỀ XUẤT — tác giả **đã ghi nhận** 01/10/2026, **post-hoc** (sau khi đã thấy mọi kết quả B/C của ứng viên ship, `reports/ci_gates_srcsamp_*.md`); các dòng CHỜ QUYẾT bên dưới vẫn mở; B2, B4, metric C2 đã chốt ở các dòng kế tiếp | 01/10/2026 (ghi nhận) | tác giả |
 | B2: mốc quyết định = **mục tiêu ≥ 0,81** (sàn 0,47 chỉ báo cáo) | **ĐÃ CHỐT — post-hoc** | 01/10/2026 (tối) | tác giả |
 | B4 (HAM10000): mốc quyết định = **mục tiêu ≥ 0,81** | **ĐÃ CHỐT — post-hoc** | 01/10/2026 (tối) | tác giả |
@@ -58,7 +58,7 @@ Mốc chốt sau khi đã nhìn thấy kết quả của chính model đang ch�
 
 ### 2.0 Sáu tiêu chí chọn model (tác giả chốt 01/10/2026) → cổng tương ứng
 
-Một model chỉ được chọn (ship / gọi là "đạt yêu cầu") khi đạt **cả sáu**:
+Một model chỉ được chọn (ship / gọi là "đạt yêu cầu") khi đạt mọi tiêu chí có cột "Bắt buộc" ✅ — **năm tiêu chí 1–5**; tiêu chí 6 (B4) chỉ báo cáo từ 02/10/2026 (§1):
 
 | # | Tiêu chí của tác giả (nguyên ý) | Cổng | Bắt buộc |
 |---|---|---|---|
@@ -81,7 +81,7 @@ cụ chọn. Quy trình hợp lệ:
 
 1. Mọi lựa chọn (arm, checkpoint, fold) làm bằng **val** hoặc endpoint đã đăng ký trước → ra **một**
    ứng viên.
-2. Sáu tiêu chí **chấp nhận hoặc loại** ứng viên đó, một lần.
+2. Các tiêu chí bắt buộc (1–5; tiêu chí 6 chỉ báo cáo từ 02/10/2026) **chấp nhận hoặc loại** ứng viên đó, một lần.
 3. Nếu bị loại: kết luận của luận văn là "ứng viên định trước KHÔNG ĐẠT YÊU CẦU ở cổng X". Muốn thử
    ứng viên kế tiếp thì phải khai *post-hoc* — các tập kiểm đã được nhìn hai lần, và cần một tập kiểm
    khác để xác nhận (§4 #18). Có thể định trước một **danh sách ứng viên theo thứ tự** để giảm vấn đề
@@ -116,7 +116,7 @@ chưa phủ bước đổi kích thước ảnh camera (L3, `docs/MOBILE_EVAL_PL
 | B1 | ISIC (crop 3D-TBP) | AUC-ROC · pAUC@TPR80 | ≥ 0,922 · ≥ 0,142 | Kurtansky 2025 (npj Digit Med, PMC12639164), **Bảng 3**: biến thể chỉ dùng ảnh (tiles) AUC 0,922 · pAUC 0,142 (model thắng giải, ảnh + metadata: 0,9668 · 0,1726). Assistant đối chiếu toàn văn qua Europe PMC ngày 01/10/2026; verifier không kiểm được (không có web). Đo trên tập test của cuộc thi, không phải phần ISIC của splits v2 |
 | B2 | **Ảnh điện thoại (PAD)** — cổng quan trọng nhất | độ nhạy @ độ đặc hiệu 80% | **mục tiêu ≥ 0,81 (ĐÃ CHỐT, post-hoc)** · sàn ≥ 0,47 (chỉ báo cáo) | Cochrane Dinnes 2018 (CD011902.pub2): đánh giá **trên ảnh**, độ nhạy ở độ đặc hiệu cố định 80%: dermoscopy **81%**, nhìn bằng mắt (ảnh thường) **47%**. Đích chẩn đoán: melanoma xâm lấn + biến thể hắc tố trong biểu bì không điển hình (**chỉ melanoma**; nhãn dương của dự án gồm cả BCC/SCC). Mục tiêu 0,81 là mức đọc **dermoscopy**, đang áp cho ảnh điện thoại. Assistant đối chiếu tóm tắt qua Europe PMC 01/10/2026; verifier không kiểm được |
 | B3 | Ảnh lâm sàng đa dạng (Fitzpatrick17k headline) | độ nhạy @ độ đặc hiệu 80% | sàn ≥ 0,47 (không có mục tiêu) | như B2 (chưa có mốc riêng cho bộ này) |
-| B4 | **HAM10000 headline** (dermoscopy, xuyên miền) — tiêu chí 6 | độ nhạy @ độ đặc hiệu 80% | **mục tiêu ≥ 0,81 — ĐÃ CHỐT, post-hoc** (bác sĩ đọc **ảnh dermoscopy** — đúng loại ảnh của HAM); sàn: không dùng — mục tiêu đã chốt là mốc quyết định | Cochrane Dinnes 2018, như B2; chỉ melanoma, trong khi nhãn ác tính của HAM gồm nhiều loại |
+| B4 | **HAM10000 headline** (dermoscopy, xuyên miền) — tiêu chí 6 — **chỉ báo cáo từ 02/10/2026** (§1) | độ nhạy @ độ đặc hiệu 80% | **mục tiêu ≥ 0,81 — ĐÃ CHỐT, post-hoc** (bác sĩ đọc **ảnh dermoscopy** — đúng loại ảnh của HAM); sàn: không dùng — mục tiêu đã chốt là mốc quyết định | Cochrane Dinnes 2018, như B2; chỉ melanoma, trong khi nhãn ác tính của HAM gồm nhiều loại |
 
 - AUPRC **không** làm cổng B: không có mốc ngoài và không so được giữa các bộ (nền = prevalence).
 - **Độ nhạy @ đặc hiệu 80% đã có** từ 01/10/2026 (commit `9535b23`): `compute_metrics` ghi
