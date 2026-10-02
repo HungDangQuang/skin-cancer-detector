@@ -69,3 +69,30 @@ teacher P0); student dùng `data.sampler_stratify_by=source` và `training.callb
   (`reports/external/{fitzpatrick17k,ham10000}/headline/bootstrap_ci.md`).
 - C2 đòi student **vượt** teacher; teacher mạnh hơn làm C2 khó hơn.
 - Không đòn bẩy nào ở đây có bằng chứng kéo B2 thêm ~+0,07. Kết quả "không đạt" vẫn là kết quả hợp lệ.
+
+## 7. Phụ lục — thắt chặt luật, ghi 02/10/2026 15:43 UTC, TRƯỚC khi có bất kỳ số test nào
+
+Lúc ghi: driver chạy từ 15:34:41 UTC (commit §1–§6 lúc 15:34:17 UTC, tức trước 24 giây — giả định đồng hồ Mac
+và server khớp); job đầu (baseline repvit) đang ở fold 0, trong run-dir **chưa có** `test_metrics*.json` nào. Phụ
+lục chỉ thêm ràng buộc, không đổi ứng viên hay luật chọn.
+
+1. **Luật hoà (3 ứng viên):** lấy cặp có điểm cao nhất; nếu có cặp đứng trước nó trong bảng §2 mà kém nó dưới
+   0,005, chọn cặp **đứng trước sớm nhất** trong số đó. Ngưỡng 0,005 là **quy ước**, mượn từ sàn nhiễu chạy lại
+   của AUPRC toàn tập test một fold (`experiments/_reproducibility/README.md`); nó **không** phải nhiễu đo được
+   của AUPRC trên ~350–400 hàng PAD của val.
+2. **Thứ tự bắt buộc:** tính luật §4 (chỉ từ `val_predictions_auprc.csv` + `val_split.csv` và
+   `val_metrics_auprc.json`) và **commit kết quả chọn** trước khi mở bất kỳ `test_metrics*.json`/`predictions*.csv`
+   nào của P1/P2 để so sánh, và trước khi chạy eval ngoài miền. Các file test tự sinh khi train xong không được đọc
+   trước mốc đó.
+3. **Điểm vận hành ảnh điện thoại** của ứng viên được chọn: `phone_sens90` (độ nhạy 90% trên hàng PAD của val, như
+   `scripts/make_app_config.py`), cố định từ bây giờ. Báo cáo bắt buộc "hành vi tại ngưỡng val" (acceptance-gates
+   §2) gồm ngưỡng này và ngưỡng Youden toàn cục.
+4. **Khai cách chọn hai cặp:** tác giả chọn khung "đổi teacher một cặp, đổi student một cặp" trong ba phương án do
+   assistant đề xuất. Hai cặp cụ thể do assistant đề xuất, có tham khảo số HAM/Fitzpatrick **splits v1** (§6) và độ
+   trễ: maxvit bị loại khỏi vai teacher vì trên v1 student mobilenetv4 học từ maxvit thua chính teacher đó nhiều hơn
+   (rủi ro C2) và train chậm nhất; fastvit bị loại vì 113,9 ms > 80 ms. Đây là dùng thông tin HAM/Fitz (dù của v1)
+   để chọn ⇒ một phần post-hoc (acceptance-gates §4 #9), phải khai khi báo cáo.
+5. **Rủi ro vận hành:** repvit từng OOM khi chung card với 3 job khác (chạy một mình thì rủi ro thấp);
+   convnextv2_base chưa từng train trên `vastnew`; code không có resume — nếu một bước hỏng giữa chừng, chạy lại
+   phải truyền `FOLDS=` các fold còn thiếu, nếu không sẽ train lại từ fold 0 (ghi đè các fold vừa xong của chính
+   bước đó). A1 của repvit (57,2 ms theo kiến trúc) sát mốc 80 ms hơn mobilenetv4 (39,5 ms).
