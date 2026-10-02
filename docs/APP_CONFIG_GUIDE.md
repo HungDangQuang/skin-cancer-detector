@@ -78,8 +78,8 @@ không phát hành).
 - Ảnh camera thật qua app chưa đo: xem `docs/L3_CAMERA_EVAL_GUIDE.md`.
 - `metrics` là trung bình 5 fold trên **toàn bộ** test in-domain (ISIC + PAD gộp), không phải số của ảnh
   điện thoại. Số theo miền nằm ở `reports/ci_gates_srcsamp_*.md`.
-- Ứng viên hiện tại **KHÔNG ĐẠT YÊU CẦU** theo cổng chấp nhận: B4 (HAM10000) dưới mục tiêu đã chốt 0,81.
-  Phát hành để thử nghiệm phải ghi rõ điều này.
+- Ứng viên hiện tại **chưa đạt yêu cầu**: phán quyết **CHƯA CÓ TIÊU CHÍ CHỐT** (từ 02/10, khi B4 chuyển sang báo cáo;
+  trước đó KHÔNG ĐẠT YÊU CẦU vì B4 dưới 0,81 — B4 vẫn được báo cáo). Phát hành để thử nghiệm phải ghi rõ điều này.
 
 ## 6. Điều kiện dừng — báo lại, không tự xoay xở
 

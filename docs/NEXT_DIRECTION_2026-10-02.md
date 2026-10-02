@@ -1,5 +1,9 @@
 # Hướng tiếp theo sau phán quyết "KHÔNG ĐẠT YÊU CẦU" (02/10/2026)
 
+> **Cập nhật 02/10/2026 (tối):** tác giả chọn **H2** — B4 chuyển sang báo cáo (post-hoc), vẫn đo. Phán quyết ứng viên
+> hiện tại giờ là CHƯA CÓ TIÊU CHÍ CHỐT. H3 (dermoscopy) tạm không làm. Bước tiếp theo: vòng chọn thứ hai với
+> hai cặp teacher–student mới — `docs/PREREG_CANDIDATE2_2026-10-02.md`.
+
 > Đầu vào: `reports/2026-10-02_acceptance_verdict_srcsamp.md`. Các lựa chọn đánh số H1–H4 (không liên quan tới
 > mục "B" mà tác giả đã duyệt — mục đó là app config + hướng dẫn L3). Văn bản này **đề xuất**; mọi lựa chọn là
 > của tác giả. Chưa train hay chạy gì theo văn bản này.

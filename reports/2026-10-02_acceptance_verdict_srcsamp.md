@@ -1,5 +1,17 @@
 # Phán quyết cổng chấp nhận — ứng viên ship `__srcsamp` (viết 02/10/2026)
 
+> **CẬP NHẬT 02/10/2026 (tối) — B4 chuyển sang BÁO CÁO (tác giả, post-hoc).** Luật gộp mới (`acceptance-gates.md` §2):
+> A1 + A3 + A4 + B1 + B2 + B3 + C2 + C4a. B4 vẫn đo và ghi nhãn: 0,7259 [0,7018, 0,7508] — **KHÔNG ĐẠT so với
+> 0,81, chỉ báo cáo**. Phán quyết tổng theo §3 bước 4:
+> - không còn cổng bắt buộc nào `KHÔNG ĐẠT` với mốc đã chốt (B2 là `CHƯA CHỨNG MINH`);
+> - còn cổng bắt buộc mang mốc ĐỀ XUẤT (B1, B3, C2 cách hiểu + tập miền, C4a, A1, A3, A4)
+>   ⇒ **Phán quyết tổng: CHƯA CÓ TIÊU CHÍ CHỐT** (thay cho KHÔNG ĐẠT YÊU CẦU ở bản dưới).
+> - Minh hoạ "thử với mốc đề xuất" (tác giả: "giữ các mốc đề xuất thử xem") — **không phải nhãn chính thức**:
+>   nếu coi mọi mốc đề xuất như đã chốt thì B1, B2, B3, C2, C4a đều `CHƯA CHỨNG MINH`, A1 `CHƯA ĐO`, A3 + A4
+>   `ĐẠT` ⇒ **CHƯA KẾT LUẬN ĐƯỢC**. Không kịch bản nào cho `ĐẠT YÊU CẦU`.
+> - C2 vẫn gồm HAM (tập miền đề xuất giữ nguyên): ô HAM +0,0059 [−0,0068, +0,0189] `CHƯA CHỨNG MINH`.
+> Bảng và lập luận bên dưới là bản gốc (B4 bắt buộc), giữ nguyên để thấy quyết định đổi ở đâu.
+
 > Hợp đồng: `.claude/skills/eval-results/reference/acceptance-gates.md`. Tối 01/10/2026 tác giả chốt
 > **mục tiêu B2 = B4 = 0,81** và **metric C2 = ΔAUPRC**. Đây là quyết định **post-hoc**: chốt sau khi đã thấy
 > kết quả bên dưới. Ký hiệu: CCM = CHƯA CHỨNG MINH; cờ `⚑` = mốc còn ĐỀ XUẤT, tức cổng mang thêm
