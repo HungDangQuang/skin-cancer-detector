@@ -19,8 +19,9 @@ L3 gồm ba nguồn sai lệch khác nhau, nên đo bằng ba tầng **T1 → T2
 **Câu hỏi:** cùng một ảnh gốc, thu về 224 bằng thuật toán của app thay cho LANCZOS (thuật toán lúc huấn
 luyện) thì logit và metric đổi bao nhiêu?
 
-- **Dữ liệu:** ảnh ISIC 2024 ở độ phân giải gốc trong `data/raw/isic2024/train-image.hdf5`. File này hiện
-  **chỉ có trên Mac**, phải chép lên server (Mac không chạy Python). Chỉ lấy các ảnh thuộc **test v2**
+- **Dữ liệu:** ảnh ISIC 2024 ở độ phân giải gốc trong `train-image.hdf5`. Trên Mac nằm ở
+  `data/raw/isic2024/train-image.hdf5`; **đã chép lên server 02/10/2026** tại `data/l3/isic2024_train-image.hdf5`
+  (sha256 khớp) — cố ý **không** đặt ở `data/raw/isic2024/`, để `prepare` (có thể xoá ảnh processed) vẫn không chạy được. Chỉ lấy các ảnh thuộc **test v2**
   (khoá HDF5 là mã ISIC; khớp với cột `image_id` của `data/splits/isic2024/test_split.csv` để có nhãn, rồi
   ánh xạ sang `sample_id` của `data/mobile_eval_bundle/manifest.csv`, vì `scripts/eval_from_logits.py` bỏ các dòng
   không có trong manifest và chỉ cảnh báo).
@@ -74,7 +75,7 @@ nên **không làm được bằng code**. Luận văn chỉ nên nêu T3 là h�
 | Bước | Việc | Ai | Phụ thuộc |
 |---|---|---|---|
 | 1 | Chốt tiêu chí T1 và T2, danh sách `sample_id` của T2 | tác giả | — |
-| 2 | Chép HDF5 lên server; viết script T1 (`code-change`); chạy T1 | ML | bước 1 |
+| 2 | ~~Chép HDF5 lên server~~ (xong 02/10); viết script T1 (`code-change`); chạy T1 | ML | bước 1 |
 | 3 | Thêm chế độ "chụp để đánh giá" vào màn hình nhà phát triển, xuất `sample_id,logit,error` | Android | `config.json` từ `docs/APP_CONFIG_GUIDE.md` |
 | 4 | Chụp T2 theo danh sách, ghi điều kiện | người chụp | bước 1, 3 |
 | 5 | Chấm T2, viết báo cáo | ML | bước 4 |
