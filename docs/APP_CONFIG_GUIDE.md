@@ -8,22 +8,34 @@
 **Làm:** đọc artifact của một run đã train, sinh `config.json` đúng schema §3.2:
 - kích thước ảnh, mean/std lấy từ `config.yaml` của run;
 - hai điểm vận hành, ngưỡng **chỉ chọn trên val**, độ nhạy/độ đặc hiệu **đo trên test cùng miền**;
-- hằng số hiệu chuẩn prior-shift;
-- các dải rủi ro;
+- (chỉ chế độ hiệu chuẩn) hằng số hiệu chuẩn prior-shift và các dải rủi ro;
 - metric 5 fold (từ `aggregated<tag>.json`) và kích thước/GFLOPs (từ `reports/benchmark/*.json`).
 
-**Không làm:** export `.pte`, chép file vào app, quyết định tỉ lệ bệnh. Ba tỉ lệ bệnh là **quyết định của
-tác giả** nên script bắt buộc truyền vào và dừng nếu thiếu.
+**Không làm:** export `.pte`, chép file vào app, quyết định tỉ lệ bệnh.
+
+**Hai chế độ** (spec §3.4a, thêm 02/10/2026):
+
+| Chế độ | Cách chọn | App hiển thị | Config có |
+|---|---|---|---|
+| **`binary`** (**hiện dùng** — tác giả chốt 02/10: phân loại nhị phân là đủ) | **không** truyền `PHONE_PREVALENCE`, `GLOBAL_PREVALENCE`, `PI_TARGET` | chỉ kết luận (đáng ngờ / không thấy dấu hiệu đáng ngờ) | ngưỡng, độ nhạy, độ đặc hiệu, `falseAlarmsPer1000` (không phụ thuộc tỉ lệ bệnh); **không** có `calibration`, `riskBands`, PPV/NPV |
+| `calibrated` | truyền **đủ cả ba** (thiếu một là lỗi) | kết luận + "% rủi ro" đã hiệu chuẩn + dải rủi ro + câu PPV | như bản cũ |
+
+Ba tỉ lệ bệnh là **quyết định của tác giả**, không có giá trị mặc định. Đừng điền số "cho đủ trường":
+app sẽ hiển thị PPV và "% rủi ro" tính từ chính các số đó.
 
 | Điểm vận hành | Ngưỡng chọn trên | Độ nhạy/độ đặc hiệu đo trên |
 |---|---|---|
 | `phone_sens90` (**mặc định**) | hàng PAD-UFES-20 (ảnh điện thoại) của val, giữ độ nhạy ≥ 90% | hàng PAD của test |
 | `global_youden` (tham chiếu) | Youden J trên toàn bộ val | toàn bộ test |
 
+`global_youden` gắn cờ gần như mọi ảnh lành chụp bằng điện thoại (`reports/2026-10-02_threshold_options/`),
+nên với app camera hãy bỏ nó bằng `SKIP_GLOBAL_OP=1` để người dùng không chọn nhầm trong Cài đặt. Bảng các
+ngưỡng khác (độ nhạy 85/95%, độ đặc hiệu 80/90%, Youden trên PAD) và ý nghĩa: cùng thư mục đó.
+
 `val_predictions*.csv` không có cột nguồn. Script ghép nó với `<splits_dir>/fold_N/val_split.csv` theo
 **thứ tự dòng**, kiểm số dòng và nhãn khớp từng dòng, lệch là dừng.
 
-## 1. Trước khi chạy — 5 quyết định phải có
+## 1. Trước khi chạy — các quyết định phải có (3–5 chỉ cho chế độ `calibrated`)
 
 | # | Quyết định | Tham số | Ghi chú |
 |---|---|---|---|
@@ -42,11 +54,12 @@ bash run/make_app_config.sh \
   FOLD=4 CKPT_TAG=_auprc \
   PTE=exports/executorch_srcsamp/mobilenetv4_conv_medium__srcsamp_auprc_fold4.pte EXECUTORCH_VERSION=1.5.1 \
   MODEL_ID=<id> MODEL_VERSION=<vX.Y.Z> DISPLAY_NAME="<tên hiển thị>" \
-  PHONE_PREVALENCE=<quyết định 3> GLOBAL_PREVALENCE=<quyết định 4> PI_TARGET=<quyết định 5> \
-  OUT=exports/app_config/<id>/config.json
+  SKIP_GLOBAL_OP=1 OUT=exports/app_config/<id>/config.json
+# chế độ calibrated: thêm PHONE_PREVALENCE=<quyết định 3> GLOBAL_PREVALENCE=<quyết định 4> PI_TARGET=<quyết định 5>
 ```
 
-Script in một dòng cho mỗi điểm vận hành (ngưỡng, độ nhạy, độ đặc hiệu, PPV, tập đã đo). Nó từ chối ghi
+Script in `displayMode` và một dòng cho mỗi điểm vận hành (ngưỡng, độ nhạy, độ đặc hiệu, PPV nếu là chế độ
+`calibrated`, tập đã đo). Nó từ chối ghi
 đè `OUT`; muốn ghi đè thì truyền `FORCE=1`.
 
 ## 3. Kiểm trước khi đưa vào app — bắt buộc
@@ -54,11 +67,12 @@ Script in một dòng cho mỗi điểm vận hành (ngưỡng, độ nhạy, đ
 | Kiểm | Cách | Kỳ vọng (ứng viên hiện tại, fold 4) |
 |---|---|---|
 | Ngưỡng điện thoại khớp báo cáo | so `operatingPoints[phone_sens90].threshold` với `reports/2026-10-01_pad_threshold/summary.csv` | 0,570523 |
-| Ngưỡng toàn cục khớp val | so với `fold_4/val_metrics_auprc.json` → `threshold` | 0,227249 |
+| Ngưỡng toàn cục khớp val (khi không `SKIP_GLOBAL_OP`) | so với `fold_4/val_metrics_auprc.json` → `threshold` | 0,227249 |
 | Độ nhạy/độ đặc hiệu điện thoại | dòng in ra | 0,873 / 0,731 trên 189 ác + 208 lành |
-| Bất biến I3 | script tự kiểm, lệch là dừng | — |
+| `displayMode` | dòng `Wrote … (displayMode=…)` | `binary`; file **không** có khoá `calibration`, `riskBands`, `ppvAtPrevalence` |
+| Bất biến I3 (chỉ `calibrated`) | script tự kiểm, lệch là dừng | — |
 | `pteSha256` | trùng sha256 của file `.pte` sẽ chép vào app | — |
-| Dải rủi ro tăng dần | script tự kiểm | `low < moderate < elevated < high = 1.0` |
+| Dải rủi ro tăng dần (chỉ `calibrated`) | script tự kiểm | `low < moderate < elevated < high = 1.0` |
 
 Lượt chạy thử ngày 02/10/2026 ra đúng các giá trị trên (giá trị tỉ lệ bệnh minh hoạ, file ghi vào `.tmp/`,
 không phát hành).
@@ -91,5 +105,4 @@ không phát hành).
 
 ## 7. Ghi chú về các file liên quan
 
-`docs/L3_CAMERA_EVAL_GUIDE.md` và `reports/2026-10-02_acceptance_verdict_srcsamp.md` nằm ở branch
-`docs/gates-signoff-and-guides`; merge cả hai branch thì mọi tham chiếu trong file này mới mở được.
+`docs/L3_CAMERA_EVAL_GUIDE.md` và `reports/2026-10-02_acceptance_verdict_srcsamp.md` đã có trên `develop` (PR #14, #15).

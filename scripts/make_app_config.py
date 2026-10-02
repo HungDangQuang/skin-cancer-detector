@@ -9,8 +9,13 @@ Operating points (docs/ANDROID_APP_SPEC.md §3.5, §3.5a):
 val_predictions*.csv has no source column; its rows follow
 <splits_dir>/fold_N/val_split.csv one for one (row count and labels are checked).
 
-Prevalences and the calibration target are DECISIONS, not constants, so they have no
-default: --phone-prevalence, --global-prevalence, --pi-target. See docs/APP_CONFIG_GUIDE.md.
+Two modes (docs/ANDROID_APP_SPEC.md §3.4a):
+  binary      no --phone-prevalence / --global-prevalence / --pi-target. The app shows the
+              decision only: no calibration block, no risk bands, no PPV/NPV. Sensitivity,
+              specificity and falseAlarmsPer1000 (prevalence-free) are still written.
+  calibrated  all three given. Prevalences and the calibration target are DECISIONS, not
+              constants, so they have no default. Giving only some of them is an error.
+See docs/APP_CONFIG_GUIDE.md.
 
 Usage (on the server, in .venv-linux — importing src.evaluation pulls in torch; CPU only):
     python scripts/make_app_config.py \
@@ -109,23 +114,23 @@ def ppv_npv(sens: float, spec: float, prev: float) -> tuple[float, float]:
 
 
 def operating_point(op_id, label, thr, test, prevalence, shift, source_desc, eval_desc):
+    """prevalence/shift None = binary mode: only the prevalence-free fields are written."""
     sens, spec, n_pos, n_neg = rates(test["y_true"].to_numpy(), test["y_prob"].to_numpy(), thr)
-    ppv, npv = ppv_npv(sens, spec, prevalence)
     thr_w = round(thr, 6)  # the value written to the file; I3 is defined on what the app reads
-    return {
-        "id": op_id,
-        "label": label,
-        "threshold": thr_w,
-        "calibratedThreshold": round(_sigmoid(_logit(thr_w) + shift), 8),
-        "sensitivity": round(sens, 4),
-        "specificity": round(spec, 4),
-        "prevalenceForPpv": prevalence,
-        "ppvAtPrevalence": round(ppv, 4),
-        "npvAtPrevalence": round(npv, 5),
-        "falseAlarmsPer1000": int(round((1 - spec) * 1000)),
-        "thresholdSource": source_desc,
-        "evaluatedOn": f"{eval_desc} (n_malignant={n_pos}, n_benign={n_neg})",
-    }
+    op = {"id": op_id, "label": label, "threshold": thr_w}
+    if shift is not None:
+        op["calibratedThreshold"] = round(_sigmoid(_logit(thr_w) + shift), 8)
+    op["sensitivity"] = round(sens, 4)
+    op["specificity"] = round(spec, 4)
+    if prevalence is not None:
+        ppv, npv = ppv_npv(sens, spec, prevalence)
+        op["prevalenceForPpv"] = prevalence
+        op["ppvAtPrevalence"] = round(ppv, 4)
+        op["npvAtPrevalence"] = round(npv, 5)
+    op["falseAlarmsPer1000"] = int(round((1 - spec) * 1000))  # per 1000 benign: prevalence-free
+    op["thresholdSource"] = source_desc
+    op["evaluatedOn"] = f"{eval_desc} (n_malignant={n_pos}, n_benign={n_neg})"
+    return op
 
 
 def agg_metric(agg: dict, key: str) -> dict | None:
@@ -144,13 +149,16 @@ def main() -> None:
     ap.add_argument("--model-version", required=True)
     ap.add_argument("--display-name", required=True)
     ap.add_argument("--phone-sens-target", type=float, default=0.90)
-    ap.add_argument("--phone-prevalence", type=float, required=True,
+    ap.add_argument("--phone-prevalence", type=float, default=None,
                     help="malignant prevalence assumed for camera photos in deployment (PPV/NPV of the phone point)")
-    ap.add_argument("--global-prevalence", type=float, required=True,
+    ap.add_argument("--global-prevalence", type=float, default=None,
                     help="prevalence for PPV/NPV of the global point and for metrics.prevalence")
-    ap.add_argument("--pi-target", type=float, required=True,
+    ap.add_argument("--pi-target", type=float, default=None,
                     help="calibration target prior for the displayed risk (prior shift)")
     ap.add_argument("--default-op", default=None, help="default operating point id (default: the phone point)")
+    ap.add_argument("--skip-global-op", action="store_true",
+                    help="leave out global_youden: on camera photos it flags almost every benign image "
+                         "(reports/2026-10-02_threshold_options/), so it should not be user-selectable")
     ap.add_argument("--benchmark-json", type=Path, default=None)
     ap.add_argument("--pi-train", type=float, default=None,
                     help="training prior for the prior shift (default 1/(1+data.undersample_ratio)); see the guide for phone photos")
@@ -161,10 +169,19 @@ def main() -> None:
     ap.add_argument("--force", action="store_true", help="overwrite an existing --out")
     args = ap.parse_args()
 
-    for name in ("phone_prevalence", "global_prevalence", "pi_target"):
+    prev_args = ("phone_prevalence", "global_prevalence", "pi_target")
+    given = [n for n in prev_args if getattr(args, n) is not None]
+    if given and len(given) != len(prev_args):
+        sys.exit("ERROR: give all of --phone-prevalence, --global-prevalence, --pi-target "
+                 "(calibrated mode) or none of them (binary mode); got only "
+                 + ", ".join("--" + n.replace("_", "-") for n in given))
+    binary = not given
+    for name in given:
         v = getattr(args, name)
         if not 0.0 < v < 1.0:
             sys.exit(f"ERROR: --{name.replace('_', '-')} must be in (0, 1), got {v}")
+    if binary and args.pi_train is not None:
+        sys.exit("ERROR: --pi-train only applies in calibrated mode")
     if args.out.exists() and not args.force:
         sys.exit(f"ERROR: {args.out} exists — pass --force to overwrite")
     if not args.pte.is_file():
@@ -184,11 +201,13 @@ def main() -> None:
         sys.exit(f"ERROR: missing {agg_path} — run run/aggregate.sh (METRICS_NAME=test_metrics{tag}.json) first")
     agg = json.loads(agg_path.read_text())
 
-    ratio = float(cfg.data.get("undersample_ratio", 5))
-    pi_train = args.pi_train if args.pi_train is not None else 1.0 / (1.0 + ratio)
-    if not 0.0 < pi_train < 1.0:
-        sys.exit(f"ERROR: piTrain must be in (0, 1), got {pi_train}")
-    shift = _logit(args.pi_target) - _logit(pi_train)
+    pi_train, shift = None, None  # binary mode: no prior shift, nothing calibrated is displayed
+    if not binary:
+        ratio = float(cfg.data.get("undersample_ratio", 5))
+        pi_train = args.pi_train if args.pi_train is not None else 1.0 / (1.0 + ratio)
+        if not 0.0 < pi_train < 1.0:
+            sys.exit(f"ERROR: piTrain must be in (0, 1), got {pi_train}")
+        shift = _logit(args.pi_target) - _logit(pi_train)
 
     vp = val[val["source"] == PHONE_SOURCE]
     tp = test[test["source"] == PHONE_SOURCE]
@@ -205,38 +224,42 @@ def main() -> None:
             f"sensitivity {pct}% on the {PHONE_SOURCE} rows of fold_{args.fold} val_predictions{tag}.csv "
             f"(n={len(vp)})" + (f"; {args.threshold_note}" if args.threshold_note else ""),
             f"test {PHONE_SOURCE} rows of fold_{args.fold} predictions{tag}.csv"),
-        operating_point(
+    ]
+    if not args.skip_global_op:
+        ops.append(operating_point(
             "global_youden", "Reference (all images)", t_global, test, args.global_prevalence, shift,
             f"Youden J on all rows of fold_{args.fold} val_predictions{tag}.csv (n={len(val)})",
-            f"all test rows of fold_{args.fold} predictions{tag}.csv"),
-    ]
+            f"all test rows of fold_{args.fold} predictions{tag}.csv"))
     default_op = args.default_op or phone_id
     if default_op not in {o["id"] for o in ops}:
         sys.exit(f"ERROR: --default-op {default_op} is not one of {[o['id'] for o in ops]}")
 
-    # Risk bands on the CALIBRATED scale, cut at points chosen on the default point's val rows:
+    # Risk bands on the CALIBRATED scale (calibrated mode only), cut at points chosen on the
+    # default point's val rows:
     # low < sens-99% point <= moderate < default threshold <= elevated < spec-95% point <= high.
-    dom = vp if default_op == phone_id else val
-    y, p = dom["y_true"].to_numpy(), dom["y_prob"].to_numpy()
-    cuts_raw = [threshold_for_sensitivity(y, p, 0.99),
-                t_phone if default_op == phone_id else t_global,
-                threshold_for_specificity(y, p, 0.95)]
-    cuts = [round(_sigmoid(_logit(c) + shift), 8) for c in cuts_raw]
-    # Spec §3.2: "moderate" ends exactly at the default point's calibratedThreshold.
-    cuts[1] = next(o["calibratedThreshold"] for o in ops if o["id"] == default_op)
-    if not (cuts[0] < cuts[1] < cuts[2] < 1.0):
-        sys.exit(f"ERROR: risk-band cut points are not increasing ({cuts}); set them by hand")
-    risk_bands = [
-        {"id": "low", "maxCalibratedProb": cuts[0], "label": "Low"},
-        {"id": "moderate", "maxCalibratedProb": cuts[1], "label": "Moderate"},
-        {"id": "elevated", "maxCalibratedProb": cuts[2], "label": "Elevated"},
-        {"id": "high", "maxCalibratedProb": 1.0, "label": "High"},
-    ]
+    risk_bands = None
+    if not binary:
+        dom = vp if default_op == phone_id else val
+        y, p = dom["y_true"].to_numpy(), dom["y_prob"].to_numpy()
+        cuts_raw = [threshold_for_sensitivity(y, p, 0.99),
+                    t_phone if default_op == phone_id else t_global,
+                    threshold_for_specificity(y, p, 0.95)]
+        cuts = [round(_sigmoid(_logit(c) + shift), 8) for c in cuts_raw]
+        # Spec §3.2: "moderate" ends exactly at the default point's calibratedThreshold.
+        cuts[1] = next(o["calibratedThreshold"] for o in ops if o["id"] == default_op)
+        if not (cuts[0] < cuts[1] < cuts[2] < 1.0):
+            sys.exit(f"ERROR: risk-band cut points are not increasing ({cuts}); set them by hand")
+        risk_bands = [
+            {"id": "low", "maxCalibratedProb": cuts[0], "label": "Low"},
+            {"id": "moderate", "maxCalibratedProb": cuts[1], "label": "Moderate"},
+            {"id": "elevated", "maxCalibratedProb": cuts[2], "label": "Elevated"},
+            {"id": "high", "maxCalibratedProb": 1.0, "label": "High"},
+        ]
 
-    # Invariant I3 (spec §3.4): calibratedThreshold == sigmoid(logit(threshold) + logitShift).
-    for o in ops:
-        if abs(o["calibratedThreshold"] - _sigmoid(_logit(o["threshold"]) + shift)) > 1e-6:
-            sys.exit(f"ERROR: invariant I3 broken for {o['id']}")
+        # Invariant I3 (spec §3.4): calibratedThreshold == sigmoid(logit(threshold) + logitShift).
+        for o in ops:
+            if abs(o["calibratedThreshold"] - _sigmoid(_logit(o["threshold"]) + shift)) > 1e-6:
+                sys.exit(f"ERROR: invariant I3 broken for {o['id']}")
 
     val_norm = next((t for t in cfg.augmentation.val if t.name == "Normalize"), None)
     if val_norm is None:
@@ -248,17 +271,25 @@ def main() -> None:
     if bench_path is None:
         print("WARN: no benchmark JSON for this architecture — params/GFLOPs/size left out")
     bench = json.loads(bench_path.read_text()) if bench_path else {}
-    metrics = {"prevalence": args.global_prevalence, "nFolds": agg.get("n_folds")}
+    metrics = {"nFolds": agg.get("n_folds")}
+    if not binary:
+        metrics = {"prevalence": args.global_prevalence, **metrics}
     for out_key, key in [("paucAtTpr80", "pauc_at_tpr80"), ("aucRoc", "auc_roc"), ("auprc", "auprc"),
                          ("sensAt80Spec", "sens_at_80spec"), ("sensitivity", "sensitivity"),
                          ("specificity", "specificity"), ("precision", "precision"),
                          ("brier", "brier"), ("ece", "ece")]:
+        # binary (spec §3.4a): precision is a PPV and brier/ece grade displayed probabilities —
+        # none of them may reach a screen that shows neither.
+        if binary and key in ("precision", "brier", "ece"):
+            continue
         v = agg_metric(agg, key)
         if v:
             metrics[out_key] = v
     metrics["note"] = ("5-fold test means of the threshold-free metrics, whole in-domain test set "
                        "(ISIC + PAD pooled). sensitivity/specificity/precision are at the TEST-set Youden threshold "
                        "(optimistic); the operating points above are the deployment numbers.")
+    if binary:
+        metrics["note"] = metrics["note"].replace("sensitivity/specificity/precision are", "sensitivity/specificity are")
     for out_key, key in [("paramsMillions", "params_millions"), ("gflops", "gflops"),
                          ("fp32SizeMb", "fp32_size_mb")]:
         if key in bench:
@@ -285,25 +316,31 @@ def main() -> None:
             "note": "x/255 then (x-mean)/std, per channel; no aspect-ratio preservation",
         },
         "output": {"count": 1, "names": ["logit"], "activation": "sigmoid", "positiveClass": "malignant"},
-        "calibration": {
+        "displayMode": "binary" if binary else "calibrated",
+    }
+    # Key order kept as before §3.4a, so a calibrated config differs from an older one only by
+    # displayMode. calibration and riskBands exist in calibrated mode only (spec §3.4a).
+    if not binary:
+        config["calibration"] = {
             "method": "prior_shift", "piTrain": round(pi_train, 8), "piTarget": args.pi_target,
             "logitShift": shift,  # full precision: the app checks I3 against this value
             "note": "logit_cal = logit + logit(piTarget) - logit(piTrain); monotone, does not change decisions",
-        },
-        "defaultOperatingPoint": default_op,
-        "thresholdSource": "; ".join(f"{o['id']}: {o['thresholdSource']}" for o in ops),
-        "operatingPoints": ops,
-        "metrics": metrics,
-        "riskBands": risk_bands,
-        "ood": {"enabled": False, "outputIndex": 1, "threshold": None, "idKeep": 0.95,
-                "note": "Requires a 2-output GatedModel .pte — see docs/ood_gate_plan.md §5."},
-    }
+        }
+    config["defaultOperatingPoint"] = default_op
+    config["thresholdSource"] = "; ".join(f"{o['id']}: {o['thresholdSource']}" for o in ops)
+    config["operatingPoints"] = ops
+    config["metrics"] = metrics
+    if not binary:
+        config["riskBands"] = risk_bands
+    config["ood"] = {"enabled": False, "outputIndex": 1, "threshold": None, "idKeep": 0.95,
+                     "note": "Requires a 2-output GatedModel .pte — see docs/ood_gate_plan.md §5."}
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(config, indent=2, allow_nan=False) + "\n")
-    print(f"Wrote {args.out}")
+    print(f"Wrote {args.out} (displayMode={config['displayMode']})")
     for o in ops:
+        ppv = (f" PPV@{o['prevalenceForPpv']}={o['ppvAtPrevalence']:.3f}" if "ppvAtPrevalence" in o else "")
         print(f"  {o['id']:<14} thr={o['threshold']:.4f} sens={o['sensitivity']:.3f} "
-              f"spec={o['specificity']:.3f} PPV@{o['prevalenceForPpv']}={o['ppvAtPrevalence']:.3f}  [{o['evaluatedOn']}]")
+              f"spec={o['specificity']:.3f}{ppv}  [{o['evaluatedOn']}]")
 
 
 if __name__ == "__main__":

@@ -166,10 +166,10 @@ The UI must never print "malignant", "cancer", "benign", "diagnosis", or a confi
 Every negative result screen must carry: *"This app misses roughly 7 in 100 melanoma-type lesions. If the spot changes, bleeds, itches or looks different from your others, see a doctor regardless of this result."* (7 in 100 = `1 − sensitivity 0.9328`, §2.)
 
 **P3 — Show the real precision, not just the model's confidence.**
-At the real-world prevalence of 0.39 %, a positive from this model is right about **7 % of the time** (§2). Every positive result screen shows this in plain words: *"About 7 out of 100 alerts like this turn out to be cancer. An alert means 'get it looked at', not 'you have cancer'."* Do not hide this behind an info icon.
+At the real-world prevalence of 0.39 %, a positive from this model is right about **7 % of the time** (§2). Every positive result screen shows this in plain words: *"About 7 out of 100 alerts like this turn out to be cancer. An alert means 'get it looked at', not 'you have cancer'."* Do not hide this behind an info icon. In `displayMode: "binary"` (§3.4a) the config carries no prevalence, so the sentence uses the prevalence-free `falseAlarmsPer1000` instead.
 
 **P4 — Displayed probability must be the calibrated one.**
-The model trained on a ~1:5 undersampled ratio, so `sigmoid(logit)` overstates absolute risk by roughly 50×. Showing raw `sigmoid` as "87 % risk" would be a lie. Show `calibratedProb` (§3.4). Raw values are visible only in the scan-detail "technical details" section and in the developer screen.
+The model trained on a ~1:5 undersampled ratio, so `sigmoid(logit)` overstates absolute risk by roughly 50×. Showing raw `sigmoid` as "87 % risk" would be a lie. Show `calibratedProb` (§3.4). Raw values are visible only in the scan-detail "technical details" section and in the developer screen. In `displayMode: "binary"` (§3.4a) no probability is shown at all.
 
 **P5 — Consent + disclaimer gate.**
 First launch shows a disclaimer that must be explicitly accepted (checkbox + button, no "skip"). The acceptance timestamp + app version are persisted. A one-line disclaimer banner is permanently visible on every result and detail screen.
@@ -313,6 +313,8 @@ Build config requirements:
 5. Nothing else. If step 5 turns out to require a code change, that is a bug against §3.0.
 
 ### 3.2 `config.json` schema (one per model folder)
+
+> **`displayMode`** (`"calibrated"` | `"binary"`, default `"calibrated"`) decides which of the fields below exist — the instance below is a `"calibrated"` config. A `"binary"` config has no `calibration`, no `riskBands` and no prevalence-dependent operating-point fields; see §3.4a.
 
 Everything the app needs to interpret the model. **No number in this file may be hardcoded in Kotlin** (MA1). The instance below is filled in with the §2 example model — the *fields* are the contract, the *values* are illustrative.
 
@@ -476,6 +478,44 @@ Worked examples (use them as test vectors):
 | 0.0 | 0.50000 | 0.01920 | SUSPICIOUS |
 | +3.0 | 0.95257 | 0.28223 | SUSPICIOUS |
 | −4.0 | 0.01799 | 0.00036 | NO_SUSPICIOUS_SIGNS |
+
+### 3.4a Binary display mode (`displayMode: "binary"`, added 2026-10-02)
+
+The author decided (2026-10-02) that the thesis app only needs the **decision**: no displayed risk
+percentage, no risk band, no PPV. A config says which mode it is in, explicitly:
+
+| `displayMode` | Required | Must be absent | What the user sees |
+|---|---|---|---|
+| `"calibrated"` (default when the key is missing — every config written before 2026-10-02) | `calibration`, `riskBands`, and per operating point `calibratedThreshold`, `ppvAtPrevalence`, `npvAtPrevalence` | — | everything in §3.4 and §7.7 |
+| `"binary"` | per operating point `threshold`, `sensitivity`, `specificity`, `falseAlarmsPer1000` | `calibration`, `riskBands`, `calibratedThreshold`, `prevalenceForPpv`, `ppvAtPrevalence`, `npvAtPrevalence` | the decision only |
+
+Rules for `"binary"`:
+- The decision is unchanged: `rawProb >= op.threshold` (I1). I2/I3 do not apply — there is no calibrated scale.
+- **No probability of any kind is shown to the user** — not `calibratedProb` (it does not exist) and
+  **never** `rawProb` as "%": P4 still holds, so the only honest number is none. Raw values stay in the
+  technical-details expander and the developer screen.
+- No risk band anywhere (R-RES-01/02, R-HOME-02 ring, R-HIS-01 chip): show the decision icon + text instead.
+- P3 is met with the prevalence-free number the config carries: on a positive result, *"About N in 1000
+  people without skin cancer also get this alert"* with N = the active point's `falseAlarmsPer1000`
+  (P8: from the config, never hard-coded). PPV needs a prevalence, which a binary config does not have.
+- P1/P2 wording is unchanged: never "malignant"/"benign"; the negative screen keeps the P2 sentence with
+  "N in 100" = `round(100 × (1 − sensitivity))` of the active point.
+- Reader validation (§3.7): a config with `displayMode: "binary"` that still carries any "must be absent"
+  key is rejected (`ModelConfigException`), and so is a `"calibrated"` one missing a required key — a
+  half-calibrated config must never fall back silently in either direction.
+- `scripts/make_app_config.py` writes `"binary"` when none of `--phone-prevalence`, `--global-prevalence`,
+  `--pi-target` is given (`docs/APP_CONFIG_GUIDE.md` §0). Its `metrics` block then also leaves out
+  `prevalence`, `precision` (a PPV), `brier` and `ece` (they grade displayed probabilities).
+- **`riskBand == null` no longer means `INVALID_INPUT`.** In a binary config every `ScanResult` has
+  `calibratedProb == null` and `riskBand == null`, whatever the decision. Screens must branch on
+  `decision` (and on `displayMode`), never infer the decision from a missing band — a
+  `result.riskBand ?: return InvalidInput` shortcut turns every binary SUSPICIOUS result into "invalid image".
+- Not yet carried through the rest of this document (decide when M3 persistence is built): the §3.3
+  Kotlin sketch and the §3.7 validation table (the reader code is the reference: `validateCalibrated` /
+  `validateBinary`); §9.1 `ScanEntity` (`calibratedProb`, `calibrationMethod`, `logitShift`, `riskBandId`
+  are non-null there — a binary scan has none of them, so they become nullable or binary scans store a
+  marker); MA7 (store `displayMode` with the model identity); R-RES-07 (technical details: raw values only),
+  R-HOME-02/03 and R-HIS-01 (decision icon instead of band ring/label/chip).
 
 ### 3.5 Threshold provenance (must-fix before release)
 
@@ -1084,10 +1124,10 @@ The most safety-critical screen. Three variants: `SUSPICIOUS`, `NO_SUSPICIOUS_SI
 └──────────────────────────────┘
 ```
 
-- **R-RES-01** Headline = decision, not a number. Risk band label + calibrated percentage as the secondary line. Format: `< 0.1 %` for tiny values, otherwise 1 decimal place. **Never** show `rawProb` here.
+- **R-RES-01** Headline = decision, not a number. (Binary mode §3.4a: the decision only — no band, no percentage.) Risk band label + calibrated percentage as the secondary line. Format: `< 0.1 %` for tiny values, otherwise 1 decimal place. **Never** show `rawProb` here.
 - **R-RES-02** Colour + icon + text for the band (colour never alone). Suggested: Low = neutral/leaf, Moderate = amber, Elevated = orange, High = red — all from the M3 theme, contrast ≥ 4.5:1 in both themes.
 - **R-RES-03** Negative variant must contain the P2 sentence verbatim, and must not use a green "all clear" checkmark as the dominant visual.
-- **R-RES-04** Positive variant must contain the P3 PPV sentence with the number pulled from the active operating point.
+- **R-RES-04** Positive variant must contain the P3 PPV sentence with the number pulled from the active operating point. (Binary mode §3.4a: the `falseAlarmsPer1000` sentence instead.)
 - **R-RES-05** `INVALID_INPUT` variant (feature-flagged): no number, no band, retake CTA only.
 - **R-RES-06** Quality warnings from S04 repeat here (they change how much the result should be trusted).
 - **R-RES-07** "Technical details" expander (collapsed by default): raw logit, raw probability, active threshold, operating point id, calibrated probability + method, model id/version + fold, ExecuTorch backend, preprocess ms, inference ms, OOD score (or "not enabled"), quality flags. This is the thesis-debugging surface and must be copy-to-clipboard-able.
