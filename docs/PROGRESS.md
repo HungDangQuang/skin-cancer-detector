@@ -64,7 +64,7 @@ từng train trên instance `vastnew` hiện tại trước vòng này (fold 0 �
 
 | Mã | Việc | Ai / ở đâu | Lệnh / ghi chú | Trạng thái |
 |---|---|---|---|---|
-| N1 | **Tính luật chọn từ val và COMMIT kết quả** — trước mọi bước đọc số test | server (Python) | **Script sẵn (03/10):** `bash run/select_candidate.sh OUT_DIR=reports/<ngày>_candidate2_selection CANDIDATES="P0=… P1=… P2=…"` (thứ tự P0, P1, P2; đường dẫn đầy đủ trong header `run/select_candidate.sh`). Chỉ đọc file `val_*`, từ chối mọi file khác; chạy thử 03/10 trên val P0+P2 ra fold ship P0 = fold_4, khớp `reports/2026-10-01_srcsamp_item2_3.md` §5. Việc còn lại: Trung bình 5 fold AUPRC trên hàng PAD của `fold_*/val_predictions_auprc.csv` ghép theo thứ tự dòng với `data/splits/isic2024/fold_N/val_split.csv` (**kiểm số dòng và nhãn khớp từng dòng**), cho P0/P1/P2; luật hoà §7.1; fold ship = trung vị `val_metrics_auprc.json` | ⏳ |
+| N1 | **Tính luật chọn từ val và COMMIT kết quả** — trước mọi bước đọc số test | server (Python) | **Script sẵn (03/10):** `bash run/select_candidate.sh OUT_DIR=reports/<ngày>_candidate2_selection CANDIDATES="P0=… P1=… P2=…"` (thứ tự P0, P1, P2; đường dẫn đầy đủ trong header `run/select_candidate.sh`). Chỉ đọc file `val_*`, từ chối mọi file khác; chạy thử 03/10 trên val P0+P2 ra fold ship P0 = fold_4, khớp `reports/2026-10-01_srcsamp_item2_3.md` §5 — **lượt thử này đã cho thấy thứ hạng P0 vs P2 trên val PAD** (P0 xếp trên; chỉ val, không vi phạm §7.2; thư mục thử `.tmp/n1_test/` đã xoá). Việc còn lại: Trung bình 5 fold AUPRC trên hàng PAD của `fold_*/val_predictions_auprc.csv` ghép theo thứ tự dòng với `data/splits/isic2024/fold_N/val_split.csv` (**kiểm số dòng và nhãn khớp từng dòng**), cho P0/P1/P2; luật hoà §7.1; fold ship = trung vị `val_metrics_auprc.json` | ⏳ |
 | N2 | Kéo kết quả về Mac + `aggregate` (cả checkpoint chính và `_auprc`) | Mac + server | `bash run/pull_results.sh pull`; `bash run/aggregate.sh RUN_DIR=<run>` và `… METRICS_NAME=test_metrics_auprc.json` (teacher: chỉ bản chính). `aggregated*.md` chứa số test — chỉ chạy sau N1 | ⏳ |
 | N3 | Eval ngoài miền: HAM headline + Fitzpatrick 4 biến thể | server | `bash run/evaluate_external.sh DATASET=… RUNS="<run-dir>" OUT_ROOT=<riêng>`. Student/baseline (P1, P2, baseline repvit): thêm `CKPT_NAME=best_model_auprc.pth VAL_PRED_NAME=val_predictions_auprc.csv`. **Teacher `convnextv2_base` cần lượt riêng với checkpoint mặc định** (teacher không có `best_model_auprc.pth`) — thiếu nó thì không tính được C2 của P1 trên Fitz/HAM | ⏳ |
 | N4 | CI các cổng | server | `bash run/bootstrap_ci.sh RESULTS_DIR=<cây symlink> PAIR="<student>:<teacher>" SUBGROUP=source\|tone_group METRICS=auc_roc,auprc,pauc_at_tpr80,sens_at_90spec,sens_at_80spec`. Dựng cây symlink như P0 (`.tmp/ci_gates/` trên server: student = file `_auprc`, teacher = file chính). C2 = student vs **teacher của chính cặp**; C1 = KD vs baseline cùng student | ⏳ |
@@ -78,8 +78,7 @@ từng train trên instance `vastnew` hiện tại trước vòng này (fold 0 �
 
 | Mã | Việc | Ai / ở đâu | Ghi chú | Trạng thái |
 |---|---|---|---|---|
-| R2 | Phép kiểm ghép cặp cho item 3 (checkpoint AUPRC vs checkpoint pAUC) | server, CPU | Chưa có (`reports/2026-10-01_srcsamp_item2_3.md` §4). Chỉ báo cáo; đổi checkpoint sau khi xem là post-hoc | 🏃 03/10: đang chạy trên server (CPU, `.tmp/ci_item3/`) → `reports/ci_item3_srcsamp_{indomain,ham10000_headline,fitzpatrick17k_headline}.{md,json}` |
-| R4 | Báo cáo arm DDI thành `reports/*.md` | Mac | Còn tồn từ `docs/domain_aug_plan.md` §9.4 (hiện chỉ có `reports/ci_ddi_*`) | 🔜 |
+| — | Không còn việc nào (R1 → S8; R2–R5 xong 03/10, xem mục 7) | | | |
 
 ## 5. Để sau / hoãn ⏸
 
@@ -102,12 +101,15 @@ từng train trên instance `vastnew` hiện tại trước vòng này (fold 0 �
 - Trạng thái train ở mục 1 là ảnh chụp lúc 03/10 01:04–01:10 UTC; job có hoàn thành hay không, mất bao lâu: xem lại bằng lệnh ở mục 1.
 - HDF5 ở `data/l3/` và sha256 của nó: chỉ kiểm được trên server.
 - Nhánh Android `support-binary-config`: 185/185 unit test theo lần chạy 02/10 trên Mac (ghi trong commit message 8cadf8f); instrumented test và giao diện **chưa** chạy.
+- Lượt chạy thử `select_candidate.py` trên server (03/10, val P0+P2) và mọi số của R2 trước khi kéo về: chỉ có trên server.
 - Câu "chưa cần" (U6) và "giữ các mốc đề xuất thử xem" (U7) là lời tác giả trong hội thoại 02/10.
 
 ## 7. Đã xong ✅
 
 | Ngày | Việc | Nơi ghi |
 |---|---|---|
+| 03/10 | R2: CI ghép cặp item 3 (checkpoint AUPRC − checkpoint pAUC của P0), chỉ báo cáo: 0/25 ô kém có ý nghĩa; trên PAD không phân định (chưa loại trừ mức kém nhỏ) | `reports/2026-10-03_item3_ckpt_paired.md` |
+| 03/10 | R4: báo cáo arm DDI (đóng `domain_aug_plan.md` §9.4) | `reports/2026-10-03_ddi_arm.md` |
 | 03/10 | R3: CLAUDE.md "Data integrity" ghi 656 dòng DDI ở train phía server; bản splits trên Mac là bản trước DDI | `CLAUDE.md` |
 | 03/10 | R5: mục 1.3 "DDI — nguồn train thứ ba" | `docs/PREPROCESSING.md` §1.3 |
 | 03/10 | Script luật chọn val-only cho N1 | `scripts/select_candidate.py`, `run/select_candidate.sh` |

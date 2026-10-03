@@ -311,6 +311,30 @@ for the pre-registered endpoint — sections 3 and 5 carry the opposite sign) �
 per-run CIs (`ci_srcsamp_auprc_*`), since the control has no such checkpoint. The CI trees are
 symlinks under `.tmp/ci_srcsamp/` holding only the arm and its control.
 
+**Choosing among several finished candidates (pre-registered, val only).** When a round has a
+pre-registered selection rule (`docs/PREREG_CANDIDATE2_2026-10-02.md` §4 + §7.1), run it **before**
+any aggregate, external evaluation or CI on the new candidates, and commit its output first (§7.2):
+
+```bash
+R=experiments/runs_newsplit_ddi
+bash run/select_candidate.sh OUT_DIR=reports/<date>_candidate2_selection \
+     CANDIDATES="P0=$R/kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp \
+                 P1=$R/kd_convnextv2_base_to_mobilenetv4_conv_medium__srcsamp \
+                 P2=$R/kd_efficientnetv2_m_to_repvit_m1_0__srcsamp"
+```
+
+Candidates must be listed in the pre-registered order (the tie rule depends on it). The script reads
+only `val_predictions*.csv`, `val_split.csv` and `val_metrics*.json`, refuses any other file, and
+writes `selection.{json,md}` (pair, reason, per-fold PAD-val AUPRC, ship fold).
+
+**Comparing two checkpoints of ONE run** (e.g. `best_model_auprc.pth` vs `best_model.pth`) with a
+paired CI: `PRED_NAME` applies one file name to every run, so build a symlink tree with two
+"runs" that point into the same run-dir, and pair them with `PAIR=`. Each fold dir must hold
+**both** `predictions.csv` and `test_metrics.json` (link `predictions_auprc.csv` /
+`test_metrics_auprc.json` under those names for the AUPRC side) — run discovery
+(`find_run_dirs`) only counts a dir that has `test_metrics.json`, and a tree of predictions alone
+fails with "No run-dirs with fold_*/ found". Worked example: `reports/2026-10-03_item3_ckpt_paired.md`.
+
 > ⚠ The student arm isolates via `run_suffix=`, the teacher arm via `output_dir=`
 > — `scripts/train_teacher.py` does **not** read `run_suffix`, so without the
 > `output_dir` override a teacher ablation would overwrite the main teacher run.

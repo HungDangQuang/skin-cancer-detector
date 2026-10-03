@@ -13,9 +13,9 @@ Rule:
   3. Ship fold = the fold whose val AUPRC over ALL val rows (val_metrics<tag>.json "auprc") is the
      median of the 5 folds of the chosen pair.
 
-This script opens ONLY val_predictions<tag>.csv, val_metrics<tag>.json and val_split.csv; every
-path goes through `_val_only`, which refuses anything else (no predictions*.csv, no
-test_metrics*.json).
+This script opens ONLY val_predictions<tag>.csv, val_metrics<tag>.json and val_split.csv. Each of
+those paths is checked by `_val_only` (refuses any other file name) before it is read;
+`val_with_source` rebuilds the same two CSV paths itself, so keep the two in step if either changes.
 
 Usage (on the server, in .venv-linux — CPU only):
     python scripts/select_candidate.py \
@@ -104,6 +104,8 @@ def main() -> None:
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--force", action="store_true", help="overwrite an existing selection.json")
     args = ap.parse_args()
+    if args.tie <= 0:
+        sys.exit(f"ERROR: --tie must be > 0, got {args.tie}")
 
     order, runs = [], {}
     for spec in args.candidate:
@@ -112,6 +114,8 @@ def main() -> None:
             sys.exit(f"ERROR: --candidate wants NAME=RUN_DIR, got {spec!r}")
         if name in runs:
             sys.exit(f"ERROR: candidate {name} given twice")
+        if Path(path).resolve() in {p.resolve() for p in runs.values()}:
+            sys.exit(f"ERROR: run-dir {path} given for two candidates")
         order.append(name)
         runs[name] = Path(path)
     splits_dir = Path(args.splits_dir)

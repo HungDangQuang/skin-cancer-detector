@@ -1,6 +1,6 @@
 # Kế hoạch: Arm tăng cường nhắm miền (`augmentation=domain`)
 
-> 📋 **Theo dõi việc: `docs/PROGRESS.md`** — các mục còn mở ở §8 và §9 đã chép sang PROGRESS (U9, R3, R4, R5; §9.1 đã xong). Không cập nhật trạng thái ở đây.
+> 📋 **Theo dõi việc: `docs/PROGRESS.md`** — các mục còn mở ở §8 và §9 đã chép sang PROGRESS (U9, R3, R4, R5; §9.1 đã xong). 03/10: R3, R4, R5 xong — báo cáo arm DDI ở `reports/2026-10-03_ddi_arm.md`. Không cập nhật trạng thái ở đây.
 
 > Tài liệu này trả lời: *"mô hình sụp khi đổi miền ảnh — huấn luyện lại với tăng cường
 > nhắm đúng nguyên nhân đã chẩn đoán thì thu hồi được bao nhiêu?"*
@@ -276,8 +276,8 @@ Quy ước: Δ = `x_*__ddi − x_*`, đối chứng là nhánh **`light`** (`run
   mới là headline ở prevalence 0,39% (`CLAUDE.md`, mục Evaluation). Không đọc ô này qua AUC.
 
 ⚠️ **Chưa verify được trên Mac:** các số liệu nạp ở §6b (656 dòng append vào mỗi `train_split.csv`,
-test/val giữ byte-for-byte) chỉ kiểm được trên server — Mac không có `data/splits/fold_*` lẫn
-`data/processed/ddi/`, chỉ có backup `reports/_ddi_backup/20260925_120233/` (bản **trước** khi append).
+test/val giữ byte-for-byte) chỉ kiểm được trên server — Mac không có `data/processed/ddi/`; `data/splits/isic2024/fold_*` trên Mac là bản
+**trước** khi append (0 dòng `ddi`, trùng byte với backup `reports/_ddi_backup/20260925_120233/`; sửa 03/10).
 
 ### 6b. Cách thi công
 
