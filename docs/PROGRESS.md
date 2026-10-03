@@ -64,7 +64,7 @@ từng train trên instance `vastnew` hiện tại trước vòng này (fold 0 �
 
 | Mã | Việc | Ai / ở đâu | Lệnh / ghi chú | Trạng thái |
 |---|---|---|---|---|
-| N1 | **Tính luật chọn từ val và COMMIT kết quả** — trước mọi bước đọc số test | server (Python) | Chưa có script: viết qua skill `code-change`. Trung bình 5 fold AUPRC trên hàng PAD của `fold_*/val_predictions_auprc.csv` ghép theo thứ tự dòng với `data/splits/isic2024/fold_N/val_split.csv` (**kiểm số dòng và nhãn khớp từng dòng**), cho P0/P1/P2; luật hoà §7.1; fold ship = trung vị `val_metrics_auprc.json` | ⏳ |
+| N1 | **Tính luật chọn từ val và COMMIT kết quả** — trước mọi bước đọc số test | server (Python) | **Script sẵn (03/10):** `bash run/select_candidate.sh OUT_DIR=reports/<ngày>_candidate2_selection CANDIDATES="P0=… P1=… P2=…"` (thứ tự P0, P1, P2; đường dẫn đầy đủ trong header `run/select_candidate.sh`). Chỉ đọc file `val_*`, từ chối mọi file khác; chạy thử 03/10 trên val P0+P2 ra fold ship P0 = fold_4, khớp `reports/2026-10-01_srcsamp_item2_3.md` §5. Việc còn lại: Trung bình 5 fold AUPRC trên hàng PAD của `fold_*/val_predictions_auprc.csv` ghép theo thứ tự dòng với `data/splits/isic2024/fold_N/val_split.csv` (**kiểm số dòng và nhãn khớp từng dòng**), cho P0/P1/P2; luật hoà §7.1; fold ship = trung vị `val_metrics_auprc.json` | ⏳ |
 | N2 | Kéo kết quả về Mac + `aggregate` (cả checkpoint chính và `_auprc`) | Mac + server | `bash run/pull_results.sh pull`; `bash run/aggregate.sh RUN_DIR=<run>` và `… METRICS_NAME=test_metrics_auprc.json` (teacher: chỉ bản chính). `aggregated*.md` chứa số test — chỉ chạy sau N1 | ⏳ |
 | N3 | Eval ngoài miền: HAM headline + Fitzpatrick 4 biến thể | server | `bash run/evaluate_external.sh DATASET=… RUNS="<run-dir>" OUT_ROOT=<riêng>`. Student/baseline (P1, P2, baseline repvit): thêm `CKPT_NAME=best_model_auprc.pth VAL_PRED_NAME=val_predictions_auprc.csv`. **Teacher `convnextv2_base` cần lượt riêng với checkpoint mặc định** (teacher không có `best_model_auprc.pth`) — thiếu nó thì không tính được C2 của P1 trên Fitz/HAM | ⏳ |
 | N4 | CI các cổng | server | `bash run/bootstrap_ci.sh RESULTS_DIR=<cây symlink> PAIR="<student>:<teacher>" SUBGROUP=source\|tone_group METRICS=auc_roc,auprc,pauc_at_tpr80,sens_at_90spec,sens_at_80spec`. Dựng cây symlink như P0 (`.tmp/ci_gates/` trên server: student = file `_auprc`, teacher = file chính). C2 = student vs **teacher của chính cặp**; C1 = KD vs baseline cùng student | ⏳ |
@@ -78,10 +78,8 @@ từng train trên instance `vastnew` hiện tại trước vòng này (fold 0 �
 
 | Mã | Việc | Ai / ở đâu | Ghi chú | Trạng thái |
 |---|---|---|---|---|
-| R2 | Phép kiểm ghép cặp cho item 3 (checkpoint AUPRC vs checkpoint pAUC) | server, CPU | Chưa có (`reports/2026-10-01_srcsamp_item2_3.md` §4). Chỉ báo cáo; đổi checkpoint sau khi xem là post-hoc | 🔜 |
-| R3 | Ghi vào `CLAUDE.md` mục "Data integrity": mỗi `fold_*/train_split.csv` có thêm 656 dòng DDI | Mac | Còn tồn từ `docs/domain_aug_plan.md` §9.2 | 🔜 |
+| R2 | Phép kiểm ghép cặp cho item 3 (checkpoint AUPRC vs checkpoint pAUC) | server, CPU | Chưa có (`reports/2026-10-01_srcsamp_item2_3.md` §4). Chỉ báo cáo; đổi checkpoint sau khi xem là post-hoc | 🏃 03/10: đang chạy trên server (CPU, `.tmp/ci_item3/`) → `reports/ci_item3_srcsamp_{indomain,ham10000_headline,fitzpatrick17k_headline}.{md,json}` |
 | R4 | Báo cáo arm DDI thành `reports/*.md` | Mac | Còn tồn từ `docs/domain_aug_plan.md` §9.4 (hiện chỉ có `reports/ci_ddi_*`) | 🔜 |
-| R5 | Thêm vào `docs/PREPROCESSING.md` một mục về DDI là nguồn train **thứ ba** (hiện chỉ nhắc DDI trong phần sampler) | Mac | Còn tồn từ `docs/domain_aug_plan.md` §9.3 | 🔜 |
 
 ## 5. Để sau / hoãn ⏸
 
@@ -110,6 +108,9 @@ từng train trên instance `vastnew` hiện tại trước vòng này (fold 0 �
 
 | Ngày | Việc | Nơi ghi |
 |---|---|---|
+| 03/10 | R3: CLAUDE.md "Data integrity" ghi 656 dòng DDI ở train phía server; bản splits trên Mac là bản trước DDI | `CLAUDE.md` |
+| 03/10 | R5: mục 1.3 "DDI — nguồn train thứ ba" | `docs/PREPROCESSING.md` §1.3 |
+| 03/10 | Script luật chọn val-only cho N1 | `scripts/select_candidate.py`, `run/select_candidate.sh` |
 | 02/10 | A2: KD `efficientnetv2_m → repvit_m1_0` 5/5 fold, xong 21:46 UTC (~4 giờ 46 phút) | `experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_repvit_m1_0__srcsamp` (server) |
 | 02/10 | A1: baseline `repvit_m1_0` 5/5 fold, xong 16:59 UTC (~1 giờ 25 phút) | `experiments/runs_newsplit_ddi/baseline_repvit_m1_0__srcsamp` (server) |
 | 02/10 | Ô PAD của C1: ΔAUPRC −0,0008 [−0,0199, +0,0187] ⇒ C1 CHƯA CHỨNG MINH | `reports/2026-10-02_c1_pad_cell_srcsamp.md` (PR #13) |

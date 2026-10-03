@@ -56,6 +56,7 @@ still tees.
 | `srcsamp_eval.sh` | Arm C (source-stratified sampler) after training: aggregate + HAM/Fitzpatrick for both checkpoints + paired CIs vs the control (`reports/ci_srcsamp_*`) |
 | `ablation_pad.sh` | Data-strategy ablation B — PAD mixing (ISIC-only vs ISIC+PAD) |
 | `aggregate.sh` | fold_*/test_metrics.json → mean ± std (`aggregated.{json,md}`) |
+| `select_candidate.sh` | Pre-registered **val-only** candidate selection (prereg `docs/PREREG_CANDIDATE2_2026-10-02.md` §4 + §7.1): pair by mean 5-fold AUPRC on the PAD rows of val, tie rule, ship fold = median all-val AUPRC → `selection.{json,md}`. Reads only `val_*` files; commit its output **before** opening any test file or running external eval (§7.2) |
 | `evaluate.sh` | Evaluate one checkpoint on the held-out test set (adds `valthr_*` when the checkpoint's `val_predictions*.csv` is found, or `VAL_PRED=`) |
 | `evaluate_external.sh` | Cross-domain / fairness eval on HAM10000 / Fitzpatrick17k (frozen threshold) |
 | `plot_pareto.sh` | Pareto figure: in-domain AUPRC (bootstrap CI) vs measured Pixel 6a latency — CPU-only, joins existing artifacts |

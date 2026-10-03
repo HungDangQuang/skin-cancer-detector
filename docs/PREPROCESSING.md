@@ -333,6 +333,34 @@ python scripts/bootstrap_ci.py --results-dir .tmp/framing_ci --n-boot 2000 --see
 
 ---
 
+### 1.3 DDI — a third TRAIN-side source (added 2026-09-25)
+
+DDI (Diverse Dermatology Images, Stanford) is the only public set with
+pathology-confirmed malignancies on dark skin and a deliberately balanced
+Fitzpatrick tone mix. It joins ISIC 2024 and PAD-UFES-20 as a **train-only**
+source: 656 images, 171 malignant / 485 benign, FST 12/34/56 = 208/241/207,
+0 images dropped (`docs/domain_aug_plan.md` §6b).
+
+| Step | How it differs from ISIC/PAD | Where |
+|---|---|---|
+| Processing | Own tree `data/processed/ddi/{benign,malignant}/`; RGB → 224×224 LANCZOS, same as the other sources | `process_ddi`, `src/data/preprocessing.py:369` |
+| Quality filter | **Flag, never drop** on `is_uninformative` — its ISIC-tuned `std < 8` fires more on flat clinical photos, which is not independent of skin tone; only integrity failures (unreadable, `< min_size`) are dropped. Same policy as the external sets (§1.1) | `process_ddi` docstring |
+| `patient_id` | One group per image (`ddi_<id>`) — the release has no patient column, so the 656 images cannot be grouped by their ~570 patients. Harmless only because DDI never reaches val/test | `process_ddi` docstring |
+| Splits | **Appended** to every `fold_*/train_split.csv`; `test_split.csv` and all five `val_split.csv` stay byte-for-byte identical. No re-partitioning, no `prepare` re-run | `scripts/prepare_ddi.py`, `run/prepare_ddi.sh` |
+| Labels / source | `label` = DDI `malignant`; `source = "ddi"`, which the source-stratified sampler (§3.1) treats as its own minority source | split CSVs |
+
+Consequences that must be stated wherever a DDI-arm number is quoted:
+
+- **DDI is never scored on.** Its effect is measured indirectly — on the
+  unchanged in-domain test set and on the external Fitzpatrick17k tone groups.
+- **Train counts differ by source of the splits copy.** Only the server's
+  `data/splits/` carries the 656 rows; the Mac copy is pre-DDI. Runs in
+  `experiments/runs_newsplit_light` / `runs_newsplit_domain` were trained
+  before the append and remain valid paired controls for the DDI arm
+  (`experiments/runs_newsplit_ddi`).
+- Putting DDI into val/test would need a full split regeneration, a patient
+  grouping DDI does not ship, and a retrained control — a different job.
+
 ## 2. Splitting
 
 ✅ **Keep as-is.** Patient-level `StratifiedGroupKFold(K=5)`, grouped by
