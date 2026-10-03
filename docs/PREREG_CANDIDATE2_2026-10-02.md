@@ -96,3 +96,19 @@ lục chỉ thêm ràng buộc, không đổi ứng viên hay luật chọn.
    convnextv2_base chưa từng train trên `vastnew`; code không có resume — nếu một bước hỏng giữa chừng, chạy lại
    phải truyền `FOLDS=` các fold còn thiếu, nếu không sẽ train lại từ fold 0 (ghi đè các fold vừa xong của chính
    bước đó). A1 của repvit (57,2 ms theo kiến trúc) sát mốc 80 ms hơn mobilenetv4 (39,5 ms).
+
+## 8. Phụ lục — đổi định nghĩa C2, ghi 03/10/2026 (commit ~14:20 UTC), TRƯỚC khi mở test của P1/P2
+
+Tác giả đổi tiêu chí 2 ngày 03/10/2026: C2 = student **không kém** teacher quá δ (cận dưới CI ghép cặp ΔAUPRC
+> −δ trên từng miền), thay cho "vượt teacher" (`.claude/skills/eval-results/reference/acceptance-gates.md` §1).
+Câu "C2 đòi student **vượt** teacher" ở §6 không còn đúng. Với P1/P2 (test chưa mở) đây là thay đổi tiên nghiệm;
+với P0 là post-hoc. δ chưa có giá trị: nếu chốt δ trước khi mở test vòng 2 thì C2 của P1/P2 chấm được không
+post-hoc; nếu không, C2 của vòng 2 mang cờ CHƯA CÓ TIÊU CHÍ CHỐT. Luật chọn §4 và các endpoint khác không đổi.
+
+## 9. Phụ lục — đổi bộ cổng sang khung 3 trụ, ghi 03/10/2026 (commit ~14:20 UTC), TRƯỚC khi mở test của P1/P2
+
+Tác giả chọn khung 3 trụ (`.claude/skills/eval-results/reference/acceptance-gates.md` §2.1) thay luật gộp cũ ở §5:
+I-1 + II-1 + II-2 + II-3 + III-a + III-b + C2. III-a/III-b đo độ nhạy / độ đặc hiệu **tại ngưỡng app đóng băng**
+(quy tắc `pad_sens90` trên val của fold ship) trên ảnh PAD và trên Fitzpatrick17k theo từng tông da. B1, B2, B3,
+C4a cũ thành báo cáo. Luật chọn §4 không đổi (vẫn chỉ val). S_min, Sp_min, δ của C2 chưa có giá trị: chốt trước khi
+mở test vòng 2 thì endpoint của P1/P2 không post-hoc; nếu không, phán quyết vòng 2 mang cờ CHƯA CÓ TIÊU CHÍ CHỐT.
