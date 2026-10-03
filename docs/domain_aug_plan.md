@@ -1,5 +1,7 @@
 # Kế hoạch: Arm tăng cường nhắm miền (`augmentation=domain`)
 
+> 📋 **Theo dõi việc: `docs/PROGRESS.md`** — các mục còn mở ở §8 và §9 đã chép sang PROGRESS (U9, R3, R4, R5; §9.1 đã xong). Không cập nhật trạng thái ở đây.
+
 > Tài liệu này trả lời: *"mô hình sụp khi đổi miền ảnh — huấn luyện lại với tăng cường
 > nhắm đúng nguyên nhân đã chẩn đoán thì thu hồi được bao nhiêu?"*
 >

@@ -1,5 +1,7 @@
 # Kế hoạch: đánh giá CHẤT LƯỢNG trên điện thoại (on-device evaluation)
 
+> 📋 **Theo dõi việc: `docs/PROGRESS.md`** — kế hoạch gốc; các ô ☐ và dòng "chưa bắt đầu" bên dưới KHÔNG còn đúng — lượt Arm A đã chạy trên Pixel 6a 29/09 bằng `run/eval_from_logits.sh` (kết quả `mobile/testing_result/`). Phần còn mở (L3) là S2, S3 trong PROGRESS.
+
 > Tài liệu này trả lời: *"mô hình chạy trên điện thoại có còn đúng bằng mô hình chạy trên server
 > không — đo bằng pAUC/AUPRC, không phải bằng ms?"*
 >
