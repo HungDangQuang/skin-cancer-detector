@@ -1,0 +1,145 @@
+{
+  "rule": "docs/PREREG_CANDIDATE2_2026-10-02.md \u00a74 + \u00a77.1 (validation only)",
+  "created_utc": "2026-10-04T00:28:21+00:00",
+  "ckpt_tag": "_auprc",
+  "tie": 0.005,
+  "order": [
+    "P0",
+    "P1",
+    "P2"
+  ],
+  "run_dirs": {
+    "P0": "experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp",
+    "P1": "experiments/runs_newsplit_ddi/kd_convnextv2_base_to_mobilenetv4_conv_medium__srcsamp",
+    "P2": "experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_repvit_m1_0__srcsamp"
+  },
+  "pad_val_auprc_mean": {
+    "P0": 0.8830951956728053,
+    "P1": 0.8840102169113981,
+    "P2": 0.8536428227263606
+  },
+  "pad_val_per_fold": {
+    "P0": [
+      {
+        "fold": 0,
+        "pad_rows": 403,
+        "pad_pos": 219,
+        "val_rows": 59722,
+        "pad_auprc": 0.9146282474536348
+      },
+      {
+        "fold": 1,
+        "pad_rows": 351,
+        "pad_pos": 168,
+        "val_rows": 67041,
+        "pad_auprc": 0.8592611482411142
+      },
+      {
+        "fold": 2,
+        "pad_rows": 359,
+        "pad_pos": 137,
+        "val_rows": 75117,
+        "pad_auprc": 0.832601779579058
+      },
+      {
+        "fold": 3,
+        "pad_rows": 395,
+        "pad_pos": 166,
+        "val_rows": 50847,
+        "pad_auprc": 0.9143925511514832
+      },
+      {
+        "fold": 4,
+        "pad_rows": 373,
+        "pad_pos": 198,
+        "val_rows": 60422,
+        "pad_auprc": 0.8945922519387356
+      }
+    ],
+    "P1": [
+      {
+        "fold": 0,
+        "pad_rows": 403,
+        "pad_pos": 219,
+        "val_rows": 59722,
+        "pad_auprc": 0.9160689074136453
+      },
+      {
+        "fold": 1,
+        "pad_rows": 351,
+        "pad_pos": 168,
+        "val_rows": 67041,
+        "pad_auprc": 0.8770875663853963
+      },
+      {
+        "fold": 2,
+        "pad_rows": 359,
+        "pad_pos": 137,
+        "val_rows": 75117,
+        "pad_auprc": 0.8069265779037086
+      },
+      {
+        "fold": 3,
+        "pad_rows": 395,
+        "pad_pos": 166,
+        "val_rows": 50847,
+        "pad_auprc": 0.9255955083107678
+      },
+      {
+        "fold": 4,
+        "pad_rows": 373,
+        "pad_pos": 198,
+        "val_rows": 60422,
+        "pad_auprc": 0.8943725245434728
+      }
+    ],
+    "P2": [
+      {
+        "fold": 0,
+        "pad_rows": 403,
+        "pad_pos": 219,
+        "val_rows": 59722,
+        "pad_auprc": 0.868545217678131
+      },
+      {
+        "fold": 1,
+        "pad_rows": 351,
+        "pad_pos": 168,
+        "val_rows": 67041,
+        "pad_auprc": 0.8458266262397403
+      },
+      {
+        "fold": 2,
+        "pad_rows": 359,
+        "pad_pos": 137,
+        "val_rows": 75117,
+        "pad_auprc": 0.7654479683032135
+      },
+      {
+        "fold": 3,
+        "pad_rows": 395,
+        "pad_pos": 166,
+        "val_rows": 50847,
+        "pad_auprc": 0.8922140938602119
+      },
+      {
+        "fold": 4,
+        "pad_rows": 373,
+        "pad_pos": 198,
+        "val_rows": 60422,
+        "pad_auprc": 0.8961802075505065
+      }
+    ]
+  },
+  "winner": "P0",
+  "winner_reason": "tie rule \u00a77.1: P0 (0.8831) is listed before P1 (0.8840) and trails it by 0.0009 < 0.005",
+  "winner_all_val_auprc_per_fold": {
+    "0": 0.7687904995239278,
+    "1": 0.6616496802649121,
+    "2": 0.6295691968504588,
+    "3": 0.7691086173789079,
+    "4": 0.7017925135010313
+  },
+  "ship_fold": 4,
+  "files_read": "val_predictions{tag}.csv, val_split.csv, val_metrics{tag}.json only"
+}
