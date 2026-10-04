@@ -155,6 +155,9 @@ bộ nhớ, tỉ lệ nén, hành vi tại ngưỡng app.
 | Code KD | T², BCE trên logit, baseline cùng công thức (crosscheck §1.6); teacher `.eval()` + `no_grad` (crosscheck §1.5) | crosscheck |
 | Teacher có train cùng công thức với student không | **không**: teacher thiếu sampler theo nguồn và chỉ có checkpoint pAUC | crosscheck §1.5 |
 | Fold ship nếu chọn theo AUPRC val PAD | vẫn là fold 4 | `selection.md` |
+| Vòng 2 (P1, P2) — chỉ báo cáo, mở test sau khi chọn | P1, P2 cũng đạt III-a, trượt III-b; C2 (tạm) P1 ĐẠT, P2 CHƯA CHỨNG MINH | `reports/2026-10-04_round2_report_only.md` |
+| Teacher cùng công thức? (R7) | KD không sampler theo nguồn − teacher trên PAD: +0,0032 [−0,0169; +0,0251] | `reports/2026-10-04_r6r7/README.md` |
+| pAUC = metric chính thức? (R8) | khớp tới 2,8e-17 | `reports/2026-10-04_r8_pauc_official/` |
 
 ## 6. Bảng đối chiếu: từng nhận xét đã được xử lý thế nào
 
@@ -164,12 +167,12 @@ bộ nhớ, tỉ lệ nén, hành vi tại ngưỡng app.
 |---|---|---|---|
 | 1.1 | Mốc B2 0,81 là mức đọc dermoscopy, chỉ melanoma, áp sai cho ảnh điện thoại | ✅ | Nguồn Cochrane đã được kiểm lại (qua web, xem §7): trên ảnh, ở độ đặc hiệu 80% — dermoscopy 81%, ảnh lâm sàng 47%; khám trực tiếp 76%. B2 **thôi làm cổng** (hợp đồng §1, §2.1); ghi chú #20 |
 | 1.2 | "Cận dưới ≥ mốc" là phép kiểm vượt trội, thiếu power | ✅ một phần | Endpoint đổi sang độ nhạy/độ đặc hiệu tại ngưỡng cố định, Wilson CI. Vẫn giữ quy tắc cận dưới (có chủ đích). Cỡ mẫu cho tập xác nhận: ~180 ca ác cho power 80% (U8) |
-| 1.3 | B1 pAUC / B3 trượt mốc ở chữ số thứ 4 | ✅ một phần · 🔜 | B1, B3 chỉ báo cáo. Kiểm theo seed bootstrap (R6): đã khởi chạy trên server 04/10 (theo danh sách lần mở test, dòng 15), chưa có kết quả trong repo |
+| 1.3 | B1 pAUC / B3 trượt mốc ở chữ số thứ 4 | ✅ | B1, B3 chỉ báo cáo. R6 (04/10): seed 42 tái lập đúng số cũ; nhãn B1 lật theo seed (ĐẠT 1/6); B3 CCM ở 6/6 seed, thiếu < 0,002 ⇒ báo "cận dưới ≈ mốc" (`reports/2026-10-04_r6r7/README.md`) |
 | 1.4 | AND 8 cổng làm power chung thấp | ✅ một phần | Thay bằng AND 7 cổng của khung 3 trụ (vẫn là AND) |
-| 1.5 | C2 "vượt teacher" không hợp lý; nghi teacher khác công thức | ✅ · 🔜 · ⏸ | C2 = không kém teacher quá δ (theo văn liệu KD, hợp đồng §1). Lệch công thức teacher đã xác nhận và khai. CI ghép cặp tách hiệu ứng (R7): đang chạy, chưa có kết quả trong repo. Train lại teacher đúng công thức: S16 |
+| 1.5 | C2 "vượt teacher" không hợp lý; nghi teacher khác công thức | ✅ · ⏸ | C2 = không kém teacher quá δ (theo văn liệu KD, hợp đồng §1). Lệch công thức teacher đã xác nhận và khai. R7 (04/10), cùng công thức: KD không sampler theo nguồn − teacher trên PAD, ΔAUPRC +0,0032 [−0,0169; +0,0251], không phân biệt được; hiệu ứng sampler +0,0563 [+0,0391; +0,0748] ⇒ khoảng P0 hơn teacher (+0,0619) nhiều khả năng do sampler/checkpoint (suy luận ghép hai phép đo). Train lại teacher đúng công thức: S16 |
 | 1.6 | Kiểm loss KD; C1 không nên chỉ để báo cáo | ✅ (code) · 👤 (C1) | Code đúng. **Tác giả giữ C1 chỉ báo cáo**: tác dụng của KD là bằng chứng cho luận văn, không phải tiêu chí chọn model (hợp đồng §2.0). Luận văn phải nêu KD chưa chứng minh được tác dụng trên PAD (#7, #13) |
-| 1.7 | Bỏ mốc tuyệt đối theo tông da, chỉ báo cáo chênh lệch | 👤 (quyết khác đề xuất) | **Tác giả giữ mốc theo từng tông** và nâng lên 0,80 (cổng III-b). Lý do: không giữ thì khung chỉ chấm ảnh PAD và P0 gần như đạt (hợp đồng §1). Mối lo nhãn Fitzpatrick nhiễu **chưa được trả lời**. Chênh lệch có CI ghép cặp: R12 |
-| 1.8 | B1 so với test khác; pAUC có đúng công thức chính thức | ✅ · 🔜 | B1 chỉ báo cáo. So với hàm chấm chính thức: R8 |
+| 1.7 | Bỏ mốc tuyệt đối theo tông da, chỉ báo cáo chênh lệch | 👤 (quyết khác đề xuất) | **Tác giả giữ mốc theo từng tông** và nâng lên 0,80 (cổng III-b). Lý do: không giữ thì khung chỉ chấm ảnh PAD và P0 gần như đạt (hợp đồng §1). Mối lo nhãn Fitzpatrick nhiễu **chưa được trả lời**. R12 (04/10, fold 4, chỉ báo cáo): độ nhạy tại ngưỡng app sáng − trung bình +0,084 [+0,039; +0,127], sáng − tối +0,080 [+0,004; +0,154]; độ đặc hiệu và sens@95spec không cặp nào loại trừ 0; cộng 5 fold thì tông tối ≈ tông sáng |
+| 1.8 | B1 so với test khác; pAUC có đúng công thức chính thức | ✅ | B1 chỉ báo cáo. R8 (04/10): `pauc_at_tpr` khớp hàm chấm chính thức ISIC 2024 tới 2,8e-17 trên 17 tập con dự đoán của P0 ⇒ cùng định nghĩa; dữ liệu test vẫn khác cuộc thi (`reports/2026-10-04_r8_pauc_official/`) |
 | 1.9 | Endpoint nên là độ nhạy/độ đặc hiệu tại ngưỡng app | ✅ | Trụ III. Config app thật: ngưỡng 0,570523, so trên `sigmoid(logit)`; bằng chứng ở repo app riêng, xem §7. Phép so số trong review bị lệch điểm vận hành (crosscheck §1.9) |
 | 1.10 | Post-hoc, tập test dùng lại, chưa có tập xác nhận | ✅ · 👤 | Khai post-hoc ở hợp đồng §1 và PREREG §8–§10. Danh sách các lần mở test: `reports/2026-10-04_test_set_openings.md`. Tác giả chọn **thu dữ liệu mới qua bệnh viện** (U8). Việc **không dùng ảnh crawl từ web làm tập xác nhận** là đánh giá của assistant, chưa phải quyết định của tác giả |
 | 1.11 | Pipeline camera (L3) chưa đo | ⏸ | Đã thành cổng II-3; đo phía mobile, làm sau (U5, S11). Giả định "timm crop_pct" của reviewer không đúng: train dùng LANCZOS kéo về 224×224 (crosscheck §1.11) |
@@ -191,7 +194,7 @@ bộ nhớ, tỉ lệ nén, hành vi tại ngưỡng app.
 | 3 | r = −0,963 bị diễn giải quá mạnh | 📝 | Số tính trên in-domain v1 (lạm phát): bỏ hoặc gắn nhãn (#9) |
 | 4 | Thiếu baseline nén khác (label smoothing, class-balanced, INT8, pruning…) | 👤 · 📝 | Label smoothing chưa từng chạy; INT8 bị gác 14/07 → U11. Câu hạn chế: #15. "KD = làm mượt nhãn" phải ghi là giả thuyết (#13) |
 | 5 | Thiếu phân tích lỗi, Grad-CAM | ⏸ | S12 |
-| 6 | Công bằng chỉ ở metric gộp | ✅ · 🔜 | Đã tính theo tông tại ngưỡng app; nay là cổng III-b. CI ghép cặp của chênh lệch: R12. Ghi chú #11 |
+| 6 | Công bằng chỉ ở metric gộp | ✅ | Đã tính theo tông tại ngưỡng app; nay là cổng III-b. R12 (04/10, fold 4, chỉ báo cáo): độ nhạy tại ngưỡng app sáng − trung bình +0,084 [+0,039; +0,127], sáng − tối +0,080 [+0,004; +0,154]; độ đặc hiệu và sens@95spec không cặp nào loại trừ 0; cộng 5 fold thì tông tối ≈ tông sáng (`reports/2026-10-04_r12_tone_fixed_threshold/`). Ghi chú #11, #26 |
 | 7 | Gói tái lập | ⏸ | S13 |
 | 8 | Quy trình an toàn cho người dùng | ✅ (app) · 📝 · ⏸ | App (repo riêng, xem §7) có kiểm tra chất lượng ảnh, kết quả "ảnh không hợp lệ", thông điệp nhị phân. Mô tả trong luận văn: #16. Cổng OOD: S7 |
 | 9 | Phát biểu "tốt nhất / duy nhất" | 📝 | #17. Chưa xét bảng tiêu chí chọn backbone |
@@ -222,7 +225,7 @@ quả.
   - SCIN (bộ ảnh da của Google), giấy phép DermNet, các văn bản luật VN.
 - **Bằng chứng ở repo app riêng `SkinDetector` của tác giả** (config ngưỡng, `Decision.kt`, các tính năng an toàn): không nằm trong repo này. Crosscheck tự ghi mục 1.9–1.10 là "viết sau lượt kiểm, chưa ai kiểm lại".
 - **Ghi chép riêng ngoài repo:** việc tác giả từ chối label smoothing ngày 21/06.
-- **Chỉ có trên server:** các run vòng 2, log driver, dòng test P1 fold 4 đã lộ, trạng thái R6/R7.
+- **Chỉ có trên server:** các run vòng 2, log driver, dòng test P1 fold 4 đã lộ, cây symlink đầu vào của R6/R7/N4 (kết quả đã ở repo).
 - **Bootstrap theo bệnh nhân** dùng script thư viện chuẩn tự viết, không dùng hàm metric của repo.
 - **Wilson CI** giả định các ảnh độc lập; chưa kiểm được trên Fitzpatrick (không có mã bệnh nhân).
 - **Bản luận văn ~20/09** mà hai review đọc không có trong git (chỉ có bản 05/09 và 30/09).

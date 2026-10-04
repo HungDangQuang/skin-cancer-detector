@@ -32,15 +32,17 @@ Trạng thái mốc: S_min, Sp_min, δ **chốt tạm 04/10/2026, post-hoc với
 
 **Lưu ý C2 — so sánh không cùng công thức** (`acceptance-gates.md` §2 C; review 03/10 §1.5): teacher `efficientnetv2_m`
 train **không** có sampler theo nguồn và chỉ có checkpoint pAUC; student có cả hai. Teacher vì thế yếu hơn trên PAD, nên
-phép kiểm không kém **dễ đạt hơn** thực tế. Δ PAD +0,0619 **không** được đọc là "student vượt teacher"; phần nào đến từ
-sampler/checkpoint thì đang đo ở R7 (KD không sampler theo nguồn vs cùng teacher, ghép cặp trên PAD). C2 `ĐẠT` cũng không
+phép kiểm không kém **dễ đạt hơn** thực tế. Δ PAD +0,0619 **không** được đọc là "student vượt teacher"; R7 (04/10) đo
+cùng công thức: KD không sampler theo nguồn − teacher trên PAD = +0,0032 [−0,0169; +0,0251], không phân biệt được; hiệu
+ứng sampler theo nguồn là +0,0563 [+0,0391; +0,0748] ⇒ khoảng hơn teacher nhiều khả năng đến từ sampler/checkpoint (suy luận ghép hai phép đo; điểm ước lượng cộng lại đúng +0,0619 = checkpoint +0,0023 + sampler +0,0563 + KD − teacher +0,0032, các CI thì không cộng được)
+(`reports/2026-10-04_r6r7/README.md`). C2 `ĐẠT` cũng không
 nói KD có tác dụng (đó là C1, ô PAD chưa chứng minh).
 
 Báo cáo (không quyết định) — giữ nguyên từ `reports/2026-10-02_acceptance_verdict_srcsamp.md:29-37`:
 - B1 ISIC: AUC 0,9437 [0,9227, 0,9616] · pAUC 0,1580 [0,1418, 0,1730] — tham chiếu Kurtansky 0,922 / 0,142 (cận dưới AUC
-  **trên** mốc 0,0007, cận dưới pAUC **dưới** mốc 0,0002 ⇒ nhãn có thể lật theo seed bootstrap, R6). Bootstrap theo bệnh nhân: cận dưới AUC ISIC 0,9204 < 0,922 (`reports/2026-10-03_thesis_review_checks/README.md:26`).
+  **trên** mốc 0,0007, cận dưới pAUC **dưới** mốc 0,0002 (seed 42). R6 chạy lại với seed 1–5: nhãn B1 lật theo seed, `ĐẠT` ở 1/6 seed; biên độ cận dưới giữa các seed là AUC 0,0016 · pAUC 0,0011, lớn hơn khoảng cách tới mốc ⇒ "cận dưới ≈ mốc" (`reports/2026-10-04_r6r7/README.md`). Bootstrap theo bệnh nhân: cận dưới AUC ISIC 0,9204 < 0,922 (`reports/2026-10-03_thesis_review_checks/README.md:26`).
 - sens@spec80 PAD: 0,8180 [0,7406, 0,8786] — tham chiếu Cochrane 0,81 / 0,76 / 0,47 (`acceptance-gates.md` §2.1; 0,81 = đọc dermoscopy, 0,47 = nhìn ảnh thường).
-- B3 Fitzpatrick sens@spec80: 0,4946 [0,4699, 0,5178]. B4 HAM sens@spec80: 0,7259 [0,7018, 0,7508].
+- B3 Fitzpatrick sens@spec80: 0,4946 [0,4699, 0,5178] (R6: `CHƯA CHỨNG MINH` ở cả 6 seed, thiếu dưới 0,002). B4 HAM sens@spec80: 0,7259 [0,7018, 0,7508].
 - C1 (KD − baseline, ΔAUPRC): PAD −0,0008 [−0,0199, +0,0187] (chưa chứng minh) · Fitz +0,0395 [+0,0310, +0,0478].
 - C4b (chênh AUC giữa tông): sáng − trung bình +0,0409 [+0,0119, +0,0708] khác 0 có ý nghĩa (hạn chế); hai cặp còn lại chứa 0.
 - A2 / C3: 208–257 MiB (theo kiến trúc, 16 model) · 1,653 GFLOPs.

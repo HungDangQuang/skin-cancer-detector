@@ -1,0 +1,171 @@
+{
+  "results_dir": ".tmp/ci_gates/indomain",
+  "n_boot": 2000,
+  "seed": 3,
+  "alpha": 0.05,
+  "n_test_rows": 59093,
+  "fold_convention": "shared row indices across folds; statistic = mean over folds (folds are models on the SAME test rows, so predictions are never pooled)",
+  "metrics": [
+    "auc_roc",
+    "pauc_at_tpr80"
+  ],
+  "per_run": {
+    "teacher/efficientnetv2_m": {
+      "n_folds": 5,
+      "auc_roc": {
+        "point": 0.9792869074025846,
+        "lo": 0.9711571961658579,
+        "hi": 0.986119951996572,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.18035898064199946,
+        "lo": 0.1726277789216625,
+        "hi": 0.1870281462268107,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    },
+    "x_student": {
+      "n_folds": 5,
+      "auc_roc": {
+        "point": 0.9824695274102565,
+        "lo": 0.9759134736024011,
+        "hi": 0.9884279196400495,
+        "n_valid": 2000,
+        "n_dropped": 0
+      },
+      "pauc_at_tpr80": {
+        "point": 0.183336115134495,
+        "lo": 0.17711186409616061,
+        "hi": 0.1891165487773331,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    }
+  },
+  "kd_deltas": {},
+  "ablation_deltas": {},
+  "ablation_deltas_by_subgroup": {},
+  "explicit_pairs": {},
+  "explicit_pairs_by_subgroup": {},
+  "fairness_gaps": {
+    "teacher/efficientnetv2_m": {
+      "n_per_group": {
+        "isic2024": 58696,
+        "pad_ufes_20": 397
+      },
+      "per_group": {
+        "isic2024": {
+          "auc_roc": {
+            "point": 0.9330367083265996,
+            "lo": 0.9076327715173044,
+            "hi": 0.9534752543094583,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.1505507775323672,
+            "lo": 0.13118121639380612,
+            "hi": 0.16738544810451217,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "pad_ufes_20": {
+          "auc_roc": {
+            "point": 0.818905168905169,
+            "lo": 0.7827578032904516,
+            "hi": 0.8521115634456117,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.09878917378917376,
+            "lo": 0.08299153441580111,
+            "hi": 0.11543005794997883,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      },
+      "gaps": {
+        "isic2024_minus_pad_ufes_20": {
+          "auc_roc": {
+            "point": 0.11413153942143062,
+            "lo": 0.07061846846414976,
+            "hi": 0.15617977395066393,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.05176160374319344,
+            "lo": 0.025240933440433443,
+            "hi": 0.07521449672185783,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      }
+    },
+    "x_student": {
+      "n_per_group": {
+        "isic2024": 58696,
+        "pad_ufes_20": 397
+      },
+      "per_group": {
+        "isic2024": {
+          "auc_roc": {
+            "point": 0.9437074871159474,
+            "lo": 0.9221428286766766,
+            "hi": 0.9623207634619707,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.15799618865485102,
+            "lo": 0.14160554594755526,
+            "hi": 0.17335626614294797,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        },
+        "pad_ufes_20": {
+          "auc_roc": {
+            "point": 0.877910052910053,
+            "lo": 0.8467439008886656,
+            "hi": 0.9076046585817236,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.12317256817256812,
+            "lo": 0.10656887400651653,
+            "hi": 0.1403205040764707,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      },
+      "gaps": {
+        "isic2024_minus_pad_ufes_20": {
+          "auc_roc": {
+            "point": 0.06579743420589446,
+            "lo": 0.02921890746688985,
+            "hi": 0.10112800163175838,
+            "n_valid": 2000,
+            "n_dropped": 0
+          },
+          "pauc_at_tpr80": {
+            "point": 0.034823620482282894,
+            "lo": 0.010765009375779096,
+            "hi": 0.05745050406874863,
+            "n_valid": 2000,
+            "n_dropped": 0
+          }
+        }
+      }
+    }
+  }
+}

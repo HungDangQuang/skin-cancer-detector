@@ -217,7 +217,7 @@ chưa phủ bước đổi kích thước ảnh camera (L3, `docs/MOBILE_EVAL_PL
   của Δ(student − teacher) > −δ. C2 `ĐẠT` chỉ nói nén không làm mất quá δ — **không** nói KD có tác dụng (đó là C1).
   (Trước 04/10, khi chưa có δ: nhãn ô = `CHƯA CHỨNG MINH` + cờ. Từ 04/10 δ đã chốt tạm — §1.)
   Lưu ý chiều lệch: teacher hiện tại train **không** có sampler theo nguồn (student có) ⇒ teacher yếu hơn trên PAD
-  ⇒ phép kiểm không kém **dễ đạt hơn** thực tế; xem `docs/PROGRESS.md` R7, S16. Tập miền có HAM (dermoscopy) dù B4
+  ⇒ phép kiểm không kém **dễ đạt hơn** thực tế; xem `reports/2026-10-04_r6r7/README.md` (R7: cùng công thức thì KD không phân biệt được với teacher trên PAD) và `docs/PROGRESS.md` S16. Tập miền có HAM (dermoscopy) dù B4
   đã thành báo cáo vì cùng lý do — tác giả **giữ HAM** (03/10/2026). Ô HAM (cận dưới −0,0068) là ô quyết định δ
   ở ứng viên hiện tại.
   Teacher phải là **chính teacher đã dạy student đó, trên cùng splits** (vd `x_kd__ddi` − `x_teacher__ddi`),
