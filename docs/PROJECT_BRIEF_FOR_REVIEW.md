@@ -4,7 +4,8 @@
 > chưa.
 > - Bản 1 (03/10, commit `3815e7c`) là bản gửi đi để lấy review; bản này thay nó.
 > - Đây không phải nơi theo dõi việc. Trạng thái **mới nhất** của từng việc nằm ở `docs/PROGRESS.md`; trạng thái ghi ở
->   đây là ảnh chụp lúc viết (04/10/2026, ~07:50 giờ VN = 00:50 UTC).
+>   đây là ảnh chụp lúc viết (04/10/2026, ~07:50 giờ VN = 00:50 UTC); **cập nhật 04/10 chiều sau review v2**: hàng "Sau
+>   review v2" ở §5, bảng III-b, hàng 1.2, ghi chú Wilson CI.
 
 ## 0. Cách dùng tài liệu này
 
@@ -93,7 +94,7 @@ Bộ câu hỏi con là **đề xuất, chưa được duyệt**. KD là một g
 | PAD-UFES-20 | ảnh **điện thoại** | train / val / test — gần app nhất | test: 397 ảnh (189 ác) |
 | DDI | ảnh lâm sàng, tông da cân bằng | chỉ train | 656 ảnh (171 ác) |
 | HAM10000 | dermoscopy | chỉ đánh giá. B4 chỉ báo cáo, **nhưng HAM vẫn nằm trong cổng C2** | 7.470 ảnh (headline) |
-| Fitzpatrick17k | ảnh lâm sàng khác nguồn, có tông da | chỉ đánh giá — **cổng III-b** | 4.320 ảnh (tối 411 · sáng 2.310 · trung bình 1.599) |
+| Fitzpatrick17k | ảnh lâm sàng khác nguồn, có tông da | chỉ đánh giá — **cổng III-b** chấm trên tập con Fitzpatrick17k-C 3.086 ảnh từ 04/10 (post-hoc); C2/B3/C4b trên 4.320 | 4.320 ảnh (tối 411 · sáng 2.310 · trung bình 1.599) |
 
 **Splits v2** (22/09): test 59.093 ảnh, tách theo bệnh nhân trước khi chia 5 fold.
 
@@ -118,7 +119,7 @@ Luật đầy đủ ở hợp đồng §2.1. Model "đạt" chỉ khi **mọi** 
 | II-1 / II-2 | điện thoại = máy chủ; không lỗi, tất định | như A3 / A4 cũ | đề xuất |
 | II-3 | tỉ lệ đổi quyết định khi ảnh đi qua pipeline thật của app | < 0,5% | đề xuất |
 | III-a | ảnh PAD, tại **ngưỡng app đóng băng**: độ nhạy và độ đặc hiệu | cận dưới Wilson ≥ 0,80 · ≥ 0,60 | **chốt tạm 04/10** |
-| III-b | Fitzpatrick17k, cùng ngưỡng, **từng tông da** | cùng hai mốc trên | **chốt tạm 04/10** |
+| III-b | Fitzpatrick17k (tập con Fitzpatrick17k-C từ 04/10), cùng ngưỡng, **từng tông da** | cùng hai mốc trên | **chốt tạm 04/10** |
 | C2 | student không kém teacher quá δ (ΔAUPRC; PAD · Fitz · HAM) | δ = 5% AUPRC của chính teacher | **chốt tạm 04/10** |
 
 **Chỉ báo cáo:** B1 (ISIC, so Kurtansky 2025), độ nhạy@đặc hiệu 80% trên PAD so với mốc Cochrane, B3, B4, C1, C4b,
@@ -133,7 +134,7 @@ bộ nhớ, tỉ lệ nén, hành vi tại ngưỡng app.
 |---|---|---|
 | II-1 / II-2 | max\|Δlogit\| 5,2e-06; 0/70.883 lỗi, trùng bit | đạt so với mốc đề xuất |
 | III-a | độ nhạy 165/189 = 0,873 [0,818; 0,913]; độ đặc hiệu 152/208 = 0,731 [0,667; 0,786] | ĐẠT (tạm) |
-| **III-b** | độ nhạy theo tông: sáng 0,604 [0,576; 0,632] · trung bình 0,520 [0,485; 0,556] · tối 0,524 [0,456; 0,591] | **KHÔNG ĐẠT** — cận trên cả ba tông < 0,80 |
+| **III-b** | độ nhạy theo tông, **Fitzpatrick17k-C** (tập chấm từ 04/10): sáng 0,603 [0,571; 0,634] · trung bình 0,503 [0,461; 0,544] · tối 0,508 [0,423; 0,592] (headline: 0,604 [0,576; 0,632] · 0,520 [0,485; 0,556] · 0,524 [0,456; 0,591]) | **KHÔNG ĐẠT** — cận trên cả ba tông < 0,80 trên cả hai tập |
 | C2 | cận dưới ΔAUPRC: PAD +0,0396 · Fitz −0,0008 · HAM −0,0068 | ĐẠT (tạm) |
 | I-1, II-3 | — | chưa đo; sẽ đo phía mobile sau |
 
@@ -158,6 +159,7 @@ bộ nhớ, tỉ lệ nén, hành vi tại ngưỡng app.
 | Vòng 2 (P1, P2) — chỉ báo cáo, mở test sau khi chọn | P1, P2 cũng đạt III-a, trượt III-b; C2 (tạm) P1 ĐẠT, P2 CHƯA CHỨNG MINH | `reports/2026-10-04_round2_report_only.md` |
 | Teacher cùng công thức? (R7) | KD không sampler theo nguồn − teacher trên PAD: +0,0032 [−0,0169; +0,0251] | `reports/2026-10-04_r6r7/README.md` |
 | pAUC = metric chính thức? (R8) | khớp tới 2,8e-17 | `reports/2026-10-04_r8_pauc_official/` |
+| Sau review v2 (04/10) | Tác giả **giữ** III-b 0,80 theo tông (so với mốc bác sĩ 0,47 chỉ báo cáo); III-b chấm trên **Fitzpatrick17k-C** (post-hoc; nhãn P0 không đổi: cận trên 0,634 / 0,544 / 0,592). Ngưỡng tốt nhất từng tông ở độ đặc hiệu 0,60 vẫn chỉ đạt 0,69–0,74. Cỡ mẫu U8 chính xác: 218 ca ác nếu độ nhạy thật 0,87 | `reports/2026-10-04_review_v2_checks/README.md` |
 
 ## 6. Bảng đối chiếu: từng nhận xét đã được xử lý thế nào
 
@@ -166,7 +168,7 @@ bộ nhớ, tỉ lệ nén, hành vi tại ngưỡng app.
 | # | Nhận xét (rút gọn) | Trạng thái | Đã làm / chỗ kiểm |
 |---|---|---|---|
 | 1.1 | Mốc B2 0,81 là mức đọc dermoscopy, chỉ melanoma, áp sai cho ảnh điện thoại | ✅ | Nguồn Cochrane đã được kiểm lại (qua web, xem §7): trên ảnh, ở độ đặc hiệu 80% — dermoscopy 81%, ảnh lâm sàng 47%; khám trực tiếp 76%. B2 **thôi làm cổng** (hợp đồng §1, §2.1); ghi chú #20 |
-| 1.2 | "Cận dưới ≥ mốc" là phép kiểm vượt trội, thiếu power | ✅ một phần | Endpoint đổi sang độ nhạy/độ đặc hiệu tại ngưỡng cố định, Wilson CI. Vẫn giữ quy tắc cận dưới (có chủ đích). Cỡ mẫu cho tập xác nhận: ~180 ca ác cho power 80% (U8) |
+| 1.2 | "Cận dưới ≥ mốc" là phép kiểm vượt trội, thiếu power | ✅ một phần | Endpoint đổi sang độ nhạy/độ đặc hiệu tại ngưỡng cố định, Wilson CI. Vẫn giữ quy tắc cận dưới (có chủ đích). Cỡ mẫu cho tập xác nhận (power 80%, luật cận dưới Wilson, tính chính xác 04/10): 218 ca ác nếu độ nhạy thật 0,87, 454 nếu 0,85; vì III-a cần cả độ nhạy và độ đặc hiệu, power chung với 218 ca ác + 99 ca lành chỉ ≈ 0,64 — muốn 0,80 chung cần 287 + 130 (U8) |
 | 1.3 | B1 pAUC / B3 trượt mốc ở chữ số thứ 4 | ✅ | B1, B3 chỉ báo cáo. R6 (04/10): seed 42 tái lập đúng số cũ; nhãn B1 lật theo seed (ĐẠT 1/6); B3 CCM ở 6/6 seed, thiếu < 0,002 ⇒ báo "cận dưới ≈ mốc" (`reports/2026-10-04_r6r7/README.md`) |
 | 1.4 | AND 8 cổng làm power chung thấp | ✅ một phần | Thay bằng AND 7 cổng của khung 3 trụ (vẫn là AND) |
 | 1.5 | C2 "vượt teacher" không hợp lý; nghi teacher khác công thức | ✅ · ⏸ | C2 = không kém teacher quá δ (theo văn liệu KD, hợp đồng §1). Lệch công thức teacher đã xác nhận và khai. R7 (04/10), cùng công thức: KD không sampler theo nguồn − teacher trên PAD, ΔAUPRC +0,0032 [−0,0169; +0,0251], không phân biệt được; hiệu ứng sampler +0,0563 [+0,0391; +0,0748] ⇒ khoảng P0 hơn teacher (+0,0619) nhiều khả năng do sampler/checkpoint (suy luận ghép hai phép đo). Train lại teacher đúng công thức: S16 |
@@ -227,7 +229,7 @@ quả.
 - **Ghi chép riêng ngoài repo:** việc tác giả từ chối label smoothing ngày 21/06.
 - **Chỉ có trên server:** các run vòng 2, log driver, dòng test P1 fold 4 đã lộ, cây symlink đầu vào của R6/R7/N4 (kết quả đã ở repo).
 - **Bootstrap theo bệnh nhân** dùng script thư viện chuẩn tự viết, không dùng hàm metric của repo.
-- **Wilson CI** giả định các ảnh độc lập; chưa kiểm được trên Fitzpatrick (không có mã bệnh nhân).
+- **Wilson CI** giả định các ảnh độc lập. Fitzpatrick không có mã bệnh nhân; phần ảnh gần trùng đã biết (Abhishek et al., Sci Data 2025) được loại bằng cách chấm III-b trên Fitzpatrick17k-C từ 04/10 — trùng chưa phát hiện vẫn có thể còn.
 - **Bản luận văn ~20/09** mà hai review đọc không có trong git (chỉ có bản 05/09 và 30/09).
 - **Luận văn chưa được sửa:** mọi mục 📝 mới là ghi chú.
 

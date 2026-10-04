@@ -37,7 +37,8 @@ In đậm = khoảng loại trừ 0.
 - Chỉ là fold 4: cộng số đếm 5 fold (mỗi fold dùng ngưỡng `pad_sens90` của nó) thì độ nhạy tông tối 0,699 ≈ tông sáng
   0,712, chỉ tông trung bình thấp (0,657) — `reports/2026-10-03_thesis_review_checks/README.md:46`. Không kết luận
   "da tối kém hơn".
-- Cả ba tông vẫn trượt III-b (cận trên độ nhạy < 0,80) — bảng này không đổi phán quyết
+- Cả ba tông vẫn trượt III-b (cận trên độ nhạy < 0,80; headline — trên Fitzpatrick17k-C, tập chấm III-b từ 04/10, cũng vậy:
+  `reports/2026-10-04_review_v2_checks/output.md` (1)) — bảng này không đổi phán quyết
   (`reports/2026-10-04_acceptance_verdict_P0_3pillar.md`).
 
 **Giới hạn:** một fold (fold ship); ngưỡng `pad_sens90` chọn post-hoc; Fitzpatrick đã được nhìn nhiều lần

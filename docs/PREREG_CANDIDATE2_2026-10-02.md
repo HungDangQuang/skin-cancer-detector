@@ -128,3 +128,14 @@ này được ghi; số đó không được chép lại và không chuyển cho
 P1/P2 chưa được mở (lệnh kiểm của phiên ghi phụ lục này chỉ đếm số file). Vì vậy với P1 các mốc ở đây mang một phần
 nhỏ post-hoc (một fold đã bị nhìn bởi assistant, không phải tác giả), phải khai khi báo cáo. Bước tiếp theo vẫn là §4 (chọn chỉ bằng val, commit kết quả chọn trước khi đọc số test).
 Nếu tác giả đổi mốc sau khi đã xem số test vòng 2 thì phải khai post-hoc.
+
+## 11. Phụ lục — đổi tập chấm III-b sang Fitzpatrick17k-C, ghi 04/10/2026, SAU khi mở test của P1/P2 (post-hoc)
+
+Sau review v2 (`review/REVIEW_DANH_GIA_V2_2026-10-04.md` §2.4), tác giả đổi tập chấm III-b từ toàn bộ Fitzpatrick17k
+headline (§9) sang tập con **Fitzpatrick17k-C** (3.086 / 4.320 ảnh còn lại sau khi Abhishek, Jain & Hamarneh, Sci Data
+2025 loại ảnh gần trùng/ảnh lỗi; danh sách `reports/2026-10-04_review_v2_checks/fitz17kC_headline_image_ids.txt`). Mốc
+S_min/Sp_min (§10) giữ nguyên. Thay đổi này **post-hoc**: được quyết sau khi đã thấy III-b của P0/P1/P2 trên headline và
+kết quả của P0 trên chính Fitzpatrick17k-C; số P1/P2 trên Fitzpatrick17k-C cũng đã được tính trước lúc quyết. Nhãn III-b
+của P0, P1, P2 **không đổi** (cả ba vẫn trượt trên cả hai tập — `reports/2026-10-04_review_v2_checks/output.md` (1)). δ
+của C2 (§10) và các cổng/báo cáo khác vẫn trên headline. Luật chọn §4 không bị ảnh hưởng (chỉ dùng val).
+

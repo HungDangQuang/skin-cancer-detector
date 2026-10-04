@@ -58,8 +58,18 @@ Fold ship theo luật của P0 (trung vị AUPRC toàn bộ val, `val_metrics_au
 | P1 | 0,894 [0,842; 0,930] | 0,707 [0,642; 0,764] | 0,711 [0,685; 0,736] · 0,670 [0,635; 0,702] · 0,736 [0,672; 0,791] | 0,644 [0,615; 0,672] · 0,662 [0,629; 0,693] · 0,591 [0,522; 0,656] |
 | P2 | 0,862 [0,806; 0,904] | 0,673 [0,607; 0,733] | 0,695 [0,668; 0,720] · 0,561 [0,526; 0,596] · 0,572 [0,504; 0,637] | 0,612 [0,583; 0,640] · 0,673 [0,641; 0,704] · 0,734 [0,669; 0,790] |
 
-Theo mốc tạm (S_min 0,80, Sp_min 0,60): **cả ba ứng viên đạt III-a và trượt III-b** (cận trên độ nhạy của mọi tông
-< 0,80). P1 gần nhất (cận trên tông tối 0,791), đổi lại độ đặc hiệu thấp hơn (tông tối 0,591 [0,522; 0,656] — cắt qua
+**Từ 04/10, III-b chấm trên Fitzpatrick17k-C** (tập con của headline sau khi loại ảnh gần trùng/ảnh lỗi theo Abhishek et
+al. 2025 — tác giả quyết sau review v2, post-hoc; `acceptance-gates.md` §1). Bảng trên là headline; trên Fitzpatrick17k-C
+(`reports/2026-10-04_review_v2_checks/output.md` (1)):
+
+| | III-b Fitz17k-C độ nhạy sáng · trung bình · tối | III-b Fitz17k-C độ đặc hiệu sáng · trung bình · tối |
+|---|---|---|
+| P0 | 0,603 [0,571; 0,634] · 0,503 [0,461; 0,544] · 0,508 [0,423; 0,592] | 0,742 [0,711; 0,770] · 0,813 [0,777; 0,845] · 0,824 [0,748; 0,881] |
+| P1 | 0,706 [0,676; 0,734] · 0,646 [0,605; 0,684] · 0,723 [0,641; 0,793] | 0,655 [0,622; 0,687] · 0,720 [0,680; 0,757] · 0,624 [0,537; 0,704] |
+| P2 | 0,696 [0,666; 0,725] · 0,530 [0,488; 0,571] · 0,546 [0,460; 0,629] | 0,609 [0,575; 0,642] · 0,714 [0,673; 0,751] · 0,768 [0,687; 0,833] |
+
+Theo mốc tạm (S_min 0,80, Sp_min 0,60), trên cả headline lẫn Fitzpatrick17k-C: **cả ba ứng viên đạt III-a và trượt III-b** (cận trên độ nhạy của mọi tông
+< 0,80). P1 gần nhất (cận trên tông tối 0,791 headline / 0,793 Fitzpatrick17k-C), đổi lại độ đặc hiệu thấp hơn (tông tối 0,591 [0,522; 0,656] headline, 0,624 [0,537; 0,704] Fitzpatrick17k-C — cắt qua
 0,60). Không ứng viên nào của vòng 2 đóng được khoảng hụt III-b.
 
 ## 4. Báo cáo kèm — độ nhạy @ độ đặc hiệu 80% (trung bình 5 fold)

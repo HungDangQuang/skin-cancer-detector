@@ -29,16 +29,17 @@ fold-run, rò rỉ bệnh nhân) không liệt kê; tập test v1 khác tập te
 | 15 | 04/10 00:35 → | P0-era: KD `__ddi` (không sampler theo nguồn) vs teacher; P0 B1/B3 với 6 seed | in-domain theo nguồn; Fitz | R7, R6 (bootstrap lại file dự đoán đã có, không có model mới) | log `bootstrap_ci_20261004_003508…`; driver `.tmp/r6r7.sh` (server) |
 | 16 | 04/10 (sau #14; giờ chưa ghi) | P0 `_auprc` 5 fold; HAM, Fitz headline fold 4 | in-domain (toàn bộ, ISIC, PAD); HAM; Fitz | R8 — so hàm pAUC với hàm chấm chính thức (chỉ so định nghĩa) | `reports/2026-10-04_r8_pauc_official/output.csv` |
 | 17 | 04/10 (sau #14; giờ chưa ghi) | P0 fold 4 | Fitz headline theo tông, tại ngưỡng app | R12 — chênh giữa tông, bootstrap | `reports/2026-10-04_r12_tone_fixed_threshold/` |
+| 18 | 04/10 (~13:20 giờ VN; giờ chính xác chưa ghi) | P0, P1, P2 fold 4; P0 5 fold | Fitz headline + tập con Fitzpatrick17k-C theo tông, tại ngưỡng app; sens@spec60/80 | review v2 (D2, D4, 🔍 2.4) — sau đó tác giả đổi tập chấm III-b sang Fitzpatrick17k-C | `reports/2026-10-04_review_v2_checks/` |
 
 **Hệ quả cần khai trong luận văn:**
 - **Test PAD** (397 ảnh, chung cho mọi fold) đã được nhìn ít nhất ở #1, #3, #4–#12, #16. Ngưỡng app `pad_sens90` được chọn
   sau #7 ⇒ III-a của P0 là post-hoc.
-- **Fitzpatrick** đã được nhìn ở #2–#7, #10–#12, #16–#17, trong đó có số tại ngưỡng app (#7, #10, #12) ⇒ III-b của P0 là post-hoc.
+- **Fitzpatrick** đã được nhìn ở #2–#7, #10–#12, #16–#18, trong đó có số tại ngưỡng app (#7, #10, #12) ⇒ III-b của P0 là post-hoc.
 - **HAM** đã được nhìn ở #2–#6, #11; B4 chuyển sang báo cáo **sau** khi thấy kết quả (02/10).
 - Vòng 2: luật chọn chỉ dùng val, commit trước #14. Có #13 (một dòng metric tổng in-domain của P1 fold 4, trước N1),
   đã khai. Hai cặp vòng 2 được chọn có tham khảo số HAM/Fitz của **splits v1** (prereg §7.4).
 - Không tập test v2 nào còn "chưa ai chạm" ⇒ một kết luận xác nhận cần tập mới (`docs/PROGRESS.md` U8).
 
-**Chưa verify được:** giờ chính xác của #1–#3 và #7, #9, #10, #12, #16, #17 (chỉ biết ngày); log trước 30/09 không còn trên box.
+**Chưa verify được:** giờ chính xác của #1–#3 và #7, #9, #10, #12, #16, #17, #18 (chỉ biết ngày); log trước 30/09 không còn trên box.
 Bảng có thể sót các lượt mở ad-hoc không để lại log hay commit (ví dụ lệnh `python -c` đọc `test_metrics.json` trong
 một phiên hội thoại).

@@ -93,6 +93,8 @@ Mốc chốt sau khi đã nhìn thấy kết quả của chính model đang ch�
 | B2 (mốc 0,81) thôi làm cổng → tham chiếu; B1, B3 → báo cáo; C4a → gộp vào III-b | **ĐÃ CHỐT — post-hoc** | 03/10/2026 | tác giả |
 | S_min (độ nhạy tối thiểu, III-a và III-b) · Sp_min (độ đặc hiệu tối thiểu, III-a **và III-b**) | **CHỐT TẠM: S_min = 0,80; Sp_min = 0,60** (tác giả sẽ review lại, nên có GVHD). Lý do: quy tắc ngưỡng nhắm độ nhạy 90% trên val, cho phép tụt tới 0,80 = không bỏ sót quá 1/5; độ đặc hiệu là phần còn lại của quy tắc đó (val fold 4 ≈ 0,67) và "lành" ở PAD gồm cả tổn thương tiền ung thư (ACK) — 0,60 = gửi đi khám tối đa 4/10 tổn thương lành. Áp Sp_min cho cả III-b để không nới | 04/10/2026 (tạm) | tác giả |
 | Mốc II-3 (tỉ lệ đổi quyết định qua pipeline app) | ĐỀ XUẤT < 0,5% (review §3) | — | — |
+| III-b: **giữ** mốc 0,80 theo từng tông (review v2 đề xuất D2/D3 thay bằng mốc bác sĩ 0,47 — **không** đổi; so với 0,47 chỉ thêm vào báo cáo) | **CHỐT TẠM** (như S_min) | 04/10/2026 | tác giả |
+| III-b: tập chấm = **Fitzpatrick17k-C** (phần headline còn lại sau khi Abhishek, Jain & Hamarneh, Sci Data 12:196, 2025 loại ảnh gần trùng/ảnh lỗi: 3.086 / 4.320 ảnh; danh sách `reports/2026-10-04_review_v2_checks/fitz17kC_headline_image_ids.txt`) thay cho toàn bộ headline. Chỉ áp cho III-b; C2, B3, C4b vẫn trên headline | **ĐÃ CHỐT — post-hoc** (quyết sau khi đã thấy III-b của P0/P1/P2 trên headline **và** kết quả của P0 trên chính Fitzpatrick17k-C (vẫn trượt); số của P1/P2 trên Fitzpatrick17k-C cũng đã được tính trước lúc quyết (`reports/2026-10-04_review_v2_checks/output.md` (1)); nhãn của P0 không đổi). Lý do chỉ dời III-b: III-b dùng Wilson CI giả định ảnh độc lập trên một fold; C2/B3/C4b giữ headline để so được với các báo cáo đã có | 04/10/2026 | tác giả |
 
 ## 2. Các cổng
 
@@ -143,31 +145,36 @@ cổng A chấm trên **đúng fold/checkpoint sẽ ship**. Mọi metric ở B/C
 | **II-2** (= A4) | Không lỗi, tất định trên máy | như A4 | fold ship | như A4 |
 | **II-3** (L3) | Tỉ lệ đổi quyết định tại ngưỡng app khi ảnh đi qua pipeline thật của app (decode → resize → normalize) so với pipeline Python | < 0,5% (ĐỀ XUẤT) | fold ship | review §3 trụ II |
 | **III-a** | Ảnh điện thoại cùng nguồn (PAD, test in-domain): **độ nhạy và độ đặc hiệu tại ngưỡng app đóng băng** (quy tắc `pad_sens90` trên val của fold ship) | cận dưới độ nhạy ≥ **0,80** **và** cận dưới độ đặc hiệu ≥ **0,60** (chốt tạm 04/10) | fold ship | use case sàng lọc (lập luận ở §1, chốt tạm 04/10) |
-| **III-b** | Ảnh lâm sàng **khác nguồn** (Fitzpatrick17k headline), **từng** nhóm tông da (sáng · trung bình · tối), cùng ngưỡng app | cận dưới độ nhạy **mỗi nhóm** ≥ **0,80** và cận dưới độ đặc hiệu mỗi nhóm ≥ **0,60** (chốt tạm 04/10) | fold ship | như III-a — "ổn định trên ảnh camera thực tế" |
+| **III-b** | Ảnh lâm sàng **khác nguồn** (Fitzpatrick17k headline, **tập con Fitzpatrick17k-C** từ 04/10), **từng** nhóm tông da (sáng · trung bình · tối), cùng ngưỡng app | cận dưới độ nhạy **mỗi nhóm** ≥ **0,80** và cận dưới độ đặc hiệu mỗi nhóm ≥ **0,60** (chốt tạm 04/10) | fold ship | như III-a — "ổn định trên ảnh camera thực tế" |
 | **C2** | Student không kém teacher quá δ | §2 C | CI 5 fold (như cũ) | §1 |
 
 - **CI cho III-a/III-b:** ngưỡng cố định ⇒ chỉ còn sai số nhị thức; dùng **Wilson 95%** trên fold ship, **giả định
   các ảnh độc lập**. Giả định này mới được kiểm gần đúng cho PAD trên hai metric không phụ thuộc ngưỡng (gom theo bệnh
-  nhân gần như không đổi CI, `reports/2026-10-03_thesis_review_checks/` §1); với Fitzpatrick **chưa kiểm được** (không
-  có mã bệnh nhân).
+  nhân gần như không đổi CI, `reports/2026-10-03_thesis_review_checks/` §1). Với Fitzpatrick không có mã bệnh nhân;
+  phần vi phạm đã biết là **ảnh gần trùng** (bản gốc có ~2.297 cụm trùng theo Abhishek et al. 2025, repo chỉ bắt trùng
+  tuyệt đối — 3 ảnh) ⇒ từ 04/10 III-b chấm trên tập con Fitzpatrick17k-C để giảm vi phạm này; trùng chưa phát hiện thì
+  vẫn có thể còn, và trường hợp nhiều ảnh cùng một người nhưng không gần trùng thì **chưa kiểm được**.
 - **Mốc chưa có giá trị** (trước 04/10: S_min, Sp_min, δ): báo số đo + CI, nhãn ô = `CHƯA CHỨNG MINH` kèm cờ
   `CHƯA CÓ TIÊU CHÍ CHỐT`. Từ 04/10 ba mốc này đã CHỐT TẠM nên luật này không còn áp cho chúng.
 - **I-1, II-1, II-2, II-3 chấm theo số đo, không CI** (như A1/A3/A4 ở §3). II-3 phải chốt kèm cỡ mẫu: với ~200 ảnh,
   < 0,5% nghĩa là **không ảnh nào** đổi quyết định (1/200 = 0,5%).
 - **Tính III cho một run:** `reports/2026-10-03_thesis_review_checks/tone_at_app_threshold.py` (III-b) và
   `reports/2026-10-02_threshold_options/threshold_options.sh` (III-a) — **đã tham số hoá 04/10/2026** (R13): script
-  shell nhận `RUN=`/`FITZ=`/`OUT=`, script Python nhận `FITZ_DIR SUMMARY_CSV SHIP_FOLD`; mặc định là P0 (chạy lại ra
-  y hệt kết quả cũ).
+  shell nhận `RUN=`/`FITZ=`/`OUT=`, script Python nhận `FITZ_DIR SUMMARY_CSV SHIP_FOLD [KEEP_IDS]`; mặc định là P0 (chạy
+  lại ra y hệt kết quả cũ). **III-b từ 04/10:** truyền `KEEP_IDS = reports/2026-10-04_review_v2_checks/fitz17kC_headline_image_ids.txt`.
   Luật nhãn: một phía "≥ m" của §3 bước 1. Bước "ô chỉ có 1 fold ⇒ hạ xuống CHƯA CHỨNG MINH" **không** áp cho
   III (như cổng A — chấm trên đúng model sẽ ship).
 - **Luật gộp (từ 03/10/2026):** I-1 + II-1 + II-2 + II-3 + III-a + III-b + C2 đều phải `ĐẠT`.
 - **Báo cáo bắt buộc (không quyết định):** B1 (ISIC, so Kurtansky — tham chiếu), sens@spec80 trên PAD so với
   Cochrane (0,81 / 0,76 / 0,47 — tham chiếu), B3, B4 (HAM — ngoài phạm vi ảnh camera, nhưng HAM vẫn trong tập
-  miền của C2), C1 (KD − baseline), C3, C4b (chênh lệch giữa các tông, CI ghép cặp), A2, hành vi tại ngưỡng app.
-- **Post-hoc:** khung, S_min/Sp_min và δ đều được chốt sau khi đã thấy kết quả của ứng viên hiện tại trên test PAD
+  miền của C2), C1 (KD − baseline), C3, C4b (chênh lệch giữa các tông, CI ghép cặp), A2, hành vi tại ngưỡng app. **Từ 04/10
+  (review v2 D2, D4):** sens@spec80 **theo từng tông** trên Fitzpatrick (headline và Fitzpatrick17k-C, trung bình 5 fold, CI) so với mốc bác sĩ trên ảnh
+  lâm sàng 0,47 — chỉ để định vị, không phải cổng; và độ nhạy tốt nhất tại độ đặc hiệu ≥ 0,60 theo tông, fold ship, ngưỡng chọn trên chính test (lạc quan)
+  (khoảng cách tới điểm (0,80; 0,60) của III-b) — `reports/2026-10-04_review_v2_checks/`.
+- **Post-hoc:** khung, S_min/Sp_min, δ và tập chấm III-b (Fitzpatrick17k-C, 04/10) đều được chốt sau khi đã thấy kết quả của ứng viên hiện tại trên test PAD
   và Fitzpatrick ⇒ với ứng viên đó, mọi nhãn chỉ là **khám phá**; nhãn đứng được cần tập xác nhận chưa ai mở
   (`docs/PROGRESS.md` U8). Kết quả hiện có (khám phá, ngưỡng post-hoc, fold 4): III-a độ nhạy 0,873 / độ đặc
-  hiệu 0,731; III-b độ nhạy theo tông 0,604 / 0,520 / 0,524.
+  hiệu 0,731; III-b độ nhạy theo tông 0,604 / 0,520 / 0,524 trên headline, 0,603 / 0,503 / 0,508 trên Fitzpatrick17k-C.
 
 Các mục **A, B, C** dưới đây giữ định nghĩa metric và nguồn mốc; vai trò cổng/báo cáo theo §2.1.
 
