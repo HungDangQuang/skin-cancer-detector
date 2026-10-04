@@ -112,3 +112,19 @@ I-1 + II-1 + II-2 + II-3 + III-a + III-b + C2. III-a/III-b đo độ nhạy / đ
 (quy tắc `pad_sens90` trên val của fold ship) trên ảnh PAD và trên Fitzpatrick17k theo từng tông da. B1, B2, B3,
 C4a cũ thành báo cáo. Luật chọn §4 không đổi (vẫn chỉ val). S_min, Sp_min, δ của C2 chưa có giá trị: chốt trước khi
 mở test vòng 2 thì endpoint của P1/P2 không post-hoc; nếu không, phán quyết vòng 2 mang cờ CHƯA CÓ TIÊU CHÍ CHỐT.
+
+## 10. Phụ lục — chốt tạm mốc của khung 3 trụ, ghi 04/10/2026 ~00:35 UTC, TRƯỚC khi xem số test của P1/P2 (trừ một dòng của P1 fold 4 — xem dưới)
+
+Tác giả chốt tạm (sẽ review lại): **S_min = 0,80**, **Sp_min = 0,60** (áp cho III-a và III-b), **δ của C2 = 0,05 ×
+AUPRC của chính teacher trong arm**, từng miền (PAD = hàng PAD của test in-domain; Fitz, HAM = biến thể headline;
+điểm ước lượng trung bình 5 fold, checkpoint chính; không làm tròn khi so). Với P2 (teacher
+`efficientnetv2_m`): PAD 0,040 · Fitz 0,035 · HAM 0,025; với P1 (teacher `convnextv2_base`) giá trị tính theo công
+thức khi chấm. Chi tiết: `.claude/skills/eval-results/reference/acceptance-gates.md` §1, §2.1.
+
+Trạng thái lúc ghi: driver vòng 2 báo `ALL DONE` lúc 2026-10-03 16:52:18 UTC (4/4 bước rc=0). Trainer tự ghi
+`test_metrics*.json` cho từng fold khi train xong. **Khai:** lúc ~00:25 UTC 04/10, một phiên assistant khác chạy
+`tail .tmp/cand2_driver.log` và nhìn thấy **dòng metric test của P1 (A4) fold 4** in ở cuối log — trước khi phụ lục
+này được ghi; số đó không được chép lại và không chuyển cho tác giả (`docs/PROGRESS.md` mục 6). Mọi số test khác của
+P1/P2 chưa được mở (lệnh kiểm của phiên ghi phụ lục này chỉ đếm số file). Vì vậy với P1 các mốc ở đây mang một phần
+nhỏ post-hoc (một fold đã bị nhìn bởi assistant, không phải tác giả), phải khai khi báo cáo. Bước tiếp theo vẫn là §4 (chọn chỉ bằng val, commit kết quả chọn trước khi đọc số test).
+Nếu tác giả đổi mốc sau khi đã xem số test vòng 2 thì phải khai post-hoc.
