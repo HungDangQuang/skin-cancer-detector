@@ -13,14 +13,25 @@
 #   pad_youden     Youden's J on the val PAD rows only
 #   pad_sensXX     highest threshold keeping val-PAD sensitivity >= XX%
 #   pad_specXX     lowest threshold giving val-PAD specificity >= XX%
-# Output: summary.csv (one row per fold x rule) next to this script.
+# Output: $OUT/summary.csv (one row per fold x rule); default OUT = this script's directory (P0).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-OUT=reports/2026-10-02_threshold_options
+# R13 (04/10/2026): RUN / FITZ / OUT are overridable so round-2 candidates use the same rules; defaults = P0
+# (unchanged output for P0). Example for P1:
+#   RUN=experiments/runs_newsplit_ddi/kd_convnextv2_base_to_mobilenetv4_conv_medium__srcsamp \
+#   FITZ=reports/external_newsplit_srcsamp_auprc/fitzpatrick17k/headline/kd_convnextv2_base_to_mobilenetv4_conv_medium__srcsamp \
+#   OUT=reports/<date>_threshold_options_P1 bash reports/2026-10-02_threshold_options/threshold_options.sh
+P0_RUN=experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp
+RUN=${RUN:-$P0_RUN}
+# FITZ follows RUN (same run_tag under the _auprc external tree), so RUN= alone never mixes in P0's Fitz column.
+FITZ=${FITZ:-reports/external_newsplit_srcsamp_auprc/fitzpatrick17k/headline/$(basename "$RUN")}
+OUT=${OUT:-reports/2026-10-02_threshold_options}
+if [ "$RUN" != "$P0_RUN" ] && [ "$OUT" = reports/2026-10-02_threshold_options ]; then
+    echo "ERROR: RUN is not P0 -> set OUT=<own dir>; refusing to overwrite P0's committed summary.csv" >&2; exit 2
+fi
+[ -d "$FITZ" ] || { echo "ERROR: FITZ dir not found: $FITZ" >&2; exit 2; }
 W=${W:-$(pwd)/.tmp/thropt}
-mkdir -p "$W"
-RUN=experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp
-FITZ=reports/external_newsplit_srcsamp_auprc/fitzpatrick17k/headline/kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp
+mkdir -p "$W" "$OUT"
 
 count() {  # $1 file (y_true,prob), $2 threshold -> "tp m fp b"
     awk -F, -v t="$2" '{ if ($1==1) { m++; if ($2>=t) tp++ } else { b++; if ($2>=t) fp++ } }

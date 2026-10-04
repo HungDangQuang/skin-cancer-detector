@@ -155,8 +155,9 @@ cổng A chấm trên **đúng fold/checkpoint sẽ ship**. Mọi metric ở B/C
 - **I-1, II-1, II-2, II-3 chấm theo số đo, không CI** (như A1/A3/A4 ở §3). II-3 phải chốt kèm cỡ mẫu: với ~200 ảnh,
   < 0,5% nghĩa là **không ảnh nào** đổi quyết định (1/200 = 0,5%).
 - **Tính III cho một run:** `reports/2026-10-03_thesis_review_checks/tone_at_app_threshold.py` (III-b) và
-  `reports/2026-10-02_threshold_options/threshold_options.sh` (III-a) hiện **hard-code đường dẫn P0** — phải tham số
-  hoá trước khi chấm vòng 2 (`docs/PROGRESS.md` R13).
+  `reports/2026-10-02_threshold_options/threshold_options.sh` (III-a) — **đã tham số hoá 04/10/2026** (R13): script
+  shell nhận `RUN=`/`FITZ=`/`OUT=`, script Python nhận `FITZ_DIR SUMMARY_CSV SHIP_FOLD`; mặc định là P0 (chạy lại ra
+  y hệt kết quả cũ).
   Luật nhãn: một phía "≥ m" của §3 bước 1. Bước "ô chỉ có 1 fold ⇒ hạ xuống CHƯA CHỨNG MINH" **không** áp cho
   III (như cổng A — chấm trên đúng model sẽ ship).
 - **Luật gộp (từ 03/10/2026):** I-1 + II-1 + II-2 + II-3 + III-a + III-b + C2 đều phải `ĐẠT`.
