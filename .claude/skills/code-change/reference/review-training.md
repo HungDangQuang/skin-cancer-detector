@@ -85,7 +85,7 @@ Scope: `src/training/` (`trainer.py`, `kd_trainer.py`, `losses.py`,
 - [ ] Every key declared in `self.history = {...}` is `.append()`ed each epoch —
   `Trainer` historically declared `val_pauc` but never appended it →
   `plot_training_curves` shape mismatch. `KDTrainer` appends at
-  [kd_trainer.py:104](src/training/kd_trainer.py#L104); a new subclass must too.
+  [kd_trainer.py:168](../../../../src/training/kd_trainer.py#L168); a new subclass must too.
   (Same trap if RKD logging adds a `train_rkd_loss` history key — declare it only if you also `.append()`
   it every epoch; if not logging RKD, don't declare an empty key.)
 - [ ] Early stopping reads `cfg.training.callbacks.early_stopping`; mode/patience

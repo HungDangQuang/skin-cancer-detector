@@ -1,68 +1,61 @@
 ---
 name: analyze-evaluation
-description: Analyze evaluation JSON files produced by `run/evaluate.sh` (Section 5 of run/README.md) and rendered to a verdict. Two modes — single-result verdict, multi-result comparison (KD vs baseline / cross-student / teacher vs student). Use when the user shares a `reports/results/*.json` path, says "is this checkpoint good", "did KD help", "compare students", or downloads eval JSONs from the cluster. NOT for triaging a failed training run (use `diagnose-training`) and NOT for judging a still-running training log (use `assess-training`).
+description: Render a verdict on finished evaluation artifacts — a run-dir's fold_*/test_metrics.json + aggregated.json, an external-eval tree under reports/external/, a bootstrap-CI report, or an on-demand run/evaluate.sh JSON. Two modes — single-result verdict, multi-result comparison (KD vs baseline / cross-student / teacher vs student). Use when the user says "is this checkpoint good", "did KD help", "compare students", or points at one of those artifacts. NOT for triaging a failed training run (use `diagnose-training`) and NOT for judging a still-running training log (use `assess-training`).
 ---
 
 # analyze-evaluation
 
-Reads the JSON files that `run/evaluate.sh` writes to `reports/results/` and renders a verdict. The user's workflow is:
-
-1. Train a checkpoint (auto-eval already wrote `experiments/runs/<run>/fold_N/test_metrics.json` on the cluster).
-2. Optionally re-evaluate explicitly via `bash run/evaluate.sh MODEL=... CKPT=... OUT=reports/results/<name>.json`.
-3. `rsync` the JSON(s) back to the laptop.
-4. This skill reads them and produces the verdict.
+Reads finished evaluation artifacts and renders a verdict. Health/comparison only — the
+"meets the requirement" verdict goes through [acceptance-gates.md](acceptance-gates.md) (see the
+⛔ block in `../SKILL.md`).
 
 ## When to use
 
-- User shares a path under `reports/results/` (or `experiments/runs/.../test_metrics.json`).
+- User points at a run-dir (`experiments/runs*/<run>/`), a `fold_N/test_metrics.json`, an
+  external-eval tree (`reports/external/<ds>/<variant>/`), or a `reports/bootstrap_ci*.md` / `reports/ci_*.md`.
 - User asks "is this checkpoint good", "did KD help", "compare students", "which model wins".
-- User just finished a `run/evaluate.sh` job and downloaded the JSON.
+- User just finished a `run/evaluate.sh` job (`OUT=reports/results/<name>.json`).
 
 ## When NOT to use
 
 - Training crashed / NaN'd / never started learning → `diagnose-training`.
 - Training is still running, or finished but the user only has the `logs/*.log` transcript (no JSON yet) → `assess-training`.
-- User wants to *set up* the KD-vs-baseline comparison (submit jobs, design the experiment) → `kd-experiment`. This skill reads the result *afterwards*.
-- The JSON isn't local yet — print the rsync command (see §1) and stop. Do not invent numbers.
+- User wants to *set up* the KD-vs-baseline comparison (submit jobs, design the experiment) → `code-change/reference/kd-experiment.md`. This file reads the result *afterwards*.
+- The artifact isn't local yet — say so, give the fetch command (below) and stop. Do not invent numbers.
 
-## Input layout the skill expects
+## Where results live (check which tree before quoting anything)
 
-**Primary path — what Section 5 produces:**
-```
-reports/results/
-  teacher.json              ← e.g. OUT=reports/results/teacher.json
-  kd_b0.json                ← OUT=reports/results/kd_b0.json
-  kd_mobilenet.json
-  kd_mobilevit.json
-  baseline_b0.json          ← (once baseline arm is fixed — see Caveats)
-```
-Each JSON is a flat dict from [src/evaluation/evaluator.py:65](../../../src/evaluation/evaluator.py#L65) with keys: `pauc_at_tpr80`, `auc_roc`, `threshold`, `sensitivity`, `specificity`, `precision`, `recall`, `f1_score`, `accuracy`, `tp`, `fp`, `tn`, `fn`. **No fold scoping** — `run/evaluate.sh` always evaluates a single checkpoint (fold 0 by default; see [scripts/evaluate.py:32](../../../scripts/evaluate.py#L32)).
+| Tree | What | Splits |
+|---|---|---|
+| `experiments/runs_newsplit_{light,ddi,domain}/<run>/` | current arms: `fold_{0..4}/test_metrics.json` (+ `_auprc` twins when `extra_monitors=[auprc]`), `predictions.csv`, `val_*`, `aggregated.{json,md}` | **v2** (patient-grouped) — the only tree that may back an in-domain verdict |
+| `experiments/runs/`, `experiments/runs_isic_only/` | the 140-fold matrix + PAD ablation | **v1 — leaked patients**; in-domain numbers inflated (`CLAUDE.md` → Data integrity). Cross-domain AUC/AUPRC/pAUC still usable |
+| `reports/external_newsplit_<arm>/<ds>/<variant>/<run_tag>/` (`<arm>` = light, ddi, srcsamp, srcsamp_auprc, …) | HAM10000 / Fitzpatrick17k cross-domain eval of the **v2** arms (`run/evaluate_external.sh`) | **v2** |
+| `reports/external/<ds>/<variant>/<run_tag>/fold_N/` + `aggregated.{json,md}` | the same for the **v1** matrix (`experiments/runs/`) | v1 — cross-domain AUC/AUPRC/pAUC usable, threshold metrics optimistic |
+| `reports/bootstrap_ci*.md`, `reports/ci_*.md` (+ `.json`) | paired / per-run 95% CIs (`run/bootstrap_ci.sh`) | per the tree it read |
+| `reports/results/<name>.json` | on-demand single-checkpoint eval (`bash run/evaluate.sh MODEL=… CKPT=… OUT=…`) — rarely used | per the checkpoint |
 
-**Fallback path — auto-eval at the end of training:**
-```
-experiments/runs/<run_name>/
-  fold_{0..4}/test_metrics.json     ← per-fold, same schema as above
-  aggregated.json                   ← if scripts/aggregate_folds.py ran
-  aggregated.md                     ← thesis-grade markdown table
-```
-Same schema, fold-scoped. If the user happens to have these (e.g. they rsync'd the whole `experiments/runs/` dir), use them — `aggregated.json` is the gold standard because it carries 5-fold mean ± std.
+`aggregated.json` (5-fold mean ± std) is the gold standard over a single fold. Metric keys come from
+`compute_metrics()` in [src/evaluation/metrics.py](../../../../src/evaluation/metrics.py) (`pauc_at_tpr80`,
+`auc_roc`, `auprc` + `prevalence`, `sensitivity`/`specificity`/`f1_score`/`threshold` — **Youden on the test set,
+optimistic: prefer the `valthr_*` keys** when present — `sens_at_90spec`/`sens_at_80spec`, TP/FP/TN/FN, `brier`/`ece`).
+Older JSONs may lack newer keys; say "missing" rather than guessing.
 
-If the path the user names doesn't exist locally, stop and print:
+If what the user names isn't on the Mac, don't hand-write rsync — use the project tool, which knows the live host
+(default `vastnew`) and never transfers checkpoints by default:
 ```bash
-# From the laptop. Pull just the eval JSON(s) — small, no checkpoints, no logs:
-rsync -avh islabworker2@islab-server2:/mnt/sharednas/binhnt/hungdang/skin-cancer-detector/reports/results/ \
-    reports/results/
-
-# Or for auto-eval/aggregated artifacts under experiments/:
-rsync -av --include='*/' --include='test_metrics.json' --include='aggregated.*' \
-    --include='config.yaml' --exclude='*' \
-    islabworker2@islab-server2:/mnt/sharednas/binhnt/hungdang/skin-cancer-detector/experiments/runs/<run_name>/ \
-    experiments/runs/<run_name>/
+bash run/pull_results.sh          # check: NEW / STALE / SAME / RUNNING per run-dir
+bash run/pull_results.sh pull     # fetch NEW folds (metrics, predictions, configs — no .pth)
 ```
+**Check a CI file's provenance before quoting it.** `reports/{bootstrap_ci,ci}_*.md` name runs by their run-dir
+name only, and the same names (`kd_efficientnetv2_m_to_mobilenetv4_conv_medium`, `baseline_…`) exist in several
+trees; CI trees built from symlinks use `x_` prefixes, which also disables auto-pairing (`kd_deltas` comes out
+empty — use `PAIR=`). Read the report's header / `RESULTS_DIR` line or the `.json`'s source paths, and match a
+couple of point estimates against that tree's `aggregated.md`, before attributing a delta to an arm. If no CI
+exists for the pair asked about, say so and give the `bash run/bootstrap_ci.sh … PAIR="A:B"` command — do not
+substitute a CI from another arm or a difference of fold means.
 
-**Do not download these — you don't need them for evaluation analysis:**
-- `checkpoints/best_model.pth` — multi-GB, useless locally (no Python on the Mac per `CLAUDE.md`)
-- `logs/*.out` / `*_runtime.log` — those drive `assess-training` / `diagnose-training`, not this skill
+External-eval and CI reports under `reports/` are produced on the server; if one is missing locally, say which
+command produces it (`run/evaluate_external.sh`, `run/bootstrap_ci.sh`) instead of estimating.
 
 ## How to use
 
@@ -75,11 +68,11 @@ rsync -av --include='*/' --include='test_metrics.json' --include='aggregated.*' 
 | A `<run_dir>` containing `aggregated.json` | **Mode A** but report mean ± std and call it the thesis-grade tier |
 | A `<run_dir>` with `fold_*/test_metrics.json` but no `aggregated.json` | Recommend `bash run/aggregate.sh RUN_DIR=<run_dir>` first, OR aggregate inline (read all folds, compute mean/std) and label the report "ad-hoc aggregation" |
 
-For Mode B, ask the user to **label** each file if the names don't clearly say what they are (`teacher.json`, `kd_b0.json`, `baseline_b0.json` are self-evident; `metrics_final.json` is not). The labels drive the comparison rows in the report.
+For Mode B, ask the user to **label** each file if the names don't clearly say what they are (`teacher.json`, `kd_fastvit_sa12.json`, `baseline_fastvit_sa12.json` are self-evident; `metrics_final.json` is not). The labels drive the comparison rows in the report.
 
 ### 2. pAUC is correct + predictions are saved (recompute is optional)
 
-The `pauc_at_tpr80` field in every JSON is computed by [src/evaluation/metrics.py](../../../src/evaluation/metrics.py)`::pauc_at_tpr` and (since 2026-06-04) is the **real ISIC 2024 metric** — McClish-corrected, range ≈ `[0.02, 0.20]`. Quote it verbatim. Only JSONs produced *before* 2026-06-04 are on the old stretched `[0.9, 5.0]` scale (see [project_pauc_metric_bug.md](../../../memory/project_pauc_metric_bug.md)); re-evaluate those checkpoints.
+The `pauc_at_tpr80` field in every JSON is computed by [src/evaluation/metrics.py](../../../../src/evaluation/metrics.py)`::pauc_at_tpr` and (since 2026-06-04) is the **real ISIC 2024 metric** — McClish-corrected, range ≈ `[0.02, 0.20]`. Quote it verbatim. Only JSONs produced *before* 2026-06-04 are on the old stretched `[0.9, 5.0]` scale (see memory `project_pauc_metric_bug`); re-evaluate those checkpoints.
 
 `Evaluator.save_predictions` now writes a sibling **`predictions.csv`** (`y_true, y_prob, y_pred[, source]`) next to every `test_metrics.json`. Use it for anything the scalar JSON can't give you — PR-curve / **AUPRC** / per-domain (ISIC vs PAD) breakdowns / bootstrap CIs — recomputed offline without re-running inference:
 
@@ -99,7 +92,7 @@ At ~0.4 % prevalence, **AUPRC is the honest headline** (AUC-ROC is optimistic); 
 
 ### 3. Mode A — single-result verdict
 
-Read the JSON. Anchor on the prevalence floor — ISIC 2024's test split is ~0.5% malignant, so majority-class accuracy floor is ~0.995. **`accuracy` alone means nothing at this imbalance**; always anchor it against the floor.
+Read the JSON. Anchor on the prevalence floor — read `prevalence` from the JSON rather than assuming one (splits-v2 in-domain test: 265 / 59,093 ≈ 0.45%; the ~0.39% in `CLAUDE.md` is the whole population; HAM10000 / Fitzpatrick17k are far higher), so the majority-class accuracy floor in-domain is ~0.995. **`accuracy` alone means nothing at this imbalance**; always anchor it against the floor.
 
 > **⛔ This rubric is a HEALTH HEURISTIC, not an acceptance verdict.** Its thresholds (AUC ≥ 0.92,
 > sens ≥ 0.85, …) are not sourced, and they are applied to a **pooled** in-domain JSON where an
@@ -143,13 +136,16 @@ Inputs: 2+ JSONs the user wants compared. Cover three sub-cases:
 
 | Sub-case | Files |
 |---|---|
-| **KD vs baseline (same student)** | e.g. `kd_b0.json` + `baseline_b0.json` |
-| **Cross-student** | `kd_b0.json` + `kd_mobilenet.json` + `kd_mobilevit.json` |
+| **KD vs baseline (same student)** | e.g. `kd_<t>_to_<s>` + `baseline_<s>` run-dirs |
+| **Cross-student** | `kd_<t>_to_mobilenetv4_conv_medium` + `kd_<t>_to_fastvit_sa12` + … (same teacher, same tree) |
 | **Teacher vs student** | `teacher.json` + `kd_<student>.json` |
 
 **Gating check first.**
-- If a baseline file is requested but doesn't exist, don't invent numbers — tell the user to produce it: `bash run/train_student.sh STUDENT=... TRAINING=baseline` (the baseline arm works via the `use_kd` flag, fixed 2026-06-04; run-dir `baseline_<student>/`). See [project_baseline_kd_coupling.md](../../../memory/project_baseline_kd_coupling.md).
+- If a baseline file is requested but doesn't exist, don't invent numbers — tell the user to produce it: `bash run/train_student.sh STUDENT=... TRAINING=baseline` (the baseline arm works via the `use_kd` flag, fixed 2026-06-04; run-dir `baseline_<student>/`). See memory `project_baseline_kd_coupling`.
 - If the inputs are clearly different splits / data / augmentation (read each run's saved `config.yaml` if present), flag it and refuse to call a winner — the comparison is confounded.
+- **No paired CI for this exact pair?** Say so plainly, report the point estimates as descriptive only, and give the server command (`bash run/bootstrap_ci.sh RESULTS_DIR=<tree> PAIR="<A>:<B>" SUBGROUP=source`). Don't hand-roll a bootstrap on the Mac and don't borrow a CI computed on another tree — neither is citable (see "Check a CI file's provenance" above). If the user needs a thesis sentence now, give one that states what is and isn't established ("chưa có kiểm định ghép cặp; điểm ước lượng …") plus the sentence to use once the CI exists.
+
+**If the user asked for a verdict or one sentence, lead with it** — the sentence (with its CI or its "not yet tested" caveat) first, then the supporting table. The full table below is the evidence, not the answer.
 
 **Build a unified table.** Always include every numeric field in the source JSON — never drop a column because the rubric doesn't use it.
 
@@ -196,7 +192,7 @@ This is a heuristic, not a t-test — language is "robust", "marginal", "noise",
 **Ranking + verdict rules:**
 - For KD-vs-baseline: with `predictions.csv` for both arms, KD wins **only if the paired CI of ΔAUPRC (and of the operating-point metric, e.g. Δsens_at_90spec) excludes 0 on the positive side**; a CI containing 0 is "indistinguishable", never "KD won". Point-estimate rule (fallback only, label it "point estimate, not tested"): `delta_auc > 0` AND `delta_sens > 0`; if sens worsens, KD did not win regardless of accuracy/specificity gains. (Domain priority: missing a malignant > false alarm.)
 - For cross-student: rank by **sensitivity first, then auc_roc**. Don't rank on accuracy — misleading at imbalance. `sensitivity` in `test_metrics*.json` uses Youden's J fitted on the test set (optimistic) — prefer `valthr_sensitivity` when the run has it, otherwise flag the number as test-threshold (`docs/GOTCHAS.md`).
-- For teacher vs student: a Good student is one whose `sens` and `auc_roc` are within ~0.02 of the teacher's. Bigger gap → KD didn't transfer well. (For model selection the author requires the student to **keep** the teacher's performance — acceptance gate C2, non-inferiority since 2026-10-03 (post-hoc; before that it was "beat the teacher, lower bound > 0"): paired CI lower bound of Δ(student − teacher) **> −δ** on each gated domain, same splits and arm; δ is still open. "Within ~0.02" is only a health hint, never a pass. C2 passing says nothing about whether KD helped — that is C1.)
+- For teacher vs student: a Good student is one whose `sens` and `auc_roc` are within ~0.02 of the teacher's. Bigger gap → KD didn't transfer well. (For model selection the author requires the student to **keep** the teacher's performance — acceptance gate C2, non-inferiority since 2026-10-03 (post-hoc; before that it was "beat the teacher, lower bound > 0"): paired CI lower bound of Δ(student − teacher) **> −δ** on each gated domain, same splits and arm; δ = 5% of the arm's own teacher AUPRC per domain (provisionally locked 2026-10-04 — current value in `acceptance-gates.md` §1). "Within ~0.02" is only a health hint, never a pass. C2 passing says nothing about whether KD helped — that is C1.)
 - **None of these rankings is an acceptance verdict.** "KD wins" / "best pair" answers *which is better*; whether the winner is *good enough* is `acceptance-gates.md`.
 - Note any Pareto-dominated entry (worse on every metric than another) — those are clean losers.
 
@@ -224,7 +220,7 @@ Files read:
 <table — every key from every input JSON, verbatim, 4 dp>
 
 Class-prevalence floor:
-- Test set positive rate: <if known, else "ISIC 2024 default ≈ 0.5%">
+- Test set positive rate: <`prevalence` from the JSON; never assume one>
 - Majority-class baseline accuracy: <approx 0.995 for ISIC 2024>
 - Random-classifier AUC: 0.5000
 
@@ -256,9 +252,9 @@ Next steps:
 
 ## Caveats
 
-- **`pauc_at_tpr80` is the real ISIC 2024 metric (fixed 2026-06-04)**, range ≈ [0.02, 0.20] — quotable as an absolute number. Only JSONs produced *before* 2026-06-04 are on the old stretched [0.9, 5.0] scale. See [project_pauc_metric_bug.md](../../../memory/project_pauc_metric_bug.md).
+- **`pauc_at_tpr80` is the real ISIC 2024 metric (fixed 2026-06-04)**, range ≈ [0.02, 0.20] — quotable as an absolute number. Only JSONs produced *before* 2026-06-04 are on the old stretched [0.9, 5.0] scale. See memory `project_pauc_metric_bug`.
 - **Predictions ARE saved (since 2026-06-21).** `Evaluator.save_predictions` writes `predictions.csv` (`y_true,y_prob,y_pred[,source]`) next to each `test_metrics.json` — recompute AUPRC / PR-curve / per-domain / bootstrap CIs from it. The scalar `test_metrics.json` already carries `auprc`, `prevalence`, `sens_at_90spec`, `sens_at_95spec`.
-- **Baseline (no-KD) runs work (fixed 2026-06-04).** Mode B's KD-vs-baseline cell has real baseline numbers via the `use_kd` flag (`training=baseline` → plain `Trainer`, run-dir `baseline_<student>/`). See [project_baseline_kd_coupling.md](../../../memory/project_baseline_kd_coupling.md).
+- **Baseline (no-KD) runs work (fixed 2026-06-04).** Mode B's KD-vs-baseline cell has real baseline numbers via the `use_kd` flag (`training=baseline` → plain `Trainer`, run-dir `baseline_<student>/`). See memory `project_baseline_kd_coupling`.
 - **`run/evaluate.sh` always evaluates fold 0.** It calls `scripts/evaluate.py` without forwarding `--fold`, so the default `--fold 0` applies regardless of what was trained. For a true 5-fold report, either rely on the training-time auto-eval JSONs at `experiments/runs/<run>/fold_*/test_metrics.json`, or extend `run/evaluate.sh` to accept a `FOLD=` env var. Flag this when the user thinks they're getting a different fold.
 - **Single-checkpoint variance is large.** Same architecture × different seed can move sens by 0.05+. Always recommend the 5-fold sweep before quoting numbers in the thesis.
 - **`accuracy` is misleading at ISIC class imbalance.** Majority-class baseline ≈ 0.995. Never rank or verdict on raw accuracy — always anchor against the floor.

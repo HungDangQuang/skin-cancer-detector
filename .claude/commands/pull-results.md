@@ -14,7 +14,7 @@ Dựa trên output ở trên (**dữ liệu thật, không chạy lại script**
 
 1. **Thiếu gì ở local** — liệt kê run-dir có `new` > 0 hoặc `old` (STALE) > 0, kèm số fold và dung lượng. Nêu rõ ý nghĩa: `new` = server có mà Mac chưa có; `old` = trùng đường dẫn nhưng bản server mới hơn (thường là run cũ đã được train lại — ví dụ các run KD convnextv2/maxvit tháng 6 nay train lại).
 2. **Còn đang chạy** — cột `run` (fold chưa có `test_metrics.json`): chưa tải được, nêu để user biết phải quay lại sau.
-3. **So với scope thí nghiệm** trong CLAUDE.md (3 teacher × 4 student × {KD, baseline}, 5 fold/run): chỉ ra tổ hợp nào **chưa tồn tại ở đâu cả** (không ở Mac, không ở server nào) — đó là phần còn phải train, khác với phần chỉ cần tải về.
+3. **So với việc đang chờ**: đối chiếu với các dòng 🏃/⏳ trong `docs/PROGRESS.md` (tracker duy nhất) — run nào PROGRESS đang chờ mà **chưa tồn tại ở đâu cả** (không ở Mac, không ở server nào) là phần còn phải train, khác với phần chỉ cần tải về. Nói rõ cây của từng run: `experiments/runs/` + `runs_isic_only/` là **splits v1** (ma trận cũ, rò rỉ bệnh nhân, đã đóng); `runs_newsplit_*` là **splits v2** (việc hiện tại). Cây không nằm trong `ROOTS` mặc định của script (vd `runs_newsplit_domain`) thì không được kiểm — nêu ra nếu PROGRESS có nhắc tới.
 4. **Bước tiếp theo** — đưa đúng một lệnh:
    - còn NEW → `bash run/pull_results.sh pull`
    - còn STALE → `bash run/pull_results.sh pull stale` và nói rõ bản Mac cũ được chuyển vào `experiments/_replaced/<timestamp>/` (không xoá)

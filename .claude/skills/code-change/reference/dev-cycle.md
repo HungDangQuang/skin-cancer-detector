@@ -1,6 +1,6 @@
 ---
 name: dev-cycle
-description: Run the project's end-to-end change→server→thesis cycle as one process. (1) Review the edits against this project's rules, (2) commit + push them to the current feature branch WITHOUT asking approval, (3) emit the run/ launch command and log the job to tasks/daily/<date>.md for result tracking, (4) when results return, report objective metrics compared against SOTA/papers, (5) update docs/DE_CUONG.md (the proposal). Use when the user says "run the full cycle", "do the whole process end to end", "ship this change", or after a code change they want carried through to submission, evaluation, and the proposal. NOT a substitute for the area review skills — it CALLS them.
+description: Run the project's end-to-end change→server→thesis cycle as one process. (1) Review the edits against this project's rules, (2) commit + push them to the current feature branch WITHOUT asking approval, (3) emit the run/ launch command and record the job in docs/PROGRESS.md (the single tracker), (4) when results return, report objective metrics compared against SOTA/papers via eval-results, (5) update the proposal (report_phase_1/DE_CUONG.md + docs/DE_CUONG.md) through update-report. Use when the user says "run the full cycle", "do the whole process end to end", "ship this change", or after a code change they want carried through to submission, evaluation, and the proposal. NOT a substitute for the area review skills — it CALLS them.
 ---
 
 # dev-cycle
@@ -27,11 +27,12 @@ at that phase and tell the user exactly what you're waiting for.
 ## Phase 1 — Review the change against the rules
 
 1. `git diff --stat` + `git diff` to see exactly what changed.
-2. Run the **area review skill(s)** routed by path (same map the PostToolUse hook uses):
-   - `src/data/**`, `scripts/prepare_data.py` → `review-preprocessing`
-   - `src/training/**`, `src/models/**`, `scripts/train_*.py` → `review-training`
-   - `run/**`, `run/README.md` → `review-runner`
-3. Run **`validate-pipeline`** (static checks: imports, Hydra compose, runner lint §3a–§3h).
+2. Run the **area review checklist(s)** routed by path (same map the PostToolUse hook uses;
+   files live next to this one in `reference/`):
+   - `src/data/**`, `scripts/prepare_data.py` → `review-preprocessing.md`
+   - `src/training/**`, `src/models/**`, `scripts/train_*.py` → `review-training.md`
+   - `run/**`, `run/README.md` → `review-runner.md`
+3. Run **`validate-pipeline.md`** (static checks: imports, Hydra compose, runner lint §3a–§3h).
 4. Cross-check the principles the user cares about: the CLAUDE.md server rules,
    `docs/GOTCHAS.md`, and the feedback rules (no local python, project-scoped only,
    run-dir isolation, struct mode, augmentation-is-config-driven, …).
@@ -42,63 +43,58 @@ at that phase and tell the user exactly what you're waiting for.
 ## Phase 2 — Commit + push (no approval)
 
 1. If on `main`, create a feature branch first (never commit straight to main).
-2. `git add` the relevant files, commit with a clear message + the
-   `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>` trailer.
+2. `git add` the relevant files (only this task's — leave unrelated untracked/modified files
+   alone), commit with a clear message + the `Co-Authored-By:` trailer the session's
+   system reminder specifies (don't hard-code a model name here; it goes stale).
 3. `git push` to `origin/<current-branch>`. No PR (user's choice). Never `--force`.
 4. Report the commit hash + branch + that it's pushed.
 
 ## Phase 3 — Launch command + job tracking
 
-You cannot run server jobs from the Mac — emit the command and track it.
+There is no scheduler and no job id — a job is a process on the box. You normally can't launch
+it from the Mac, so emit the command and track it.
 
-1. Give the exact `bash run/<script>.sh VAR=value ...` command(s)
-   for this change (pick the right script via the `run/README.md` script index). Quote
-   `EXTRA="..."` as one arg when passing Hydra overrides.
-2. **Log it to the daily ledger** `tasks/daily/<YYYY-MM-DD>.md` (create from
-   `tasks/daily/_TEMPLATE.md` if today's file doesn't exist). Add a row under
-   "⏳ Pending" with: the command, model/purpose, expected output path
-   (e.g. `experiments/runs/.../test_metrics.json`), what result you need, and
-   Status = `AWAITING-ID`.
-3. **Remind the user to send the job id** after they submit. When they reply with it,
-   fill the `Job ID` column and set Status = `RUNNING`. This ledger is the shared memory
-   of "what jobs dev-cycle is waiting on" — both the user and you read it to resume.
-4. Stop here until results come back. Tell the user you're waiting on job <id> for
-   <output>.
+1. Give the exact `bash run/<script>.sh VAR=value ...` command(s) for this change (pick the
+   right script via the `run/README.md` script index). Quote `EXTRA="..."` as one arg when
+   passing Hydra overrides. Remind the server rules that bite at launch: `TMPDIR="$(pwd)/.tmp"`,
+   pin `GPU=<id>` when two jobs share the box, launch under `tmux`/`nohup`, and a new arm forks its
+   run-dir (`run_suffix=` for students, `output_dir=` for teachers).
+2. **Record it in `docs/PROGRESS.md`** — the only tracker (follow its header: one row per task,
+   code **A** while running, status symbol + date). Put in the row: the command, purpose,
+   expected output (`experiments/runs_newsplit_<arm>/<run>/fold_*/test_metrics.json`), the tmux
+   session / log file (`logs/<name>_<timestamp>.log`) and what result you are waiting for.
+   Never open a second tracker.
+3. Stop here until results come back. Tell the user what you're waiting for; they (or
+   `/progress`) can check it with `bash run/progress_all.sh`.
 
 ## Phase 4 — Objective results vs SOTA
 
-When the user says the job is done / shares results / logs are synced:
+When the user says the job is done, first `bash run/pull_results.sh` (check, then `pull`) so the
+artifacts are on the Mac. Then use the **eval-results** skill — this phase is its job:
 
-1. Read the metrics from disk — **quote `test_metrics.json`, never `val_pauc`**; cite the
-   path. For a reportable claim use the **mean ± std from `aggregated.json`**, not one
-   fold. (For many runs, fan out the `result-analyst` agent — but only if the user asks
-   to use a subagent.)
-2. **Headline = AUPRC vs its `prevalence` baseline** (prevalence ~0.4% → AUC-ROC is
-   optimistic), plus **pAUC@TPR80** (ISIC 2024 official, range ~0.02–0.20).
-3. **Compare against SOTA/papers BEFORE judging** — read `docs/SOTA_BENCHMARKS.md`;
-   WebSearch to fill/refresh any missing reference number and record it there with its
-   source URL + date. Put our number next to the published one in a table.
-4. Give an **objective** verdict: where we beat / match / lag SOTA, and whether the KD
-   pipeline is effective — no spin. State limitations (single fold, stale-scale logs,
-   missing cross-domain) explicitly. Update the daily ledger row → Status = `DONE` with a
-   one-line result summary; move it to "✅ Done".
+1. Quote `test_metrics.json` / `aggregated.json` (mean ± std), never `val_pauc`; cite the path.
+   A difference between arms is a **paired bootstrap CI** (`run/bootstrap_ci.sh PAIR=…`), not a
+   win count. State splits v1 vs v2.
+2. **Headline = AUPRC vs its `prevalence` baseline**, plus **pAUC@TPR80** (ISIC 2024 official,
+   ~0.02–0.20); lead the mobile story with the **PAD** (phone-photo) subset.
+3. **Compare against SOTA/papers before judging** — `docs/SOTA_BENCHMARKS.md`; WebSearch to fill a
+   missing reference number and record it there with source URL + date.
+4. "Is it good enough / đạt yêu cầu" is answered **only** through
+   `eval-results/reference/acceptance-gates.md`. Everything else is a comparison.
+5. Before the verdict reaches the user it goes through the **cross-check gate** (`CLAUDE.md`). Then
+   set the `docs/PROGRESS.md` row to ✅ with a one-line result and move it to §7.
 
 ## Phase 5 — Update the proposal
 
-Once results are validated as OK:
-
-1. Update **`docs/DE_CUONG.md`** (the proposal) — write the new results into the right
-   sections (results tables, SOTA comparison, conclusions on KD effectiveness /
-   cross-domain / fairness). Keep it factual and cite the run dirs + sources.
-2. Keep it report-ready: the user takes `docs/DE_CUONG.md` to assemble the full thesis
-   report on Google Drive. Don't leave TODOs in it — fill what the results support, and
-   flag what still needs more runs.
-3. Summarize what changed in the proposal and what's still pending.
+Once results are validated, use **update-report**: it owns `report_phase_1/DE_CUONG.md` (full
+proposal), `docs/DE_CUONG.md` (short form), `reports/*.md` and its own cross-check step. The thesis
+`thesis/LUAN_VAN.md` is not edited here — propose changes through **review-thesis** (report
+first, edit on approval).
 
 ---
 
 ## Resuming mid-cycle
 
-If invoked when jobs are already pending, first read `tasks/daily/<date>.md` (and recent
-days) for rows in `AWAITING-ID`/`RUNNING` — those are results you're waiting on. Ask the
-user for any missing job id, or pick up at Phase 4 if results are now available.
+If invoked when jobs are already pending, read `docs/PROGRESS.md` §0–§2 (rows with 🏃 / ⏳) — those
+are the results you're waiting on. Run `/progress` to see whether they are still alive and
+`/pull-results` to see whether they have finished; pick up at Phase 4 if they have.

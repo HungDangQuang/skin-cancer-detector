@@ -9,8 +9,8 @@ Soát **một phần** của [thesis/LUAN_VAN.md](../../../thesis/LUAN_VAN.md) t
 tiêu chí do chính tác giả đặt ra. Mỗi lần gọi = một phần được soát, một mục được
 ghi vào [thesis/REVIEW_LOG.md](../../../thesis/REVIEW_LOG.md).
 
-Luận văn đã hoàn tất về nội dung (2.539 dòng, 5 chương + 2 phụ lục A–B; phụ lục C đã bỏ
-13/09/2026). Việc ở đây là **soát**, không phải viết lại: giữ giọng văn của tác giả, chỉ
+Luận văn đã hoàn tất về nội dung (5 chương + 2 phụ lục A–B; phụ lục C đã bỏ 13/09/2026;
+độ dài hiện tại: `wc -l thesis/LUAN_VAN.md`). Việc ở đây là **soát**, không phải viết lại: giữ giọng văn của tác giả, chỉ
 bản vá tối thiểu.
 
 ## Sáu tiêu chí (nguyên văn của tác giả — không diễn giải lại, không thêm bớt)
@@ -77,8 +77,13 @@ là lỗi của người soát, không phải của tác giả.
 
 Bắt buộc. Script không đọc hộ được tiêu chí 1, 5, 6.
 
+Lấy số dòng **mới** từ `section_audit.py --list` rồi mới đọc — số dòng trôi sau mỗi lần sửa, đừng
+dùng khoảng dòng ghi trong log hay trong lượt trước. `--list` in dòng **bắt đầu** của mọi tiêu đề;
+phần đó kết thúc ngay trước tiêu đề cùng cấp hoặc cao hơn kế tiếp trong danh sách:
+
 ```bash
-sed -n '1712,1825p' thesis/LUAN_VAN.md   # §4.3, mốc 14/09/2026 — số dòng trôi sau mỗi lần sửa
+python3 .claude/skills/review-thesis/scripts/section_audit.py --list   # vd "1707  4.3 …", "<n>  4.4 …"
+sed -n '1707,<n-1>p' thesis/LUAN_VAN.md
 ```
 
 ### 4. Verify từng con số — không có ngoại lệ

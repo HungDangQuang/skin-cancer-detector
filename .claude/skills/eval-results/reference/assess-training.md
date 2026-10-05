@@ -1,6 +1,6 @@
 ---
 name: assess-training
-description: Read a finished training-run log, score the result (good/moderate/poor), and recommend high-level changes to improve the next run. Use when the user shares a log/job id and asks "is this any good", "how do I improve", "should I train longer / change LR / change aug", or wants a verdict on a *successful* run. NOT for failure triage — use `diagnose-training` if the job crashed, NaN'd, or never started learning.
+description: Read a finished training-run log, score the result (good/moderate/poor), and recommend high-level changes to improve the next run. Use when the user shares a log/log (`logs/<name>_<timestamp>.log`) and asks "is this any good", "how do I improve", "should I train longer / change LR / change aug", or wants a verdict on a *successful* run. NOT for failure triage — use `diagnose-training` if the job crashed, NaN'd, or never started learning.
 ---
 
 # assess-training
@@ -10,7 +10,7 @@ Reads a finished training-run log, derives a verdict on the result, and produces
 ## When to use
 
 - A training job completed (`[job] DONE`) and the user wants a verdict on the result.
-- User shares a `logs/<jobname>_<jobid>.out` or `logs/<jobname>_<jobid>_runtime.log` path.
+- User shares a `logs/<name>_<timestamp>.log` path (written by `start_log` in `run/common.sh`).
 - User asks "should I train longer", "is this overfitting", "what should I tune next".
 - User wants to know whether to push the current checkpoint to evaluation or iterate further.
 
@@ -59,7 +59,7 @@ Epoch N/E | train_loss=X (hard=H, soft=Z) | val_loss=Y val_pauc=P acc=A sens=S s
 Extract them cleanly (tqdm progress bars in the log can blow up `cat`/`head` — filter them out):
 
 ```bash
-LOG="logs/<jobname>_<jobid>.out"
+LOG="logs/<name>_<timestamp>.log"
 
 # Per-epoch summary lines (drop tqdm and INFO/DEBUG noise):
 grep -aE "Epoch [0-9]+/[0-9]+" "$LOG" | grep -v "it/s" | sort -u
@@ -176,7 +176,7 @@ Next step: <concrete cluster command or follow-up action>
 
 ## Caveats
 
-- **`val_pauc` is the real ISIC 2024 metric (fixed 2026-06-04).** `pauc_at_tpr()` in [src/evaluation/metrics.py](../../src/evaluation/metrics.py) now implements the competition's McClish-corrected formulation; range is ≈ `[0.02, 0.20]` (random ≈ 0.02, perfect = 0.20). It is quotable as an absolute number and cross-run-comparable. **Only** logs/JSONs produced *before* 2026-06-04 are on the old stretched `[0.9, 5.0]` scale — re-evaluate those checkpoints. At ~0.4 % prevalence, prefer **AUPRC** over AUC-ROC as the headline.
+- **`val_pauc` is the real ISIC 2024 metric (fixed 2026-06-04).** `pauc_at_tpr()` in [src/evaluation/metrics.py](../../../../src/evaluation/metrics.py) now implements the competition's McClish-corrected formulation; range is ≈ `[0.02, 0.20]` (random ≈ 0.02, perfect = 0.20). It is quotable as an absolute number and cross-run-comparable. **Only** logs/JSONs produced *before* 2026-06-04 are on the old stretched `[0.9, 5.0]` scale — re-evaluate those checkpoints. At ~0.4 % prevalence, prefer **AUPRC** over AUC-ROC as the headline.
 - **POC runs are noisy.** The synthetic POC dataset has ~36 val samples; `val_pauc` and `val_loss` swing a lot from epoch to epoch. Convergence is the only signal worth trusting on POC.
 - **POC `acc` near 1.0 is not real-world good.** Synthetic POC images have a learnable color bias — saturating on POC just confirms gradients flow.
 - **One bad epoch ≠ broken training.** Early stopping has `patience` for a reason. Look at the trend across the last 5–10 epochs, not single-epoch dips.

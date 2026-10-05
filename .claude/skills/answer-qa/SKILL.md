@@ -1,6 +1,6 @@
 ---
 name: answer-qa
-description: Answer a thesis/project question grounded in this repo's actual code and results, then store it as a new `QA/NNN-*.md` file and index it in `QA/README.md`. Use when the user asks a conceptual/methodology/results question about the project AND wants it saved for the thesis — phrasings like "answer and store this", "add this to the QA", "save this Q&A", "record this question for the thesis", or any question asked while the QA workflow is active. Every answer goes through ONE mandatory cross-check pass — two `review-verifier` sub-agents in parallel (facts/fabrication, and completeness + transparency) — BEFORE the file is written into `QA/`. NOT for code edits (use the area review skills) and NOT for judging a checkpoint (use analyze-evaluation).
+description: Answer a thesis/project question grounded in this repo's actual code and results, then store it as a new `QA/NNN-*.md` file and index it in `QA/README.md`. Use when the user asks a conceptual/methodology/results question about the project AND wants it saved for the thesis — phrasings like "answer and store this", "add this to the QA", "save this Q&A", "record this question for the thesis", or any question asked while the QA workflow is active. Every answer goes through ONE mandatory cross-check pass — two `review-verifier` sub-agents in parallel (facts/fabrication, and completeness + transparency) — BEFORE the file is written into `QA/`. NOT for code edits (use code-change) and NOT for judging a checkpoint or giving a "đạt yêu cầu" verdict (use eval-results).
 ---
 
 # answer-qa
@@ -22,11 +22,10 @@ This skill exists because the user is building a QA knowledge base
 
 ## When NOT to use
 
-- The user wants a code/config/runner change → use the matching area skill
-  (`review-preprocessing` / `review-training` / `review-runner`) and the
-  modification workflow in `CLAUDE.md`. (You *may* still record a QA *afterward* if
-  asked.)
-- The user wants a checkpoint/eval verdict → `analyze-evaluation`.
+- The user wants a code/config/runner change → the **code-change** skill (it routes to the
+  area checklist and runs the modification workflow in `CLAUDE.md`). (You *may* still record a
+  QA *afterward* if asked.)
+- The user wants a checkpoint/eval verdict → the **eval-results** skill.
 - The user just wants a throwaway answer with no file saved → answer inline; don't
   invoke this skill.
 
@@ -41,8 +40,9 @@ This is a thesis artifact. The `feedback_no_hallucination` memory applies in ful
 - **Verify before asserting.** If the answer depends on what the code currently
   does, open the file and confirm — do not answer from memory or from a stale QA
   file. If it depends on a result number, read the artifact; if the artifact isn't
-  local, say so and tell the user the rsync to fetch it (see `analyze-evaluation`
-  §1) rather than guessing a number.
+  local, say so and give the fetch command (`bash run/pull_results.sh`, see
+  `eval-results/reference/analyze-evaluation.md` → "Where results live") rather than
+  guessing a number. State whether an in-domain number is splits v1 (leaked) or v2.
 - **Numbers are timestamped and tiered.** A single fold's number is high-variance;
   prefer `aggregated.md` mean ± std and label the tier. Note the date the number
   was read — results change as folds finish.
@@ -66,9 +66,9 @@ Gather evidence before writing:
 - Identify which area the question touches (data / training / KD / eval / runner /
   experiment design) and open the authoritative files for it. Cross-check against
   `CLAUDE.md` ("Architecture", "Recurring gotchas") and the relevant `docs/*.md`.
-- For results questions, read the run artifacts (`experiments/runs/.../test_metrics.json`,
-  `aggregated.*`). If not present locally, stop and surface the rsync — don't
-  fabricate.
+- For results questions, read the run artifacts (`experiments/runs*/<run>/fold_*/test_metrics.json`,
+  `aggregated.*`, `reports/external_newsplit_<arm>/…` (v2) or `reports/external/…` (v1), `reports/{bootstrap_ci,ci}_*.md`). If not present locally,
+  stop and surface `bash run/pull_results.sh` — don't fabricate.
 - Reuse a related existing `QA/*.md` if one already covers part of the answer, and
   cross-link it.
 
@@ -108,6 +108,9 @@ Rules for the body:
   `results`.
 - The `Answer` is self-contained prose a reader can drop into the thesis. Lead with
   the direct answer (yes/no/the number), then the reasoning.
+- **If the question's premise is partly wrong** (e.g. it assumes one metric is "the" headline when the
+  project uses two metrics in two roles), say so in the first sentence of the `Answer` and answer the
+  corrected question — a thesis source must not inherit a false premise.
 - The `Evidence` block is mandatory — at least one citation. Mark any live number
   with the date read and "re-confirm against `aggregated.md` before citing final".
 - Phrase `For the thesis` in report register (third person, no "we just
@@ -147,7 +150,7 @@ Only a draft that has been through the gate — and corrected per the gate — i
 ### 7. Report back
 Tell the user: the file created (clickable path), the one-line verdict from the
 answer, and any caveat — especially if a cited number was unverifiable locally
-(name the rsync) or is single-fold (recommend aggregating). Offer to draft the next
+(name the fetch command) or is single-fold (recommend aggregating). Offer to draft the next
 QA if the conversation suggests follow-ups.
 
 Include a `### Kiểm chéo` block: how many items were checked out of how many, the two
