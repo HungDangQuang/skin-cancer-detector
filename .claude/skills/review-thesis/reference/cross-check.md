@@ -34,7 +34,7 @@ nó là file tạm, không phải sản phẩm:
 <scratchpad>/review_draft_<mục>.md
 ```
 
-Bản nháp phải đầy đủ đúng như sẽ gửi tác giả (theo `report-template.md`), kể cả mục
+Bản nháp phải đầy đủ đúng như sẽ gửi tác giả (loại A: theo `report-template.md`), kể cả mục
 "Chưa verify được". Gửi cho verifier một bản rút gọn là tự vô hiệu hoá cổng.
 
 ### B. Spawn HAI instance song song — trong **một** message
@@ -103,11 +103,11 @@ kia rồi spawn thêm lượt nữa.
 
 ### D. Báo cáo phải hiện cổng ra cho tác giả thấy
 
-Thêm khối `### Kiểm chéo` vào cuối báo cáo (khuôn ở `report-template.md`). Tối thiểu:
+Thêm khối `### Kiểm chéo` vào cuối báo cáo (loại A: khuôn ở `report-template.md`; loại B: cùng nội dung tối thiểu dưới đây). Tối thiểu:
 bao nhiêu khẳng định đã kiểm / tổng, hai phán quyết, verifier bắt được gì, mình đã sửa
 gì sau đó, và **dòng nào chưa được kiểm chéo vì sửa sau**.
 
-Ghi thêm vào cột `Kiểm chéo` của `thesis/REVIEW_LOG.md`: `FACTS <phán quyết> · PATCH
+Chỉ với lượt soát luận văn (loại A): ghi thêm vào cột `Kiểm chéo` của `thesis/REVIEW_LOG.md`: `FACTS <phán quyết> · PATCH
 <phán quyết>` (ví dụ `FACTS ĐẠT · PATCH SỬA LẠI(2)`).
 
 ## Chi phí và giới hạn

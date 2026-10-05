@@ -7,8 +7,7 @@ description: Answer a thesis/project question grounded in this repo's actual cod
 
 Turns a question about this project into a **cited, thesis-ready answer** and
 persists it as one Markdown file under `QA/`, kept in sync with the real state of
-the code and runs so it can be lifted straight into the thesis report (Google
-Drive).
+the code and runs so it can be lifted straight into the thesis (`thesis/LUAN_VAN.md`).
 
 This skill exists because the user is building a QA knowledge base
 (`QA/README.md` defines the convention). Each invocation = one new QA file.
@@ -44,15 +43,21 @@ This is a thesis artifact. The `feedback_no_hallucination` memory applies in ful
   `eval-results/reference/analyze-evaluation.md` → "Where results live") rather than
   guessing a number. State whether an in-domain number is splits v1 (leaked) or v2.
 - **Numbers are timestamped and tiered.** A single fold's number is high-variance;
-  prefer `aggregated.md` mean ± std and label the tier. Note the date the number
+  prefer `aggregated.md` mean ± std for a single run's number and label the tier (for a
+  comparison the paired CI below takes precedence). Note the date the number
   was read — results change as folds finish.
 - If something can't be verified, write "unknown / not yet measured" in the answer
   rather than filling the gap.
 - **"Is the model good enough / đạt chưa / usable on a phone" is an acceptance question.**
   Answer it only through `.claude/skills/eval-results/reference/acceptance-gates.md` (per-domain,
   CI lower bound, signed-off thresholds, verdict labels in its §3). "KD beat the baseline" or
-  "phone = server" never answers it, and while the thresholds are `ĐỀ XUẤT` the answer must say
-  `CHƯA CÓ TIÊU CHÍ CHỐT`, not "đạt".
+  "phone = server" never answers it. The overall label follows the gates file §3 step 4 with the
+  thresholds in its §1 table (some are `CHỐT TẠM` since 2026-10-04, counted as locked, label "(tạm)");
+  "đạt" is never written while a mandatory threshold is still `ĐỀ XUẤT`.
+- **Comparison questions ("does KD help on X?") are answered with the paired CI, per domain** —
+  `reports/{bootstrap_ci,ci}_*.md`, the `SUBGROUP=source` sections for ISIC vs PAD. `aggregated.md` mean ± std
+  is the spread across 5 models, not evidence for a difference. Check which tree a CI file was computed on
+  (`eval-results/reference/analyze-evaluation.md` → "Check a CI file's provenance").
 
 ## Procedure
 
@@ -103,7 +108,7 @@ Use the template from [QA/README.md](../../../QA/README.md):
 ```
 
 Rules for the body:
-- `Status` date = today (`currentDate` in context). Area tag is one of
+- `Status` date = today's date as given in the session context. Area tag is one of
   `data` / `training` / `kd` / `evaluation` / `runner` / `experiment-design` /
   `results`.
 - The `Answer` is self-contained prose a reader can drop into the thesis. Lead with
@@ -125,7 +130,7 @@ fill its fields *for a QA draft* — three of them do not map one-to-one:
 
 | Field of the kind-B template | For an `answer-qa` draft |
 |---|---|
-| `Yêu cầu gốc của user` | the QA **question, verbatim** — that is what "complete" is measured against |
+| `Yêu cầu gốc của user` | the user's request **verbatim** (including "lưu vào QA" etc.), then the QA question as it will appear in the file — completeness is measured against both |
 | `File đã tạo/sửa` | `chưa có — bản nháp ở <scratchpad>/qa_draft_NNN-slug.md, chưa ghi vào QA/` |
 | the read-only-git line | not applicable — nothing has been written yet, and `git status` would only show unrelated work already in the tree. Replace it with `Đối chiếu trùng lặp với QA/ hiện có: <liệt kê file>` |
 

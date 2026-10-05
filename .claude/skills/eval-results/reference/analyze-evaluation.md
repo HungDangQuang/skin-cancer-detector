@@ -27,7 +27,7 @@ Reads finished evaluation artifacts and renders a verdict. Health/comparison onl
 
 | Tree | What | Splits |
 |---|---|---|
-| `experiments/runs_newsplit_{light,ddi,domain}/<run>/` | current arms: `fold_{0..4}/test_metrics.json` (+ `_auprc` twins when `extra_monitors=[auprc]`), `predictions.csv`, `val_*`, `aggregated.{json,md}` | **v2** (patient-grouped) — the only tree that may back an in-domain verdict |
+| `experiments/runs_newsplit_{light,ddi}/<run>/` (`runs_newsplit_domain` = the failed `augmentation=domain` arm, preset removed 2026-09-30 — history only) | current arms: `fold_{0..4}/test_metrics.json` (+ `_auprc` twins when `extra_monitors=[auprc]`), `predictions.csv`, `val_*`, `aggregated.{json,md}` | **v2** (patient-grouped) — the only tree that may back an in-domain verdict |
 | `experiments/runs/`, `experiments/runs_isic_only/` | the 140-fold matrix + PAD ablation | **v1 — leaked patients**; in-domain numbers inflated (`CLAUDE.md` → Data integrity). Cross-domain AUC/AUPRC/pAUC still usable |
 | `reports/external_newsplit_<arm>/<ds>/<variant>/<run_tag>/` (`<arm>` = light, ddi, srcsamp, srcsamp_auprc, …) | HAM10000 / Fitzpatrick17k cross-domain eval of the **v2** arms (`run/evaluate_external.sh`) | **v2** |
 | `reports/external/<ds>/<variant>/<run_tag>/fold_N/` + `aggregated.{json,md}` | the same for the **v1** matrix (`experiments/runs/`) | v1 — cross-domain AUC/AUPRC/pAUC usable, threshold metrics optimistic |
@@ -38,7 +38,7 @@ Reads finished evaluation artifacts and renders a verdict. Health/comparison onl
 `compute_metrics()` in [src/evaluation/metrics.py](../../../../src/evaluation/metrics.py) (`pauc_at_tpr80`,
 `auc_roc`, `auprc` + `prevalence`, `sensitivity`/`specificity`/`f1_score`/`threshold` — **Youden on the test set,
 optimistic: prefer the `valthr_*` keys** when present — `sens_at_90spec`/`sens_at_80spec`, TP/FP/TN/FN, `brier`/`ece`).
-Older JSONs may lack newer keys; say "missing" rather than guessing.
+Older JSONs may lack newer keys; say "missing" rather than guessing. Runs trained before the `valthr_*` change have them only in the offline back-fill `reports/valthr/<tree>{,_auprc}.{csv,md}` (`bash run/backfill_valthr.sh`) — use that instead of the test-Youden `sensitivity`/`specificity`; if only test-Youden numbers exist, flag them as optimistic wherever they are used (ranking rule below).
 
 If what the user names isn't on the Mac, don't hand-write rsync — use the project tool, which knows the live host
 (default `vastnew`) and never transfers checkpoints by default:
@@ -143,7 +143,7 @@ Inputs: 2+ JSONs the user wants compared. Cover three sub-cases:
 **Gating check first.**
 - If a baseline file is requested but doesn't exist, don't invent numbers — tell the user to produce it: `bash run/train_student.sh STUDENT=... TRAINING=baseline` (the baseline arm works via the `use_kd` flag, fixed 2026-06-04; run-dir `baseline_<student>/`). See memory `project_baseline_kd_coupling`.
 - If the inputs are clearly different splits / data / augmentation (read each run's saved `config.yaml` if present), flag it and refuse to call a winner — the comparison is confounded.
-- **No paired CI for this exact pair?** Say so plainly, report the point estimates as descriptive only, and give the server command (`bash run/bootstrap_ci.sh RESULTS_DIR=<tree> PAIR="<A>:<B>" SUBGROUP=source`). Don't hand-roll a bootstrap on the Mac and don't borrow a CI computed on another tree — neither is citable (see "Check a CI file's provenance" above). If the user needs a thesis sentence now, give one that states what is and isn't established ("chưa có kiểm định ghép cặp; điểm ước lượng …") plus the sentence to use once the CI exists.
+- **No paired CI for this exact pair?** Say so plainly, report the point estimates as descriptive only, and give the server command (`TMPDIR="$(pwd)/.tmp" bash run/bootstrap_ci.sh RESULTS_DIR=<tree> PAIR="<A>:<B>" SUBGROUP=source OUT_JSON=reports/ci_<name>.json OUT_MD=reports/ci_<name>.md` — without `OUT_*` the runner writes into the results tree itself). Don't hand-roll a bootstrap on the Mac and don't borrow a CI computed on another tree — neither is citable (see "Check a CI file's provenance" above). If the user needs a thesis sentence now, give one that states what is and isn't established ("chưa có kiểm định ghép cặp; điểm ước lượng …") plus the sentence to use once the CI exists.
 
 **If the user asked for a verdict or one sentence, lead with it** — the sentence (with its CI or its "not yet tested" caveat) first, then the supporting table. The full table below is the evidence, not the answer.
 
@@ -176,11 +176,11 @@ Pick a baseline column for the Δ:
 - Cross-student → no implicit baseline; rank instead (see below) and omit the Δ column or compute Δ vs the leader.
 - Teacher vs student → baseline is the teacher (judges KD efficacy: a student close to the teacher is doing well).
 
-**Preferred: paired bootstrap CI.** When `predictions.csv` exists for both arms (it does for every run since 2026-06-21), the real test is `bash run/bootstrap_ci.sh RESULTS_DIR=… PAIR="<A>:<B>"` (add `SUBGROUP=source` for the ISIC/PAD split). Quote "Δ [lo, hi]" and call it significant only if the interval excludes 0. The pooled-std heuristic below is the fallback when no predictions exist. Overlapping *unpaired* intervals do **not** mean "no difference".
+**Preferred: paired bootstrap CI.** When `predictions.csv` exists for both arms (it does for every run since 2026-06-21), the real test is `bash run/bootstrap_ci.sh RESULTS_DIR=… PAIR="<A>:<B>" OUT_JSON=reports/ci_<name>.json OUT_MD=reports/ci_<name>.md` (add `SUBGROUP=source` for the ISIC/PAD split). Quote "Δ [lo, hi]" and call it significant only if the interval excludes 0. The pooled-std heuristic below is the fallback when no predictions exist. Overlapping *unpaired* intervals do **not** mean "no difference".
 
 **Significance heuristic (for KD-vs-baseline only, fallback).** Without 5-fold std we can't bound noise. Quote the delta and warn: "single-checkpoint delta — run 5 folds via the array jobs before drawing a conclusion." Do not call it "robust" or "significant" on n=1.
 
-**If the user has 5 folds for each run** (fed as multiple JSONs labeled `<label>_fold<i>.json`, or auto-detected from `experiments/runs/<run>/fold_*/test_metrics.json`), aggregate them into mean ± std per label *before* comparing. Then a pooled-std overlap check is meaningful:
+**If the user has 5 folds for each run** (fed as multiple JSONs labeled `<label>_fold<i>.json`, or auto-detected from `<tree>/<run>/fold_*/test_metrics.json` — say which tree, v1 or v2), aggregate them into mean ± std per label *before* comparing. A pooled-std overlap check is then a rough **model-to-model spread** hint only — it is not the test set's sampling error (`CLAUDE.md` → Uncertainty) and can never replace the paired CI above:
 ```
 pooled_std = sqrt((std_kd**2 + std_baseline**2) / 2)
 significance = "robust"   if abs(delta) > 2 * pooled_std

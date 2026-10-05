@@ -56,7 +56,8 @@ Both training scripts reload `best_model.pth` and write `test_metrics.json` + `p
 
 ```bash
 bash run/bootstrap_ci.sh RESULTS_DIR=experiments/runs_newsplit_<arm> \
-     PAIR="kd_<teacher>_to_<student>[__v]:baseline_<student>[__v]" SUBGROUP=source
+     PAIR="kd_<teacher>_to_<student>[__v]:baseline_<student>[__v]" SUBGROUP=source \
+     OUT_JSON=reports/ci_<name>.json OUT_MD=reports/ci_<name>.md   # default writes into the results tree
 ```
 Quote it as "ΔAUPRC +x [lo, hi]" per source (PAD = the phone-photo subset). Never pool the five folds, never quote a win count. Cross-domain (HAM10000 / Fitzpatrick17k): `run/evaluate_external.sh`, with an `--out-root` under `reports/external_newsplit_<arm>/` (v2 trees never go into the v1 `reports/external/`), then the same `bootstrap_ci.sh` on that `<ds>/<variant>/` tree. Reading/judging the result → **eval-results** (`reference/compare-kd.md` for the whole matrix).
 

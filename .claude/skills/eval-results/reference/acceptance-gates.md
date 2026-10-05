@@ -286,7 +286,7 @@ Model được chấm: <run-dir · fold · checkpoint · splits v1/v2>
 Trạng thái mốc: <theo bảng §1 — từng cổng: ĐỀ XUẤT | CHỐT TẠM ngày … (nhãn kèm "(tạm)") | ĐÃ CHỐT ngày …>
 | Cổng | Metric | Mốc | Giá trị [CI 95%] | Nguồn (file:line) | Nhãn |
 |---|---|---|---|---|---|
-| I-1 · II-1 · II-2 · II-3 · III-a · III-b · C2 (§2.1) | … | … | … | … | ĐẠT / KHÔNG ĐẠT / CHƯA CHỨNG MINH / CHƯA ĐO / CHƯA CÓ TIÊU CHÍ CHỐT |
+| I-1 · II-1 · II-2 · II-3 · III-a · III-b · C2 (§2.1) | … | … | … | … | ĐẠT / KHÔNG ĐẠT / CHƯA CHỨNG MINH / CHƯA ĐO — kèm cờ `CHƯA CÓ TIÊU CHÍ CHỐT` nếu mốc còn ĐỀ XUẤT (§3 bước 3: cờ, không phải nhãn thứ năm) |
 Báo cáo (không quyết định): B1 · sens@spec80 PAD so Cochrane · B3 · B4 · C1 · C3 · C4b · A2
 Hành vi tại ngưỡng app (theo miền): <sens / spec / số ảnh lành bị gắn cờ>
 Ứng viên định trước? <có — checkpoint/fold chọn theo val | không — đã so nhiều ứng viên trên HAM/Fitz ⇒ post-hoc>
@@ -312,7 +312,7 @@ Lệnh còn thiếu để đo đủ: <…>
   bởi assistant; verifier không kiểm được (không có web).
 - ~~Mốc Cochrane 0,81/0,47~~ — **đã đối chiếu 01/10/2026** (tóm tắt CD011902.pub2) bởi assistant; verifier
   không kiểm được. Còn hở: chỉ melanoma, và 0,81 là mức đọc dermoscopy.
-- δ = 0,02: đề xuất, không có nguồn.
+- δ của C4b = 0,02: đề xuất, không có nguồn (δ của C2 đã chốt tạm 04/10 — §1).
 - §4 #12, #13, #14, #16, #17, #18 là **phòng ngừa** — chưa có tiền lệ được kiểm trong memory/repo;
   các dòng còn lại có tiền lệ (memory/transcript).
 - Ánh xạ tiêu chí → cổng là **diễn giải của bản này**: "chấp nhận được trên HAM" → mục tiêu 0,81 (B4)

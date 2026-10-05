@@ -41,13 +41,18 @@ first, edit only on approval) and `QA/` (**answer-qa**).
    `reports/{bootstrap_ci,ci}_*.md` (check which tree each CI file was computed on — run names repeat across trees). Note the path
    of every number as you go; you will cite it. If an artifact is only on the server, say so and
    give `bash run/pull_results.sh` — never fill the gap.
-3. **Find the house format.** Open the closest sibling `reports/*.md` (same arm family or same kind
-   of question) and reuse its heading layout, table columns and tone.
+3. **Find the house format — and check the result isn't already written up.** Open the closest sibling
+   `reports/*.md` (same arm family or same kind of question) and reuse its heading layout, table columns and
+   tone. If an existing report already contains this comparison, cite it and add only what is new (a dated
+   section there, or a short new report that links it) instead of duplicating its numbers.
+   CI files name runs by alias (`x_kd`, `x_baseline__ddi`) — map them to run-dirs with the provenance rule in
+   `eval-results/reference/analyze-evaluation.md`, and say how you mapped them.
 4. **Draft into the session scratchpad**, not into `reports/` — a report with numbers is a claim
    the author will build on.
 5. **Cross-check gate (mandatory, one pass).** Per `CLAUDE.md` → "Cross-check gate": spawn two
    `review-verifier` instances in parallel in one message — `REMIT=FACTS` and `REMIT=PATCH`, **kind B**
-   — using the template in `.claude/skills/review-thesis/reference/cross-check.md`. Fix proven
+   — using the template in `.claude/skills/review-thesis/reference/cross-check.md` (its `report-template.md`
+   and `thesis/REVIEW_LOG.md` parts apply to thesis reviews only). Fix proven
    `BỊA`/`SAI` before writing; keep `KHÔNG VERIFY ĐƯỢC` visible in the report.
 6. **Write the file(s)**, then update `docs/PROGRESS.md` if a task changed state.
 7. **Report back** with the file paths, the one-line finding, a `### Kiểm chéo` block (items
@@ -56,7 +61,10 @@ first, edit only on approval) and `QA/` (**answer-qa**).
 
 ### Logging a job that was just launched (no results yet)
 
-This is a tracker update, not a report: add one row to `docs/PROGRESS.md` (code **A**, 🏃, date) with the
+This is a tracker update, not a report: add a row to `docs/PROGRESS.md` §1 (code **A**, 🏃, date) — and keep the
+rest of the tracker consistent with it (the §0 summary line, the "Cập nhật lần cuối" stamp, and any line that
+says no job is running — the header only says "edit the status, add the date", but a new running job makes those
+lines false) — with the
 command, host + tmux session, expected run-dir and log file, and what result it is waiting for. Before
 writing the row, check and note in it: (a) the expected run-dir does not already exist in that tree (a
 re-launch with the same `run_suffix` overwrites finished folds — relaunch only missing folds with `FOLDS=`);

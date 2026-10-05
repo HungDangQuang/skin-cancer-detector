@@ -72,6 +72,17 @@ Three different questions, three different kinds of evidence — never answer on
   about an arm need the 5-fold CI. The exception is by design: gates I/II/III (§2.1) are scored on the
   single **ship** fold/checkpoint, because that is the model the app runs.
 - **Win counts are not evidence** ("KD won 12/12"); quote the paired CI of the delta.
+- **Fitzpatrick17k: name the variant** (headline, crop50/70, with_non_neoplastic, or the Fitzpatrick17k-C subset).
+  III-b is scored on Fitzpatrick17k-C since 2026-10-04; C2, B3, C4b stay on headline (gates §1).
+
+## Before the answer reaches the user
+
+Any verdict here cites numbers and `file:line`, so it goes through the `CLAUDE.md` cross-check gate: two
+`review-verifier` instances in parallel (`REMIT=FACTS` + `REMIT=PATCH`, **kind B**, template in
+`.claude/skills/review-thesis/reference/cross-check.md`; the `thesis/REVIEW_LOG.md` and `report-template.md`
+parts of that file are for thesis reviews only), exactly one pass, then a `### Kiểm chéo` block in the answer.
+If both an `analyze-evaluation.md` report template and the gates file's §5 block apply, the §5 block is the
+verdict and the template is the evidence under it.
 
 ## reference/ index
 

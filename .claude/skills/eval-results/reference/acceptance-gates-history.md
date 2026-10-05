@@ -88,6 +88,12 @@ Mốc chốt sau khi đã nhìn thấy kết quả của chính model đang ch�
 | III-b: **giữ** mốc 0,80 theo từng tông (review v2 đề xuất D2/D3 thay bằng mốc bác sĩ 0,47 — **không** đổi; so với 0,47 chỉ thêm vào báo cáo) | **CHỐT TẠM** (như S_min) | 04/10/2026 | tác giả |
 | III-b: tập chấm = **Fitzpatrick17k-C** (phần headline còn lại sau khi Abhishek, Jain & Hamarneh, Sci Data 12:196, 2025 loại ảnh gần trùng/ảnh lỗi: 3.086 / 4.320 ảnh; danh sách `reports/2026-10-04_review_v2_checks/fitz17kC_headline_image_ids.txt`) thay cho toàn bộ headline. Chỉ áp cho III-b; C2, B3, C4b vẫn trên headline | **ĐÃ CHỐT — post-hoc** (quyết sau khi đã thấy III-b của P0/P1/P2 trên headline **và** kết quả của P0 trên chính Fitzpatrick17k-C (vẫn trượt); số của P1/P2 trên Fitzpatrick17k-C cũng đã được tính trước lúc quyết (`reports/2026-10-04_review_v2_checks/output.md` (1)); nhãn của P0 không đổi). Lý do chỉ dời III-b: III-b dùng Wilson CI giả định ảnh độc lập trên một fold; C2/B3/C4b giữ headline để so được với các báo cáo đã có | 04/10/2026 | tác giả |
 
+## B2. Sửa câu chữ trong file luật sau khi tách (05/10/2026, chờ tác giả xác nhận)
+
+- §5 khuôn khối phán quyết: cột "Nhãn" trước liệt kê `CHƯA CÓ TIÊU CHÍ CHỐT` như nhãn thứ năm; nay ghi là **cờ** theo §3 bước 3.
+- §7: "δ = 0,02: đề xuất, không có nguồn." → "δ của C4b = 0,02 …" (0,02 chỉ là δ của C4b; δ của C2 chốt tạm 04/10).
+- §2.0 bước 2: xem §C dưới (nguyên văn cũ giữ ở đó).
+
 ## C. Sáu tiêu chí chọn model và luật gộp cũ (§2.0 cũ — áp đến 02/10/2026)
 
 Tiêu đề gốc: 2.0 Sáu tiêu chí chọn model (tác giả chốt 01/10/2026; tiêu chí 2 đổi 03/10/2026) → cổng tương ứng — **lịch sử; luật hiện hành ở §2.1 (03/10/2026)**
