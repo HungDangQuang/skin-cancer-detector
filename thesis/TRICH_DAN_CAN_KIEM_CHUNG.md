@@ -1,5 +1,7 @@
 # Đối chiếu trích dẫn — Mục 1.1 và 1.2
 
+> **10/10/2026:** số `[n]` trong file này là đánh số TLTK **cũ** (55 mục). Luận văn nay có 60 mục, đánh số lại theo alphabet; Siegel [44] đã bị gỡ khỏi luận văn. Tra theo tên tác giả, không theo số.
+
 Lập 13/09/2026 trong lượt soát `review-thesis` cho §1.1 và §1.2 của
 [LUAN_VAN.md](LUAN_VAN.md); cập nhật cùng ngày sau khi tra được toàn văn.
 

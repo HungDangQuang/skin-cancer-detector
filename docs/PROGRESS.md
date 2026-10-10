@@ -87,7 +87,7 @@ từng train trên `vastnew`.
 | S1 | Thêm ảnh dermoscopy vào train (hướng H3 trong `docs/NEXT_DIRECTION_2026-10-02.md`) | Tác giả: tạm không làm. B4 đã thành báo cáo |
 | S2 | Đo L3-T1 (thu nhỏ ảnh) | Chờ U5. HDF5 ISIC đã chép lên server ở `data/l3/isic2024_train-image.hdf5` (02/10; sha256 khớp bản Mac), cố ý **không** đặt ở `data/raw/isic2024/` để `prepare` vẫn không chạy được |
 | S3 | Đo L3-T2 (chụp lại ảnh đã biết nhãn qua app) | Chờ U5, N8 và chế độ "chụp để đánh giá" trên app |
-| S4 | Sửa luận văn | **Chỉ ghi chú, chưa sửa** (tác giả). Danh sách `thesis/CAN_SUA_SAU.md` (trên nhánh U1) |
+| S4 | Sửa luận văn | **10/10/2026: đã đưa thông tin và kết quả mới vào `thesis/LUAN_VAN.md`** theo yêu cầu tác giả (hai câu hỏi trung tâm, DDI, lấy mẫu theo nguồn, §3.11.4 ngưỡng app, §3.12 khung ba trụ, §4.11 kết quả trên bộ chia dựng lại, Chương 5; TLTK 55 → 60, gỡ Siegel). **Không** sửa phần sự cố rò rỉ (§3.3, ma trận cũ §4.1–4.10) — tác giả dặn giữ nguyên. Các mục còn lại của `thesis/CAN_SUA_SAU.md` (bản 27 mục trên nhánh U1) chưa làm hết |
 | S5 | Tính bù `valthr_*` cho ma trận v1 (cho luận văn) | 165 fold; ~913 MB `predictions*.csv` + `val_predictions*.csv` trên Mac, phải đẩy lên server trước. `run/backfill_valthr.sh` |
 | S6 | Spec app: các mục chưa cập nhật cho chế độ nhị phân | §3.3, §3.7, §9.1 `ScanEntity`, MA7, R-RES-07, R-HOME-02/03, R-HIS-01 — liệt kê trong spec §3.4a (trên nhánh U1) |
 
