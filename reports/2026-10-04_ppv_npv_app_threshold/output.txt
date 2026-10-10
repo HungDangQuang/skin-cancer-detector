@@ -1,0 +1,6 @@
+fold 4, rule pad_sens90, threshold 0.5705
+PAD test: TP 165/189 -> sens 0.873 [0.818, 0.913]; TN 152/208 -> spec 0.731 [0.667, 0.786]
+| prevalence (assumed) | PPV | PPV bracket | NPV | NPV bracket | referrals per 1000 | of which malignant |
+|---|---|---|---|---|---|---|
+| 1% | 0.032 | [0.024, 0.041] | 0.9982 | [0.9973, 0.9989] | 275 | 8.7 |
+| 5% | 0.146 | [0.114, 0.184] | 0.9909 | [0.9858, 0.9942] | 299 | 43.7 |

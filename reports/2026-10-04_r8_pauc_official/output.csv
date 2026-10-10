@@ -1,0 +1,21 @@
+file,subset,n,n_pos,ours,official,abs_diff
+P0/fold_0/predictions_auprc.csv,all,59093,265,0.1837328137,0.1837328137,2.776e-17
+P0/fold_0/predictions_auprc.csv,isic2024,58696,76,0.1582769039,0.1582769039,0.000e+00
+P0/fold_0/predictions_auprc.csv,pad_ufes_20,397,189,0.1258750509,0.1258750509,0.000e+00
+P0/fold_1/predictions_auprc.csv,all,59093,265,0.1878199125,0.1878199125,2.776e-17
+P0/fold_1/predictions_auprc.csv,isic2024,58696,76,0.1732583410,0.1732583410,2.776e-17
+P0/fold_1/predictions_auprc.csv,pad_ufes_20,397,189,0.1163766789,0.1163766789,1.388e-17
+P0/fold_2/predictions_auprc.csv,all,59093,265,0.1802616133,0.1802616133,0.000e+00
+P0/fold_2/predictions_auprc.csv,isic2024,58696,76,0.1480014006,0.1480014006,0.000e+00
+P0/fold_2/predictions_auprc.csv,pad_ufes_20,397,189,0.1156898657,0.1156898657,2.776e-17
+P0/fold_3/predictions_auprc.csv,all,59093,265,0.1812086659,0.1812086659,2.776e-17
+P0/fold_3/predictions_auprc.csv,isic2024,58696,76,0.1527718221,0.1527718221,0.000e+00
+P0/fold_3/predictions_auprc.csv,pad_ufes_20,397,189,0.1350986976,0.1350986976,2.776e-17
+P0/fold_4/predictions_auprc.csv,all,59093,265,0.1836575703,0.1836575703,0.000e+00
+P0/fold_4/predictions_auprc.csv,isic2024,58696,76,0.1576724757,0.1576724757,0.000e+00
+P0/fold_4/predictions_auprc.csv,pad_ufes_20,397,189,0.1228225478,0.1228225478,1.388e-17
+ext/ham10000/headline/fold_4/predictions.csv,all,7470,1169,0.1275916799,0.1275916799,2.776e-17
+ext/ham10000/headline/fold_4/predictions.csv,ham10000,7470,1169,0.1275916799,0.1275916799,2.776e-17
+ext/fitzpatrick17k/headline/fold_4/predictions.csv,all,4320,2160,0.0617256087,0.0617256087,0.000e+00
+ext/fitzpatrick17k/headline/fold_4/predictions.csv,fitzpatrick17k,4320,2160,0.0617256087,0.0617256087,0.000e+00
+MAX_ABS_DIFF 2.776e-17

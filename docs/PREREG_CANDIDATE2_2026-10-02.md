@@ -96,3 +96,46 @@ lục chỉ thêm ràng buộc, không đổi ứng viên hay luật chọn.
    convnextv2_base chưa từng train trên `vastnew`; code không có resume — nếu một bước hỏng giữa chừng, chạy lại
    phải truyền `FOLDS=` các fold còn thiếu, nếu không sẽ train lại từ fold 0 (ghi đè các fold vừa xong của chính
    bước đó). A1 của repvit (57,2 ms theo kiến trúc) sát mốc 80 ms hơn mobilenetv4 (39,5 ms).
+
+## 8. Phụ lục — đổi định nghĩa C2, ghi 03/10/2026 (commit ~14:20 UTC), TRƯỚC khi mở test của P1/P2
+
+Tác giả đổi tiêu chí 2 ngày 03/10/2026: C2 = student **không kém** teacher quá δ (cận dưới CI ghép cặp ΔAUPRC
+> −δ trên từng miền), thay cho "vượt teacher" (`.claude/skills/eval-results/reference/acceptance-gates.md` §1).
+Câu "C2 đòi student **vượt** teacher" ở §6 không còn đúng. Với P1/P2 (test chưa mở) đây là thay đổi tiên nghiệm;
+với P0 là post-hoc. δ chưa có giá trị: nếu chốt δ trước khi mở test vòng 2 thì C2 của P1/P2 chấm được không
+post-hoc; nếu không, C2 của vòng 2 mang cờ CHƯA CÓ TIÊU CHÍ CHỐT. Luật chọn §4 và các endpoint khác không đổi.
+
+## 9. Phụ lục — đổi bộ cổng sang khung 3 trụ, ghi 03/10/2026 (commit ~14:20 UTC), TRƯỚC khi mở test của P1/P2
+
+Tác giả chọn khung 3 trụ (`.claude/skills/eval-results/reference/acceptance-gates.md` §2.1) thay luật gộp cũ ở §5:
+I-1 + II-1 + II-2 + II-3 + III-a + III-b + C2. III-a/III-b đo độ nhạy / độ đặc hiệu **tại ngưỡng app đóng băng**
+(quy tắc `pad_sens90` trên val của fold ship) trên ảnh PAD và trên Fitzpatrick17k theo từng tông da. B1, B2, B3,
+C4a cũ thành báo cáo. Luật chọn §4 không đổi (vẫn chỉ val). S_min, Sp_min, δ của C2 chưa có giá trị: chốt trước khi
+mở test vòng 2 thì endpoint của P1/P2 không post-hoc; nếu không, phán quyết vòng 2 mang cờ CHƯA CÓ TIÊU CHÍ CHỐT.
+
+## 10. Phụ lục — chốt tạm mốc của khung 3 trụ, ghi 04/10/2026 ~00:35 UTC, TRƯỚC khi xem số test của P1/P2 (trừ một dòng của P1 fold 4 — xem dưới)
+
+Tác giả chốt tạm (sẽ review lại): **S_min = 0,80**, **Sp_min = 0,60** (áp cho III-a và III-b), **δ của C2 = 0,05 ×
+AUPRC của chính teacher trong arm**, từng miền (PAD = hàng PAD của test in-domain; Fitz, HAM = biến thể headline;
+điểm ước lượng trung bình 5 fold, checkpoint chính; không làm tròn khi so). Với P2 (teacher
+`efficientnetv2_m`): PAD 0,040 · Fitz 0,035 · HAM 0,025; với P1 (teacher `convnextv2_base`) giá trị tính theo công
+thức khi chấm. Chi tiết: `.claude/skills/eval-results/reference/acceptance-gates.md` §1, §2.1.
+
+Trạng thái lúc ghi: driver vòng 2 báo `ALL DONE` lúc 2026-10-03 16:52:18 UTC (4/4 bước rc=0). Trainer tự ghi
+`test_metrics*.json` cho từng fold khi train xong. **Khai:** lúc ~00:25 UTC 04/10, một phiên assistant khác chạy
+`tail .tmp/cand2_driver.log` và nhìn thấy **dòng metric test của P1 (A4) fold 4** in ở cuối log — trước khi phụ lục
+này được ghi; số đó không được chép lại và không chuyển cho tác giả (`docs/PROGRESS.md` mục 6). Mọi số test khác của
+P1/P2 chưa được mở (lệnh kiểm của phiên ghi phụ lục này chỉ đếm số file). Vì vậy với P1 các mốc ở đây mang một phần
+nhỏ post-hoc (một fold đã bị nhìn bởi assistant, không phải tác giả), phải khai khi báo cáo. Bước tiếp theo vẫn là §4 (chọn chỉ bằng val, commit kết quả chọn trước khi đọc số test).
+Nếu tác giả đổi mốc sau khi đã xem số test vòng 2 thì phải khai post-hoc.
+
+## 11. Phụ lục — đổi tập chấm III-b sang Fitzpatrick17k-C, ghi 04/10/2026, SAU khi mở test của P1/P2 (post-hoc)
+
+Sau review v2 (`review/REVIEW_DANH_GIA_V2_2026-10-04.md` §2.4), tác giả đổi tập chấm III-b từ toàn bộ Fitzpatrick17k
+headline (§9) sang tập con **Fitzpatrick17k-C** (3.086 / 4.320 ảnh còn lại sau khi Abhishek, Jain & Hamarneh, Sci Data
+2025 loại ảnh gần trùng/ảnh lỗi; danh sách `reports/2026-10-04_review_v2_checks/fitz17kC_headline_image_ids.txt`). Mốc
+S_min/Sp_min (§10) giữ nguyên. Thay đổi này **post-hoc**: được quyết sau khi đã thấy III-b của P0/P1/P2 trên headline và
+kết quả của P0 trên chính Fitzpatrick17k-C; số P1/P2 trên Fitzpatrick17k-C cũng đã được tính trước lúc quyết. Nhãn III-b
+của P0, P1, P2 **không đổi** (cả ba vẫn trượt trên cả hai tập — `reports/2026-10-04_review_v2_checks/output.md` (1)). δ
+của C2 (§10) và các cổng/báo cáo khác vẫn trên headline. Luật chọn §4 không bị ảnh hưởng (chỉ dùng val).
+

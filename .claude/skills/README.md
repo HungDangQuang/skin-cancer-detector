@@ -4,8 +4,8 @@ Quick reference for the project's Claude Code skills — what each one does and 
 to reach for it. Each skill lives in `.claude/skills/<name>/SKILL.md`; this file is
 just the map. Invoke with `/<name>` or let Claude auto-route from the description.
 
-The directory was consolidated from 15 fragmented skills into **6 clear entry-points**
-(2026-08-02); `review-thesis` was added later (2026-09-12), making 7. The detailed, area-specific checklists were **not** thrown away — they live
+The directory was consolidated from 15 fragmented skills into 6 entry-points (2026-08-02);
+`review-thesis` was added later (2026-09-12), making **7**. The detailed, area-specific checklists were **not** thrown away — they live
 verbatim under each skill's `reference/` and the SKILL.md routes to the right one.
 
 ## The 7 skills
@@ -13,12 +13,12 @@ verbatim under each skill's `reference/` and the SKILL.md routes to the right on
 | Skill | Use it when you want to… | Routes to (`reference/`) |
 |---|---|---|
 | [code-change](code-change/SKILL.md) | **add / remove / edit code** and carry it through review → validate → run on the GPU server | review-preprocessing · review-training · review-runner · add-model · validate-pipeline · poc-smoke-test · kd-experiment · dev-cycle |
-| [eval-results](eval-results/SKILL.md) | **read & judge results**, conclude whether the solution is effective — and, only via `acceptance-gates`, whether the model **meets the requirement** | **acceptance-gates** · analyze-evaluation · compare-kd · assess-training · diagnose-training |
-| [update-report](update-report/SKILL.md) | **write / refresh the report `.md`** (reports/, proposal, daily log) once results exist | — (Google Drive deferred) |
+| [eval-results](eval-results/SKILL.md) | **read & judge results**, conclude whether the solution is effective — and, only via `acceptance-gates`, whether the model **meets the requirement** | **acceptance-gates** (+ `-history`) · analyze-evaluation · compare-kd · assess-training · diagnose-training |
+| [update-report](update-report/SKILL.md) | **write / refresh the report `.md`** (reports/, proposal, `docs/PROGRESS.md`) once results exist, through the cross-check gate | — (Google Drive deferred: no target folder) |
 | [draw-diagram](draw-diagram/SKILL.md) | **draw a pipeline / architecture figure** in the house soft-card SVG style | — (was `diagram-style`) |
 | [answer-qa](answer-qa/SKILL.md) | **answer a thesis question AND store it** as `QA/NNN-*.md`, qua **cổng kiểm chéo** trước khi ghi file | — (dùng `review-thesis/reference/cross-check.md`) |
 | [tutor-knowledge](tutor-knowledge/SKILL.md) | **learn / review / get quizzed** on project concepts (`/tutor`) | delegates to the `knowledge-tutor` agent |
-| [review-thesis](review-thesis/SKILL.md) | **soát một phần của `thesis/LUAN_VAN.md`** theo sáu tiêu chí của tác giả, kèm **cổng kiểm chéo** bằng sub-agent trước khi báo cáo | criteria · report-template · cross-check · `scripts/section_audit.py` |
+| [review-thesis](review-thesis/SKILL.md) | **soát một phần của `thesis/LUAN_VAN.md`** theo sáu tiêu chí của tác giả, kèm **cổng kiểm chéo** bằng sub-agent trước khi báo cáo | criteria · report-template · cross-check · `review-thesis/scripts/section_audit.py` |
 
 ## Routing cheatsheet (pick by intent)
 
@@ -56,5 +56,9 @@ verbatim under each skill's `reference/` and the SKILL.md routes to the right on
 - **Agents vs skills:** `eval-results` overlaps the `result-analyst` agent (parallel triage of
   many runs) and `tutor-knowledge` fronts the `knowledge-tutor` agent — use the agent when you
   need a read-only sweep fanned out; use the skill for the interactive, single-thread path.
-- **Google Drive** sync for reports is intentionally deferred — the connected MCP has
-  `create_file` but no update/overwrite, and no target folder is agreed yet.
+- **Google Drive** sync for reports is intentionally deferred — no target folder is agreed yet
+  (re-confirmed 05/10/2026).
+- **`acceptance-gates.md` holds only the rules in force** (§1 is a one-row-per-threshold status
+  table). Every dated decision, its reason and its post-hoc label live verbatim in
+  `acceptance-gates-history.md` (split 05/10/2026). When a threshold changes: edit the §1 row **and**
+  append a dated entry to the history file.

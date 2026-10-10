@@ -1,5 +1,7 @@
 # Task: item 2 (sampler theo nguồn) + item 3 (checkpoint ứng viên ship chọn đúng tiêu chí)
 
+> 📋 **Theo dõi việc: `docs/PROGRESS.md`** — brief này đã thực hiện xong (item 2 đạt, 01/10); phần còn mở của item 3 là R2 trong PROGRESS. Không cập nhật trạng thái ở đây.
+
 > Brief cho một session khác thực hiện. Đọc `CLAUDE.md` trước (quy tắc cứng + cổng kiểm chéo).
 > Soạn 30/09/2026. Số giờ là **ước lượng từ log arm DDI**, không phải cam kết.
 

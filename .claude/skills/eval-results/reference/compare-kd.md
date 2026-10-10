@@ -8,7 +8,7 @@ description: Compare ALL teacher/student training results across experiments/run
 Answers two questions in one sweep: **"does KD help?"** and **"which teacher → student pair is best?"** — across every run under `experiments/runs/`, with all metrics shown but the important ones first.
 
 This is the cross-run roll-up. It complements, not replaces:
-- `analyze-evaluation` — verdict on one or a few `reports/results/*.json` eval files.
+- `analyze-evaluation` — verdict on one or a few run-dirs / eval artifacts (`test_metrics.json`, `aggregated.json`, `reports/external/…`).
 - `kd-experiment` — *sets up / runs* one student's KD-vs-baseline pair.
 - `assess-training` / `diagnose-training` — judge a single run's log.
 
@@ -23,8 +23,11 @@ experiments/runs/
   kd_<teacher>_to_<student>/fold_{0..4}/test_metrics.json (student, WITH KD)
 ```
 
-These live on the cluster. If they're not on the laptop, the user must rsync first
-(`rsync -avz islabworker2@islab-server2:/mnt/sharednas/binhnt/hungdang/skin-cancer-detector/experiments/runs/ ./experiments/runs/`).
+These are produced on the server. If they're not on the Mac, fetch them with
+`bash run/pull_results.sh` (check) then `bash run/pull_results.sh pull` — it knows the live host and
+skips checkpoints. The same layout exists per splits-v2 arm under `experiments/runs_newsplit_<arm>/`;
+`experiments/runs/` itself is **splits v1** (leaked patients — in-domain numbers inflated), so say which
+tree you compared and never mix v1 and v2.
 If `experiments/runs/` is empty/missing, say so and stop — don't invent numbers.
 
 ## How to run

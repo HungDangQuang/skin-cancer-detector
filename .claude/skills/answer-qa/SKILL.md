@@ -1,14 +1,13 @@
 ---
 name: answer-qa
-description: Answer a thesis/project question grounded in this repo's actual code and results, then store it as a new `QA/NNN-*.md` file and index it in `QA/README.md`. Use when the user asks a conceptual/methodology/results question about the project AND wants it saved for the thesis — phrasings like "answer and store this", "add this to the QA", "save this Q&A", "record this question for the thesis", or any question asked while the QA workflow is active. Every answer goes through ONE mandatory cross-check pass — two `review-verifier` sub-agents in parallel (facts/fabrication, and completeness + transparency) — BEFORE the file is written into `QA/`. NOT for code edits (use the area review skills) and NOT for judging a checkpoint (use analyze-evaluation).
+description: Answer a thesis/project question grounded in this repo's actual code and results, then store it as a new `QA/NNN-*.md` file and index it in `QA/README.md`. Use when the user asks a conceptual/methodology/results question about the project AND wants it saved for the thesis — phrasings like "answer and store this", "add this to the QA", "save this Q&A", "record this question for the thesis", or any question asked while the QA workflow is active. Every answer goes through ONE mandatory cross-check pass — two `review-verifier` sub-agents in parallel (facts/fabrication, and completeness + transparency) — BEFORE the file is written into `QA/`. NOT for code edits (use code-change) and NOT for judging a checkpoint or giving a "đạt yêu cầu" verdict (use eval-results).
 ---
 
 # answer-qa
 
 Turns a question about this project into a **cited, thesis-ready answer** and
 persists it as one Markdown file under `QA/`, kept in sync with the real state of
-the code and runs so it can be lifted straight into the thesis report (Google
-Drive).
+the code and runs so it can be lifted straight into the thesis (`thesis/LUAN_VAN.md`).
 
 This skill exists because the user is building a QA knowledge base
 (`QA/README.md` defines the convention). Each invocation = one new QA file.
@@ -22,11 +21,10 @@ This skill exists because the user is building a QA knowledge base
 
 ## When NOT to use
 
-- The user wants a code/config/runner change → use the matching area skill
-  (`review-preprocessing` / `review-training` / `review-runner`) and the
-  modification workflow in `CLAUDE.md`. (You *may* still record a QA *afterward* if
-  asked.)
-- The user wants a checkpoint/eval verdict → `analyze-evaluation`.
+- The user wants a code/config/runner change → the **code-change** skill (it routes to the
+  area checklist and runs the modification workflow in `CLAUDE.md`). (You *may* still record a
+  QA *afterward* if asked.)
+- The user wants a checkpoint/eval verdict → the **eval-results** skill.
 - The user just wants a throwaway answer with no file saved → answer inline; don't
   invoke this skill.
 
@@ -41,18 +39,25 @@ This is a thesis artifact. The `feedback_no_hallucination` memory applies in ful
 - **Verify before asserting.** If the answer depends on what the code currently
   does, open the file and confirm — do not answer from memory or from a stale QA
   file. If it depends on a result number, read the artifact; if the artifact isn't
-  local, say so and tell the user the rsync to fetch it (see `analyze-evaluation`
-  §1) rather than guessing a number.
+  local, say so and give the fetch command (`bash run/pull_results.sh`, see
+  `eval-results/reference/analyze-evaluation.md` → "Where results live") rather than
+  guessing a number. State whether an in-domain number is splits v1 (leaked) or v2.
 - **Numbers are timestamped and tiered.** A single fold's number is high-variance;
-  prefer `aggregated.md` mean ± std and label the tier. Note the date the number
+  prefer `aggregated.md` mean ± std for a single run's number and label the tier (for a
+  comparison the paired CI below takes precedence). Note the date the number
   was read — results change as folds finish.
 - If something can't be verified, write "unknown / not yet measured" in the answer
   rather than filling the gap.
 - **"Is the model good enough / đạt chưa / usable on a phone" is an acceptance question.**
   Answer it only through `.claude/skills/eval-results/reference/acceptance-gates.md` (per-domain,
   CI lower bound, signed-off thresholds, verdict labels in its §3). "KD beat the baseline" or
-  "phone = server" never answers it, and while the thresholds are `ĐỀ XUẤT` the answer must say
-  `CHƯA CÓ TIÊU CHÍ CHỐT`, not "đạt".
+  "phone = server" never answers it. The overall label follows the gates file §3 step 4 with the
+  thresholds in its §1 table (some are `CHỐT TẠM` since 2026-10-04, counted as locked, label "(tạm)");
+  "đạt" is never written while a mandatory threshold is still `ĐỀ XUẤT`.
+- **Comparison questions ("does KD help on X?") are answered with the paired CI, per domain** —
+  `reports/{bootstrap_ci,ci}_*.md`, the `SUBGROUP=source` sections for ISIC vs PAD. `aggregated.md` mean ± std
+  is the spread across 5 models, not evidence for a difference. Check which tree a CI file was computed on
+  (`eval-results/reference/analyze-evaluation.md` → "Check a CI file's provenance").
 
 ## Procedure
 
@@ -66,9 +71,9 @@ Gather evidence before writing:
 - Identify which area the question touches (data / training / KD / eval / runner /
   experiment design) and open the authoritative files for it. Cross-check against
   `CLAUDE.md` ("Architecture", "Recurring gotchas") and the relevant `docs/*.md`.
-- For results questions, read the run artifacts (`experiments/runs/.../test_metrics.json`,
-  `aggregated.*`). If not present locally, stop and surface the rsync — don't
-  fabricate.
+- For results questions, read the run artifacts (`experiments/runs*/<run>/fold_*/test_metrics.json`,
+  `aggregated.*`, `reports/external_newsplit_<arm>/…` (v2) or `reports/external/…` (v1), `reports/{bootstrap_ci,ci}_*.md`). If not present locally,
+  stop and surface `bash run/pull_results.sh` — don't fabricate.
 - Reuse a related existing `QA/*.md` if one already covers part of the answer, and
   cross-link it.
 
@@ -103,11 +108,14 @@ Use the template from [QA/README.md](../../../QA/README.md):
 ```
 
 Rules for the body:
-- `Status` date = today (`currentDate` in context). Area tag is one of
+- `Status` date = today's date as given in the session context. Area tag is one of
   `data` / `training` / `kd` / `evaluation` / `runner` / `experiment-design` /
   `results`.
 - The `Answer` is self-contained prose a reader can drop into the thesis. Lead with
   the direct answer (yes/no/the number), then the reasoning.
+- **If the question's premise is partly wrong** (e.g. it assumes one metric is "the" headline when the
+  project uses two metrics in two roles), say so in the first sentence of the `Answer` and answer the
+  corrected question — a thesis source must not inherit a false premise.
 - The `Evidence` block is mandatory — at least one citation. Mark any live number
   with the date read and "re-confirm against `aggregated.md` before citing final".
 - Phrase `For the thesis` in report register (third person, no "we just
@@ -122,7 +130,7 @@ fill its fields *for a QA draft* — three of them do not map one-to-one:
 
 | Field of the kind-B template | For an `answer-qa` draft |
 |---|---|
-| `Yêu cầu gốc của user` | the QA **question, verbatim** — that is what "complete" is measured against |
+| `Yêu cầu gốc của user` | the user's request **verbatim** (including "lưu vào QA" etc.), then the QA question as it will appear in the file — completeness is measured against both |
 | `File đã tạo/sửa` | `chưa có — bản nháp ở <scratchpad>/qa_draft_NNN-slug.md, chưa ghi vào QA/` |
 | the read-only-git line | not applicable — nothing has been written yet, and `git status` would only show unrelated work already in the tree. Replace it with `Đối chiếu trùng lặp với QA/ hiện có: <liệt kê file>` |
 
@@ -147,7 +155,7 @@ Only a draft that has been through the gate — and corrected per the gate — i
 ### 7. Report back
 Tell the user: the file created (clickable path), the one-line verdict from the
 answer, and any caveat — especially if a cited number was unverifiable locally
-(name the rsync) or is single-fold (recommend aggregating). Offer to draft the next
+(name the fetch command) or is single-fold (recommend aggregating). Offer to draft the next
 QA if the conversation suggests follow-ups.
 
 Include a `### Kiểm chéo` block: how many items were checked out of how many, the two

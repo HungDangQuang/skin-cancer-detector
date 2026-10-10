@@ -1,5 +1,7 @@
 # Hướng tiếp theo sau phán quyết "KHÔNG ĐẠT YÊU CẦU" (02/10/2026)
 
+> 📋 **Theo dõi việc: `docs/PROGRESS.md`** — phân tích các hướng để tác giả chọn; hướng H3 đang hoãn (S1 trong PROGRESS). Không cập nhật trạng thái ở đây.
+
 > **Cập nhật 02/10/2026 (tối):** tác giả chọn **H2** — B4 chuyển sang báo cáo (post-hoc), vẫn đo. Phán quyết ứng viên
 > hiện tại giờ là CHƯA CÓ TIÊU CHÍ CHỐT. H3 (dermoscopy) tạm không làm. Bước tiếp theo: vòng chọn thứ hai với
 > hai cặp teacher–student mới — `docs/PREREG_CANDIDATE2_2026-10-02.md`.

@@ -24,7 +24,7 @@ experiments/runs/
     training_curves.png
   <run>/aggregated.json + aggregated.md  ← mean±std across folds (written by aggregate_folds.py)
 ```
-Eval JSONs from `run/evaluate.sh` land in `reports/results/*.json` (+ a sibling `predictions.csv`: `y_true,y_prob,y_pred,source`).
+Eval JSONs from `run/evaluate.sh` land in `reports/results/*.json` (+ a sibling `predictions.csv`: `y_true,y_prob,y_pred,source`). That path is on-demand and usually empty; the normal artifacts are the run-dirs above (v2 arms under `experiments/runs_newsplit_<arm>/`), cross-domain evals under `reports/external_newsplit_<arm>/<ds>/<variant>/` (v2) or `reports/external/<ds>/<variant>/` (v1), and paired CIs in `reports/{bootstrap_ci,ci}_*.md` — check which tree a CI file was computed on, run names repeat across trees.
 
 ## Metric conventions (use these exactly)
 - **`pauc_at_tpr80`** = ISIC 2024 official metric, pAUC@TPR≥80% normalized to ~**[0.02, 0.20]** (random ≈ 0.02, perfect = 0.20). This is the competition headline.

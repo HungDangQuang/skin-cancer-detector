@@ -1,5 +1,7 @@
 # Next tasks after the external evaluation (handoff)
 
+> 📋 **Theo dõi việc: `docs/PROGRESS.md`** — file này là bàn giao 08/2026, 5 task đều đã xong; không cập nhật trạng thái ở đây.
+
 **Written:** 2026-08-23 · **For:** a fresh session picking this up
 **Context to read first:** [reports/2026-08-23_external_evaluation.md](../reports/2026-08-23_external_evaluation.md)
 (what was run and what the numbers mean), then `CLAUDE.md` §"External test sets" and

@@ -1,5 +1,7 @@
 # Kế hoạch: Cổng phát hiện ảnh không hợp lệ (OOD gate) cho student deploy
 
+> 📋 **Theo dõi việc: `docs/PROGRESS.md`** — tài liệu thiết kế; việc code cổng OOD là S7 trong PROGRESS. Các ô ☐ dưới đây là checklist review lúc code, không phải trạng thái.
+
 > Tài liệu này trả lời: "khi đưa một ảnh **không phải tổn thương da** (con mèo, phong cảnh,
 > ảnh mờ, ngón tay…) vào model thì làm sao để nó **từ chối** thay vì ép ra benign/malignant?".
 > Mọi đường dẫn/def dưới đây đã **đối chiếu với code thực** (file:line) — không bịa API.
