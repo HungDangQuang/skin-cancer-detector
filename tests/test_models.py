@@ -25,6 +25,7 @@ def make_cfg(model_name: str, backbone: str, dropout: float = 0.2):
     ("fastvit_sa12", "fastvit_sa12.apple_in1k", 0.1),                        # student
     ("efficientformerv2_s2", "efficientformerv2_s2.snap_dist_in1k", 0.1),    # student
     ("repvit_m1_0", "repvit_m1_0.dist_in1k", 0.1),                           # student
+    ("cpubone_b1", "cpubone_b1_bfrobust.r224_in1k", 0.2),                     # student (needs timm>=1.0.30)
     ("panderm", "vit_base_patch16_224", 0.3),                               # foundation teacher
 ])
 def test_model_forward_shape(model_name, backbone, dropout):
@@ -49,6 +50,7 @@ def test_model_registry_keys():
     assert "fastvit_sa12" in MODEL_REGISTRY
     assert "efficientformerv2_s2" in MODEL_REGISTRY
     assert "repvit_m1_0" in MODEL_REGISTRY
+    assert "cpubone_b1" in MODEL_REGISTRY
 
 
 def test_unknown_model_raises():

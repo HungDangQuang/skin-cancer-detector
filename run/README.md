@@ -327,6 +327,16 @@ Candidates must be listed in the pre-registered order (the tie rule depends on i
 only `val_predictions*.csv`, `val_split.csv` and `val_metrics*.json`, refuses any other file, and
 writes `selection.{json,md}` (pair, reason, per-fold PAD-val AUPRC, ship fold).
 
+**Exploratory fifth student `cpubone_b1` (CPUBone-B1, 2026-10-10).** Registered like every other
+student (`configs/student/cpubone_b1.yaml`, `TimmBackboneModel`) but needs **timm>=1.0.30** in
+`.venv-linux` (1.0.28 has no cpubone module) — building it on an older timm fails with timm's unknown-model error.
+Pre-registered in `docs/PREREG_CPUBONE_2026-10-10.md`: same P0 recipe (the `EXTRA` string above),
+KD from `efficientnetv2_m` → `kd_efficientnetv2_m_to_cpubone_b1__srcsamp` (P3) plus
+`baseline_cpubone_b1__srcsamp`, then `select_candidate.sh CANDIDATES="P0=… P3=…"`, committed before any test file
+is opened (do not `tail` the training log either — it prints test metrics at the end of each fold).
+Not added to the defaults of `train_kd_parallel.sh` (`STUDENTS`), `export_all_students.sh` (`PAIRS_DEFAULT`)
+or the plot scripts — those still mean the four-student v1 matrix.
+
 **Comparing two checkpoints of ONE run** (e.g. `best_model_auprc.pth` vs `best_model.pth`) with a
 paired CI: `PRED_NAME` applies one file name to every run, so build a symlink tree with two
 "runs" that point into the same run-dir, and pair them with `PAIR=`. Each fold dir must hold
