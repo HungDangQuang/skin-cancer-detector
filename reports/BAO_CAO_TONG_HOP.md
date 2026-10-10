@@ -108,7 +108,7 @@ Mười lăm kết luận, xếp theo độ chắc chắn của bằng chứng.
 
 ### 2.1 Câu hỏi nghiên cứu
 
-Câu hỏi trung tâm ([report_phase_1/DE_CUONG.md:27](../report_phase_1/DE_CUONG.md#L27)):
+Câu hỏi trung tâm (đề cương đầy đủ cũ `report_phase_1/DE_CUONG.md`, đã gỡ 10/10/2026 — xem lịch sử git; đề cương duy nhất hiện hành là `docs/DE_CUONG.md`):
 
 > *"Liệu KD có thực sự mang lại cải thiện đáng kể và nhất quán cho các mô hình lightweight thuộc nhiều
 > paradigm thiết kế khác nhau, và chất lượng của teacher ảnh hưởng thế nào đến hiệu quả KD?"*
@@ -1507,7 +1507,7 @@ chọn **B** và nói rõ cái giá là suy giảm khi dịch chuyển miền, *
 ### 9.2 Điểm yếu và hạn chế — tám điểm, đều phải nêu thẳng trong luận văn
 
 1. **🔴 "Dark knowledge" KHÔNG tồn tại trong setup nhị phân một logit.**
-   Đề cương ([DE_CUONG.md:104](../report_phase_1/DE_CUONG.md#L104)) viết soft loss "truyền *dark knowledge*
+   Đề cương đầy đủ cũ (`report_phase_1/DE_CUONG.md`, đã gỡ 10/10/2026) viết soft loss "truyền *dark knowledge*
    từ phân phối mềm của teacher". Nhưng mã nguồn thực tế
    ([src/training/distillation.py:81](../src/training/distillation.py#L81)):
    ```python
