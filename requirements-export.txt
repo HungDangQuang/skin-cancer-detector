@@ -15,7 +15,7 @@
 # Changing one without the other is risk R1, and it fails as garbage logits rather than
 # as a crash.
 executorch==1.4.0
-timm>=1.0.0          # model registry backbones (mobilenetv4/fastvit/efficientformerv2 need >=1.0)
+timm==1.0.30         # model registry backbones (mobilenetv4/fastvit/efficientformerv2 need >=1.0; cpubone needs >=1.0.30; pinned, verified on 1.0.30)
 hydra-core>=1.3.2    # load_config composes the Hydra defaults list
 omegaconf>=2.3.0
 numpy>=1.26.0

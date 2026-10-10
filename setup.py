@@ -11,7 +11,7 @@ setup(
     install_requires=[
         "torch>=2.2.0",
         "torchvision>=0.17.0",
-        "timm>=0.9.16",
+        "timm>=1.0.30",
         "albumentations>=1.4.0",
         "hydra-core>=1.3.2",
         "omegaconf>=2.3.0",

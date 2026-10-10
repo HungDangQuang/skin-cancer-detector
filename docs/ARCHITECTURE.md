@@ -61,7 +61,7 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | `src/models/` | `registry.py` | `MODEL_REGISTRY` (string→class) + `build_model` / `build_model_from_name` |
 | | `base_model.py` | `BaseModel` (ABC): `forward(x)->Tensor(B,)`, `forward_features(x)->(feat(B,C), logit(B,))` cho feature-KD, `freeze_backbone()`, `unfreeze()` |
 | | `heads.py` | `build_head()` = `Dropout→Linear(in,1)`; dùng `infer_backbone_out_dim()`, **không** dùng `num_features` |
-| | `timm_backbone.py` | `TimmBackboneModel` — wrapper generic cho cả 7 model timm (3 teacher + 4 student; cần `timm>=1.0`) |
+| | `timm_backbone.py` | `TimmBackboneModel` — wrapper generic cho cả 8 model timm (3 teacher + 4 student + `cpubone_b1` thử nghiệm; cần `timm>=1.0`, riêng `cpubone_b1` cần `timm>=1.0.30`) |
 | | `panderm.py` | `PanDermModel(TimmBackboneModel)` — teacher foundation da liễu (ViT-B/16 BEiT-style, out-of-timm); nạp weight PanDerm đè lên backbone timm bằng loader remap "loud" (raise nếu match < `min_weight_match`) |
 | `src/training/` | `trainer.py` | `Trainer` (teacher/baseline) |
 | | `kd_trainer.py` | `KDTrainer` (student, teacher frozen) |
@@ -92,6 +92,7 @@ L_total = 0.3 · L_focal(student, y_true) + 0.7 · T² · L_BCE(σ(s/T), σ(t/T)
 | | `fastvit_sa12` | `TimmBackboneModel` |
 | | `efficientformerv2_s2` | `TimmBackboneModel` |
 | | `repvit_m1_0` (RepViT-M1.0, reparam-CNN) | `TimmBackboneModel` |
+| | `cpubone_b1` (CPUBone-B1, CPU-optimized; thử nghiệm 10/10/2026, cần `timm>=1.0.30`) | `TimmBackboneModel` |
 
 **Thêm arch mới:** đăng ký key → `TimmBackboneModel` (hoặc class mới nếu cần logic riêng) + tạo config `configs/{student,teacher}/<name>.yaml`. Dùng skill `code-change` (reference/add-model.md).
 
@@ -108,7 +109,7 @@ defaults: data=isic2024 · training=distillation · augmentation=light · _self_
 |---|---|
 | `data/` | `isic2024`, `pad_ufes_20`, `ham10000`, `fitzpatrick17k`, `poc` |
 | `teacher/` | `efficientnetv2_m`, `convnextv2_base`, `maxvit_base`, `panderm` (foundation — set `teacher.weights_path` on server) |
-| `student/` | `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2`, `repvit_m1_0` |
+| `student/` | `mobilenetv4_conv_medium`, `fastvit_sa12`, `efficientformerv2_s2`, `repvit_m1_0`, `cpubone_b1` (thử nghiệm, chỉ splits v2) |
 | `training/` | `distillation` (KD), `distillation_rkd` (KD + RKD feature-KD), `baseline` (no-KD), `default`, `finetuning`, `ablation`, `poc` |
 | `augmentation/` | `light` (mặc định), `heavy` (anti-overfit) |
 

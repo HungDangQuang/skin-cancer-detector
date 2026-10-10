@@ -8,6 +8,7 @@
 # Args are KEY=VALUE positionals OR env vars:
 #   STUDENT    student backbone (default mobilenetv4_conv_medium)
 #              choices: mobilenetv4_conv_medium | fastvit_sa12 | efficientformerv2_s2 | repvit_m1_0
+#                       | cpubone_b1 (exploratory, needs timm>=1.0.30 — docs/PREREG_CPUBONE_2026-10-10.md)
 #   TEACHER    teacher to distill from (default efficientnetv2_m)
 #   TRAINING   distillation | distillation_rkd | baseline    (default distillation; baseline = no KD)
 #   FOLDS      space-separated fold list  (default "0 1 2 3 4")

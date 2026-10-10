@@ -1,0 +1,28 @@
+name: cpubone_b1
+role: student
+paradigm: cpu_optimized
+# CPUBone-B1 (Nottebaum et al., arXiv 2603.26425, CVPR Findings 2026) — a backbone
+# designed for devices with low parallelization (CPU): grouped (fused) MBConv,
+# 2x2 kernels in the last two stages, LowFormer attention with nearest-neighbour
+# upsampling. Added 2026-10-10 as an EXPLORATORY fifth student, trained only on
+# the rebuilt splits (runs_newsplit_ddi, P0 recipe) — see
+# docs/PREREG_CPUBONE_2026-10-10.md. Not part of the v1 3x4 matrix.
+#
+# Requires timm>=1.0.30 (timm 1.0.28 has no cpubone module). The `_bfrobust`
+# weights are the variant the CPUBone README recommends: the plain B0/B1/B2 were
+# not robust to bf16/fp16 and timm ships no pretrained tag for plain cpubone_b1.
+# (`cpubone_b1_dwnorm.timm_r256_in1k` also exists but is pretrained at 256; the pipeline is 224.)
+# Re-check the tag if the installed timm changes:
+#   python -c "import timm; print([t for t in timm.list_pretrained() if 'cpubone' in t])"
+backbone: cpubone_b1_bfrobust.r224_in1k
+pretrained: true
+num_classes: 1    # binary sigmoid output
+
+head:
+  dropout: 0.2    # same as mobilenetv4_conv_medium (the P0 student it is compared with)
+
+# Stochastic depth (anti-overfit regularizer). Default 0.0 = off, same as every
+# other student. CPUBone's constructor accepts drop_path_rate.
+drop_path_rate: 0.0
+
+freeze_backbone: false

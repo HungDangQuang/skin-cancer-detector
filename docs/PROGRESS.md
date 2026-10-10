@@ -13,7 +13,7 @@
 > Ký hiệu: 🏃 đang chạy · ⏳ chờ việc khác · 👤 chờ tác giả · 🔜 làm được ngay · ✅ xong · ⏸ hoãn.
 > Mã việc: **A** đang chạy · **U** chờ tác giả · **N** làm sau khi train xong · **R** làm được ngay · **S** để sau.
 
-**Cập nhật lần cuối:** 04/10/2026 12:25 (+0700). Trạng thái server là **ảnh chụp lúc đó** — xem lại bằng lệnh ở mục 1.
+**Cập nhật lần cuối:** 10/10/2026 (+0700), thêm mục CPUBone. Trạng thái server là **ảnh chụp lúc đó** — xem lại bằng lệnh ở mục 1.
 
 ## 0. Tình trạng tổng quát
 
@@ -27,7 +27,25 @@
 | Đang làm | **N1 xong 04/10: vòng 2 chọn lại P0, fold 4** (`reports/2026-10-04_candidate2_selection/`, commit `c61bab2` trước khi mở file test nào của vòng 2 để chọn — **trừ** một dòng metric test tổng in-domain của P1 fold 4 mà assistant đã thấy qua `tail` lúc ~00:25 UTC, trước N1 (prereg §10; `reports/2026-10-04_test_set_openings.md` #13)) ⇒ `.pte`, config app, A3/A4 của P0 giữ nguyên. **Mọi việc N/R làm được đã xong 04/10** (mục 7); vòng 2 chỉ báo cáo: `reports/2026-10-04_round2_report_only.md` — P1, P2 cũng đạt III-a và trượt III-b. Không còn job trên server. Việc còn lại chờ tác giả (mục 2) hoặc để sau (mục 5) |
 | Hợp đồng chấm | `.claude/skills/eval-results/reference/acceptance-gates.md` — 03/10: C2 = không kém teacher quá δ; **khung 3 trụ §2.1** (III-a ảnh điện thoại + III-b ảnh lâm sàng khác nguồn theo tông, tại ngưỡng app); B2 0,81 thôi làm cổng; S_min/Sp_min/δ chốt tạm 04/10 |
 
-## 1. Đang chạy 🏃 — không có job nào (A5, A6 xong 04/10)
+## 1. Đang chạy 🏃 — thử CPUBone-B1 (từ 10/10)
+
+**Thử CPUBone-B1 làm student** (prereg `docs/PREREG_CPUBONE_2026-10-10.md`, thí nghiệm khám phá, post-hoc). Server
+`vastnew`, tmux `cpubone`, driver `.tmp/cpubone_driver.sh` (log `.tmp/cpubone_driver.log`, trạng thái
+`.tmp/cpubone_status/`). timm trên server nâng 1.0.28 → 1.0.30.
+
+| Mã | Job | Run-dir (trong `experiments/runs_newsplit_ddi/`) | Ai / ở đâu | Trạng thái |
+|---|---|---|---|---|
+| A7 | KD P3: `efficientnetv2_m → cpubone_b1` (công thức P0) | `kd_efficientnetv2_m_to_cpubone_b1__srcsamp` | server, GPU 0 | 🏃 bước 1 |
+| A8 | baseline `cpubone_b1` (đối chứng C1) | `baseline_cpubone_b1__srcsamp` | server | ⏳ sau A7 |
+| A9 | Chọn chỉ trên val P0 vs P3 → `reports/2026-10-10_cpubone_selection/` | driver bước 3 (CPU) | server | ⏳ sau A8; driver **dừng** ở đây |
+| N10 | Commit `selection.{json,md}` **rồi** mới chạy `GPU=0 bash .tmp/cpubone_eval.sh` (aggregate, eval ngoài miền, CI C1/C2 → `reports/ci_cpubone_P3_*`) | Mac (commit) + server | eval driver từ chối chạy nếu kết quả chọn chưa commit | ⏳ |
+
+**Xem tiến độ CPUBone** (đừng `tail` log train — log in số test):
+```bash
+ssh vastnew 'cd /workspace/skin-cancer-detector && ls .tmp/cpubone_status/ && grep "^\[cpubone\]" .tmp/cpubone_driver.log | tail -3'
+```
+
+### Vòng chọn thứ hai — đã xong (A5, A6 xong 04/10)
 
 Vòng chọn thứ hai (prereg `docs/PREREG_CANDIDATE2_2026-10-02.md`) **train xong 03/10 16:52 UTC** (tmux `cand2`, khởi chạy 02/10 15:34:41 UTC), **N1 chọn lại P0** 04/10. Eval chỉ để báo cáo P1/P2 (A5) và R6/R7 (A6) đã chạy xong 04/10; hiện không còn job nào.
 

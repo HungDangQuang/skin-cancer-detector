@@ -28,6 +28,9 @@ MODEL_REGISTRY: dict = {
     "fastvit_sa12": TimmBackboneModel,
     "efficientformerv2_s2": TimmBackboneModel,
     "repvit_m1_0": TimmBackboneModel,
+    # Exploratory fifth student (2026-10-10), CPU-optimized; needs timm>=1.0.30.
+    # Trained only on the rebuilt splits — docs/PREREG_CPUBONE_2026-10-10.md.
+    "cpubone_b1": TimmBackboneModel,
 }
 
 
