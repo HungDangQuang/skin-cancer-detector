@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="776" viewBox="0 0 1600 776"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9AA0A6"/>
+    </marker>
+    <filter id="cardShadow" x="-6%" y="-6%" width="112%" height="118%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-color="#1a1a1a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="776" fill="#FFFFFF"/>
+
+  <!-- ===== ONE MODEL (gray) ===== -->
+  <rect x="40" y="40" width="1520" height="80" rx="14" fill="#EEEDEA" stroke="#D8D6D1"/>
+  <text x="800" y="74" text-anchor="middle" font-size="20" font-weight="700" fill="#55534E">Một mô hình phát hành, chấm trên ba tầng dữ liệu</text>
+  <text x="800" y="100" text-anchor="middle" font-size="13" fill="#5A5A5A">cùng trọng số · ngưỡng ứng dụng chọn trên tập kiểm định rồi đóng băng · không huấn luyện hay chỉnh lại giữa các tầng</text>
+
+  <line x1="800" y1="120" x2="800" y2="140" stroke="#9AA0A6" stroke-width="1.6"/>
+  <line x1="280" y1="140" x2="1320" y2="140" stroke="#9AA0A6" stroke-width="1.6"/>
+  <line x1="280" y1="140" x2="280" y2="162" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="800" y1="140" x2="800" y2="162" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="1320" y1="140" x2="1320" y2="162" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+  <!-- ===== TIER 1 (blue) ===== -->
+  <rect x="40" y="164" width="480" height="290" rx="14" fill="#E8F0FB" stroke="#C2D8F2"/>
+  <circle cx="84" cy="202" r="18" fill="#2C63B0"/>
+  <text x="84" y="208" text-anchor="middle" font-size="17" font-weight="700" fill="#FFFFFF">1</text>
+  <text x="112" y="208" font-size="17" font-weight="700" fill="#2C63B0">Trong miền</text>
+  <rect x="60" y="230" width="440" height="104" rx="10" fill="#FFFFFF" stroke="#D2E1F6" filter="url(#cardShadow)"/>
+  <text x="280" y="260" text-anchor="middle" font-size="15" font-weight="700" fill="#2C63B0">ISIC 2024 + PAD-UFES-20</text>
+  <text x="280" y="286" text-anchor="middle" font-size="13" fill="#5A5A5A">tập kiểm tra · 59.093 ảnh · 399 bệnh nhân</text>
+  <text x="280" y="314" text-anchor="middle" font-size="14" font-weight="700" fill="#5A5A5A">265 ác tính · 0,45%</text>
+  <rect x="60" y="348" width="440" height="88" rx="10" fill="#DCE8F8"/>
+  <text x="280" y="374" text-anchor="middle" font-size="13" font-weight="700" fill="#2C63B0">Trụ III-a — ảnh điện thoại PAD</text>
+  <text x="280" y="398" text-anchor="middle" font-size="12" font-style="italic" fill="#2C63B0">397 ảnh (189 ác tính)</text>
+  <text x="280" y="418" text-anchor="middle" font-size="12" font-style="italic" fill="#2C63B0">độ nhạy và độ đặc hiệu tại ngưỡng ứng dụng</text>
+
+  <!-- ===== TIER 2 (purple) ===== -->
+  <rect x="560" y="164" width="480" height="290" rx="14" fill="#ECEBFB" stroke="#C9C6F0"/>
+  <circle cx="604" cy="202" r="18" fill="#4B41B8"/>
+  <text x="604" y="208" text-anchor="middle" font-size="17" font-weight="700" fill="#FFFFFF">2</text>
+  <text x="632" y="208" font-size="17" font-weight="700" fill="#4B41B8">Miền mới — ảnh soi da</text>
+  <rect x="580" y="230" width="440" height="104" rx="10" fill="#FFFFFF" stroke="#D6D3F5" filter="url(#cardShadow)"/>
+  <text x="800" y="260" text-anchor="middle" font-size="15" font-weight="700" fill="#4B41B8">HAM10000</text>
+  <text x="800" y="286" text-anchor="middle" font-size="13" fill="#5A5A5A">mỗi tổn thương một ảnh · 7.470 ảnh</text>
+  <text x="800" y="314" text-anchor="middle" font-size="14" font-weight="700" fill="#5A5A5A">1.169 ác tính · 15,6%</text>
+  <rect x="580" y="348" width="440" height="88" rx="10" fill="#E0DEF7"/>
+  <text x="800" y="374" text-anchor="middle" font-size="13" font-weight="700" fill="#4B41B8">Chỉ báo cáo — không có cổng riêng</text>
+  <text x="800" y="398" text-anchor="middle" font-size="12" font-style="italic" fill="#4B41B8">cùng PAD và Fitzpatrick17k góp một miền</text>
+  <text x="800" y="418" text-anchor="middle" font-size="12" font-style="italic" fill="#4B41B8">vào điều kiện không kém teacher quá δ</text>
+
+  <!-- ===== TIER 3 (olive) ===== -->
+  <rect x="1080" y="164" width="480" height="290" rx="14" fill="#EFF5E2" stroke="#D2E3B0"/>
+  <circle cx="1124" cy="202" r="18" fill="#55801F"/>
+  <text x="1124" y="208" text-anchor="middle" font-size="17" font-weight="700" fill="#FFFFFF">3</text>
+  <text x="1152" y="208" font-size="17" font-weight="700" fill="#55801F">Tông da</text>
+  <rect x="1100" y="230" width="440" height="104" rx="10" fill="#FFFFFF" stroke="#DCEBC3" filter="url(#cardShadow)"/>
+  <text x="1320" y="260" text-anchor="middle" font-size="15" font-weight="700" fill="#55801F">Fitzpatrick17k</text>
+  <text x="1320" y="286" text-anchor="middle" font-size="13" fill="#5A5A5A">ảnh lâm sàng · 4.320 ảnh · 50,0% ác tính</text>
+  <text x="1320" y="314" text-anchor="middle" font-size="13" fill="#5A5A5A">sáng 2.310 · trung bình 1.599 · tối 411</text>
+  <rect x="1100" y="348" width="440" height="88" rx="10" fill="#E6EFD3"/>
+  <text x="1320" y="374" text-anchor="middle" font-size="13" font-weight="700" fill="#55801F">Trụ III-b — từng nhóm tông da</text>
+  <text x="1320" y="398" text-anchor="middle" font-size="12" font-style="italic" fill="#55801F">tại ngưỡng ứng dụng</text>
+  <text x="1320" y="418" text-anchor="middle" font-size="12" font-style="italic" fill="#55801F">chấm trên tập con Fitzpatrick17k-C (3.086 ảnh)</text>
+
+  <!-- ===== caveat bar ===== -->
+  <rect x="40" y="472" width="1520" height="36" rx="8" fill="#E2E0DB"/>
+  <text x="800" y="495" text-anchor="middle" font-size="13" font-weight="600" fill="#55534E">Không đặt AUPRC của tầng này cạnh tầng khác: đường cơ sở ngẫu nhiên của AUPRC bằng tỉ lệ ác tính của từng tầng</text>
+
+  <line x1="800" y1="508" x2="800" y2="534" stroke="#9AA0A6" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+  <!-- ===== ON DEVICE (green) ===== -->
+  <rect x="40" y="536" width="1520" height="200" rx="14" fill="#E7F4EC" stroke="#B6DEC5"/>
+  <text x="800" y="572" text-anchor="middle" font-size="19" font-weight="700" fill="#1E7A45">Trên điện thoại Pixel 6a — trụ I và trụ II</text>
+  <rect x="60" y="598" width="480" height="110" rx="10" fill="#FFFFFF" stroke="#CDE8D7" filter="url(#cardShadow)"/>
+  <text x="300" y="632" text-anchor="middle" font-size="15" font-weight="700" fill="#1E7A45">Tương đương số học</text>
+  <text x="300" y="660" text-anchor="middle" font-size="13" fill="#5A5A5A">logit điện thoại ↔ máy chủ trên cùng tập ảnh</text>
+  <text x="300" y="684" text-anchor="middle" font-size="13" fill="#5A5A5A">lỗi · tính tất định</text>
+  <rect x="560" y="598" width="480" height="110" rx="10" fill="#FFFFFF" stroke="#CDE8D7" filter="url(#cardShadow)"/>
+  <text x="800" y="632" text-anchor="middle" font-size="15" font-weight="700" fill="#1E7A45">Độ trễ phân vị 95</text>
+  <text x="800" y="660" text-anchor="middle" font-size="13" fill="#5A5A5A">rút sạc · chế độ máy bay</text>
+  <text x="800" y="684" text-anchor="middle" font-size="13" fill="#5A5A5A">sau 5 phút chạy liên tục</text>
+  <rect x="1060" y="598" width="480" height="110" rx="10" fill="#FFFFFF" stroke="#CDE8D7" filter="url(#cardShadow)"/>
+  <text x="1300" y="632" text-anchor="middle" font-size="15" font-weight="700" fill="#1E7A45">Pipeline camera của ứng dụng</text>
+  <text x="1300" y="660" text-anchor="middle" font-size="13" fill="#5A5A5A">tỉ lệ đổi quyết định tại ngưỡng ứng dụng</text>
+  <text x="1300" y="684" text-anchor="middle" font-size="13" fill="#5A5A5A">so với pipeline Python</text>
+</svg>

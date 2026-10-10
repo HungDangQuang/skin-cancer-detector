@@ -1,5 +1,7 @@
 # Chỗ cần sửa trong luận văn — CHỈ GHI CHÚ, CHƯA SỬA
 
+> **10/10/2026:** luận văn đã được cập nhật thông tin và kết quả mới (hai câu hỏi trung tâm, §3.11.4, §3.12, §4.11, Chương 5). Mục #1–#3 dưới đây **đã sửa** (§3.4.5, §3.6.3, §3.11.4 mới). Số dòng bên dưới là của bản cũ, nay đã lệch nhiều.
+
 > Tác giả (02/10/2026): "ở đoạn nào cần sửa trong luận văn thì remark cần sửa thôi, chưa sửa ngay".
 > Luận văn chỉ sửa khi đã có kết quả ổn. Số dòng tính trên `thesis/LUAN_VAN.md` ở commit `cca085f` (30/09/2026);
 > sửa luận văn ở chỗ khác thì số dòng có thể lệch — tìm theo trích dẫn.

@@ -52,33 +52,29 @@ Tôi xin chịu hoàn toàn trách nhiệm về lời cam đoan này.
 
 ## TÓM TẮT
 
-Ung thư da là một trong những loại ung thư phổ biến nhất trên toàn cầu, trong đó u hắc tố ác tính (melanoma) tuy chỉ chiếm khoảng 10% số ca nhưng gây ra tới 80% số ca tử vong liên quan. Tiên lượng sống sót sau 5 năm có thể đạt 99% nếu bệnh được phát hiện sớm, khiến sàng lọc sớm trở thành một nhu cầu y tế cấp thiết — đặc biệt tại các khu vực thiếu bác sĩ da liễu. Các mô hình học sâu hiện đại đã đạt độ chính xác ngang tầm chuyên gia, nhưng những mô hình mạnh nhất đều quá lớn để chạy trực tiếp trên điện thoại, buộc phải triển khai trên đám mây và kéo theo các rào cản về độ trễ, kết nối và quyền riêng tư dữ liệu y tế.
+Ung thư da là một gánh nặng y tế lớn trên toàn cầu: riêng năm 2022, thế giới ghi nhận khoảng 331.722 ca mắc mới và 58.667 ca tử vong do u hắc tố ác tính, và chẩn đoán sớm là một trong những yếu tố đã giúp giảm tỉ lệ tử vong của bệnh. Luận văn hướng tới một ứng dụng sàng lọc chạy **hoàn toàn ngoại tuyến trên thiết bị biên**: ứng dụng nhận ảnh tổn thương chụp bằng camera và chỉ đưa ra một khuyến nghị nhị phân, nên ảnh — một loại dữ liệu y tế nhạy cảm — không phải rời khỏi thiết bị. Con đường tới ứng dụng ấy vấp phải hai trở ngại: các mô hình chính xác nhất quá lớn để chạy trên thiết bị, và một mô hình học trên một nguồn ảnh thường suy giảm khi gặp ảnh camera từ nguồn khác. Hai trở ngại được chuyển thành hai câu hỏi nghiên cứu trung tâm: *làm thế nào để thu gọn và triển khai mô hình học sâu phân loại tổn thương da lên thiết bị biên*, và *làm cách nào duy trì hiệu năng chẩn đoán ổn định trên miền ảnh chụp từ camera thực tế*.
 
-Luận văn nghiên cứu **Chưng cất tri thức (Knowledge Distillation — KD)** như một lời giải cho khoảng cách đó, và đặt câu hỏi trung tâm: *KD có thực sự mang lại cải thiện đáng kể và nhất quán cho các mô hình gọn nhẹ thuộc nhiều paradigm thiết kế khác nhau, và chất lượng của teacher ảnh hưởng thế nào tới hiệu quả KD?* Khác với văn liệu hiện có — vốn hầu như chỉ khảo sát **một** cặp teacher–student — luận văn xây dựng một **ma trận thực nghiệm 3 teacher × 4 student**, trong đó bốn student đều là kiến trúc tốt nhất hiện có cho thiết bị biên và trải bốn paradigm kiến trúc khác nhau (CNN depthwise-separable, CNN tái tham số hoá, hybrid attention–CNN, và CNN mang thiết kế ViT). Mỗi student được huấn luyện **hai lần** — có KD và không KD — với cùng dữ liệu, cùng seed, cùng siêu tham số, chỉ khác hàm mất mát, trên **5-fold cross-validation** với ràng buộc patient-disjoint. Tổng cộng **140 lượt huấn luyện fold-run** đã được thực hiện và hoàn tất.
+Để trả lời câu hỏi thứ nhất, luận văn dùng **chưng cất tri thức (Knowledge Distillation — KD)** trong một ma trận 3 teacher × 4 student; bốn student là các kiến trúc tối ưu cho độ trễ trên thiết bị di động, và mỗi student có một nhánh đối chứng không chưng cất, giống hệt về dữ liệu, seed và siêu tham số. Mô hình được xuất sang ExecuTorch và phải vượt một **cổng kiểm tra tương đương số học** giữa thiết bị và máy chủ trước khi được đo trên điện thoại Pixel 6a. Để trả lời câu hỏi thứ hai, dữ liệu huấn luyện gồm ISIC 2024 SLICE-3D, ảnh chụp bằng điện thoại của PAD-UFES-20 và 656 ảnh lâm sàng đa dạng tông da của DDI, kèm một bộ lấy mẫu phân tầng theo nguồn ảnh; mô hình được đánh giá trên ba tầng — trong miền, ảnh soi da HAM10000 và ảnh lâm sàng Fitzpatrick17k theo từng nhóm tông da. "Chạy tốt trên thiết bị biên" được định nghĩa thành một **bộ tiêu chí ba trụ đo được** — chạy được, giữ chất lượng giữa thiết bị và máy chủ, và đúng với người dùng tại chính ngưỡng quyết định của ứng dụng — đọc theo cả khoảng tin cậy chứ không theo điểm ước lượng.
 
-Dữ liệu huấn luyện gồm **ISIC 2024 SLICE-3D** (ảnh non-dermoscopic gần với ảnh chụp smartphone) trộn với **PAD-UFES-20** (ảnh lâm sàng chụp bằng điện thoại). Ở mức prevalence 0,3885%, luận văn dùng **AUPRC** làm chỉ số chính và **pAUC@TPR≥80%** (metric chính thức ISIC 2024) làm chỉ số thứ hai. Đánh giá được tổ chức thành **ba tầng độc lập**: in-domain, xuyên miền trên **HAM10000**, và công bằng theo tông da trên **Fitzpatrick17k**. Kết luận thống kê dựa trên **paired bootstrap confidence interval** lấy mẫu lại trên các hàng của tập test, thay cho kiểm định t ghép cặp vốn không hợp lệ ở đây.
+Ba kết quả chính. **Thứ nhất**, chưng cất cải thiện student rõ nhất khi ra ngoài miền huấn luyện: trên HAM10000, 11/12 cặp của ma trận ban đầu có khoảng tin cậy ghép cặp của ΔAUPRC loại trừ 0. **Thứ hai**, trên bộ chia dữ liệu theo bệnh nhân dựng lại ngày 22/09/2026, bổ sung 656 ảnh DDI nâng AUPRC của student chưng cất thêm +0,0863 [+0,0737; +0,0979] trên HAM10000 và +0,0400 [+0,0332; +0,0467] trên Fitzpatrick17k; bộ lấy mẫu theo nguồn nâng AUPRC trên ảnh PAD-UFES-20 thêm +0,0563 [+0,0391; +0,0748]; còn một cấu hình tăng cường ảnh nhắm vào khác biệt miền thì làm student kém đi có ý nghĩa ở cả năm ô đánh giá ngoài miền. **Thứ ba**, mô hình phát hành — MobileNetV4-Conv-Medium chưng cất từ EfficientNetV2-M — chạy trên Pixel 6a cho logit trùng máy chủ tới sai lệch lớn nhất 5,2·10⁻⁶ trên 70.883 ảnh. Tại ngưỡng của ứng dụng, mô hình đạt độ nhạy 0,873 [0,818; 0,913] và độ đặc hiệu 0,731 [0,667; 0,786] trên ảnh chụp bằng điện thoại cùng nguồn với dữ liệu huấn luyện, nhưng trên ảnh lâm sàng khác nguồn (Fitzpatrick17k-C) độ nhạy chỉ còn 0,503–0,603 tuỳ nhóm tông da, dưới mốc 0,80. Phán quyết theo bộ tiêu chí vì vậy là **KHÔNG ĐẠT YÊU CẦU (tạm, khám phá)**.
 
-Bốn kết quả chính. **Thứ nhất**, KD cải thiện student theo hướng nhất quán trên toàn bộ 12 cặp ở các metric vận hành lâm sàng, trung bình xoá được **22,7% headroom pAUC** còn lại; nhưng bằng chứng **quyết định nhất nằm ở xuyên miền**, nơi 11/12 cặp có khoảng tin cậy loại trừ 0, với ΔAUPRC trung vị +0,0304 và cao nhất **+0,0713 [+0,0598, +0,0819]** trên HAM10000 — trong khi in-domain chỉ 5/12 cặp đạt mức đó do tập test chỉ có 241 ca dương. **Thứ hai**, khả năng tận dụng KD **tỉ lệ nghịch với chất lượng sẵn có của student** (r = −0,963, n = 12): KD phát huy mạnh nhất ở kiến trúc yếu nhất và co về 0 khi student baseline đã đủ mạnh. **Thứ ba**, câu hỏi *"teacher nào tốt nhất"* **không có đáp án độc lập với miền triển khai**: thứ tự hiệu quả chưng cất trùng khớp thứ tự chất lượng teacher khi đo in-domain trên AUPRC, nhưng **đảo ngược hoàn toàn** trên ảnh soi da — teacher tốt nhất trên HAM10000 lại là teacher tệ nhất trên Fitzpatrick17k. **Thứ tư**, về triển khai, toàn bộ 16 mô hình đã export sang ExecuTorch `.pte` và **vượt cổng kiểm tra tương đương số học 16/16 ở cả máy chủ lẫn chính điện thoại Pixel 6a**; đo trên thiết bị thật cho thấy Pareto frontier chỉ còn **hai** kiến trúc, rằng **điều tiết nhiệt** làm các kiến trúc chạy trên backend tăng tốc chậm đi 45–49% sau 5 phút, và rằng **chọn teacher là miễn phí trên trục tốc độ**.
+Luận văn nêu rõ giới hạn của các kết luận trên: các mốc của bộ tiêu chí và quy tắc chọn ngưỡng được chốt sau khi đã xem kết quả, nên phán quyết chỉ mang tính khám phá; độ trễ phân vị 95 trên đúng tệp mô hình phát hành và pipeline camera thật của ứng dụng chưa được đo; và một kết luận xác nhận cần một tập dữ liệu mới chưa từng được dùng.
 
-Luận văn cũng nêu thẳng các giới hạn: tập test in-domain có cấu trúc bất thường (74,7% ca dương đến từ 377 ảnh lâm sàng), n = 3 teacher là quá ít để phát biểu về tương quan, và ở bài toán nhị phân một logit thì cơ chế của KD **không phải** "dark knowledge" mà là **làm mượt nhãn thích ứng theo từng mẫu**. Về công bằng, bằng chứng cho thấy khoảng cách tái lập được là **light − medium** chứ không phải light − dark như trực giác thường giả định.
-
-**Từ khoá:** chưng cất tri thức, phân loại ung thư da, ISIC 2024, học sâu trên thiết bị biên, ExecuTorch, mất cân bằng lớp cực đoan, tổng quát hoá xuyên miền, công bằng thuật toán.
+**Từ khoá:** chưng cất tri thức, phân loại ung thư da, học sâu trên thiết bị biên, ExecuTorch, dịch chuyển miền, công bằng theo tông da, mất cân bằng lớp cực đoan, khoảng tin cậy bootstrap.
 
 ---
 
 ## ABSTRACT
 
-Skin cancer is among the most common cancers worldwide; melanoma accounts for roughly 10% of cases yet causes about 80% of skin-cancer deaths. Five-year survival reaches 99% when the disease is caught while localised, which makes early screening a pressing clinical need — especially where dermatologists are scarce. Modern deep networks match specialist-level accuracy, but the strongest models are far too large to run on a phone, forcing cloud deployment and with it latency, connectivity and medical-privacy barriers.
+Skin cancer is a major global health burden: in 2022 alone an estimated 331,722 people were diagnosed with melanoma and 58,667 died of it, and early diagnosis is among the factors credited with reducing its mortality. This thesis targets a screening application that runs **fully offline on an edge device**: it takes a lesion photo from the camera and returns only a binary recommendation, so the image — sensitive medical data — never leaves the device. Two obstacles stand in the way: the most accurate models are too large to run on the device, and a model trained on one image source tends to degrade on camera images from another. They become the two central research questions: *how can a deep skin-lesion classifier be compressed and deployed on an edge device*, and *how can its diagnostic performance be kept stable on real-world camera images*.
 
-This thesis studies **Knowledge Distillation (KD)** as a way to close that gap, asking: *does KD deliver a substantial and consistent improvement to lightweight models across different architectural paradigms, and how does teacher quality affect distillation?* Unlike existing work, which almost always studies a **single** teacher–student pair, this thesis builds a **3-teacher × 4-student matrix** whose four students are state-of-the-art on-device architectures spanning four design paradigms (depthwise-separable CNN, re-parameterised CNN, attention–CNN hybrid, and a ViT-styled CNN). Every student is trained **twice** — with and without KD — under identical data, seed and hyper-parameters, differing only in the loss, over patient-disjoint **5-fold cross-validation**. In total **140 fold-runs** were trained to completion.
+For the first question the thesis uses **knowledge distillation (KD)** in a 3-teacher × 4-student matrix whose students are latency-optimised mobile architectures, each paired with a no-KD control that shares data, seed and hyper-parameters. Models are exported to ExecuTorch and must pass a device–server **numerical-parity gate** before being measured on a Pixel 6a phone. For the second, training combines ISIC 2024 SLICE-3D, the smartphone images of PAD-UFES-20 and 656 skin-tone-diverse clinical images from DDI, with a source-stratified sampler; evaluation covers three tiers — in-domain, dermoscopic HAM10000, and clinical Fitzpatrick17k per skin-tone group. "Works well on the edge" is defined as a **measurable three-pillar criterion** — it runs, it keeps its quality between device and server, and it is right for the user at the application's own decision threshold — read on whole confidence intervals rather than point estimates.
 
-Training data combines **ISIC 2024 SLICE-3D** (non-dermoscopic, close to smartphone photography) with **PAD-UFES-20** (clinical smartphone images). At a measured prevalence of 0.3885%, **AUPRC** is the headline metric and **pAUC@TPR≥80%** (the official ISIC 2024 metric) the secondary one. Evaluation runs on **three independent tiers**: in-domain, cross-domain on **HAM10000**, and skin-tone fairness on **Fitzpatrick17k**. Statistical conclusions rest on **paired bootstrap confidence intervals** resampled over test rows, replacing a paired t-test that is not valid in this setting.
+Three principal findings. **First**, KD helps students most outside the training domain: on HAM10000, 11 of the original 12 pairs have a paired confidence interval for ΔAUPRC that excludes zero. **Second**, on the patient-grouped split rebuilt on 22/09/2026, adding the 656 DDI images raises the distilled student's AUPRC by +0.0863 [+0.0737, +0.0979] on HAM10000 and by +0.0400 [+0.0332, +0.0467] on Fitzpatrick17k; the source-stratified sampler raises AUPRC on PAD-UFES-20 images by +0.0563 [+0.0391, +0.0748]; whereas an augmentation preset aimed at the domain gap makes the student significantly worse in all five out-of-domain cells. **Third**, the released model — MobileNetV4-Conv-Medium distilled from EfficientNetV2-M — runs on the Pixel 6a with logits matching the server to a maximum deviation of 5.2·10⁻⁶ over 70,883 images. At the application threshold it reaches sensitivity 0.873 [0.818, 0.913] and specificity 0.731 [0.667, 0.786] on smartphone images from the training source, but on out-of-source clinical images (Fitzpatrick17k-C) sensitivity falls to 0.503–0.603 depending on skin tone, below the 0.80 bar. The verdict is therefore **does not meet the requirement (provisional, exploratory)**.
 
-Four principal findings. **First**, KD improves students consistently in direction across all 12 pairs on clinically relevant operating metrics, removing on average **22.7% of the remaining pAUC headroom**; but the **decisive** evidence is cross-domain, where 11 of 12 pairs exclude zero on HAM10000, with a median ΔAUPRC of +0.0304 and a maximum of **+0.0713 [+0.0598, +0.0819]** — against only 5 of 12 in-domain, a consequence of the test set containing just 241 positives. **Second**, KD's benefit is **inversely proportional to the student's own baseline quality** (r = −0.963, n = 12): it gains most on the weakest architecture and shrinks toward zero once the baseline student is already strong. **Third**, the question *"which teacher is best?"* **has no domain-independent answer**: distillation effectiveness follows teacher quality in-domain on AUPRC, yet reverses entirely on dermoscopic images — the best teacher on HAM10000 is the worst on Fitzpatrick17k. **Fourth**, on deployment, all 16 exported ExecuTorch `.pte` models **passed a numerical-parity gate 16/16 on both the workstation and the Pixel 6a itself**; on-device measurement leaves only **two** architectures on the Pareto frontier, shows **thermal throttling** to slow the accelerated-backend architectures by 45–49% after five minutes, and establishes that **choosing a teacher is free on the speed axis**.
+The thesis states the limits of these conclusions: the criterion's thresholds and the threshold-selection rule were fixed after the results had been seen, so the verdict is exploratory; the 95th-percentile latency of the exact released model file and the application's real camera pipeline have not yet been measured; and a confirmatory conclusion needs a new, never-used dataset.
 
-The thesis states its limitations plainly: the in-domain test set is structurally unusual (74.7% of positives come from 377 clinical images), n = 3 teachers is too few to claim a correlation, and in a single-logit binary setting KD's mechanism is **not** "dark knowledge" but **per-sample adaptive label smoothing**. On fairness, the reproducible disparity is **light − medium**, not the light − dark gap that intuition tends to assume.
-
-**Keywords:** knowledge distillation, skin cancer classification, ISIC 2024, edge deep learning, ExecuTorch, extreme class imbalance, cross-domain generalisation, algorithmic fairness.
+**Keywords:** knowledge distillation, skin cancer classification, edge deep learning, ExecuTorch, domain shift, skin-tone fairness, extreme class imbalance, bootstrap confidence intervals.
 
 ---
 
@@ -137,19 +133,21 @@ The thesis states its limitations plainly: the in-domain test set is structurall
     - [2.5.2 AUPRC — chỉ số chính](#252-auprc--chỉ-số-chính)
     - [2.5.3 pAUC@TPR≥80% — metric chính thức của ISIC 2024](#253-pauctpr80--metric-chính-thức-của-isic-2024)
     - [2.5.4 Các điểm vận hành ở độ đặc hiệu cố định](#254-các-điểm-vận-hành-ở-độ-đặc-hiệu-cố-định)
+    - [2.5.5 Khoảng tin cậy cho tỉ lệ tại ngưỡng cố định và phép kiểm không kém hơn](#255-khoảng-tin-cậy-cho-tỉ-lệ-tại-ngưỡng-cố-định-và-phép-kiểm-không-kém-hơn)
 - [Chương 3. PHƯƠNG PHÁP ĐỀ XUẤT](#chương-3-phương-pháp-đề-xuất)
   - [3.1 Tổng quan kiến trúc hệ thống](#31-tổng-quan-kiến-trúc-hệ-thống)
   - [3.2 Dữ liệu và tiền xử lý](#32-dữ-liệu-và-tiền-xử-lý)
-    - [3.2.1 Bốn bộ dữ liệu, và chuỗi nhu cầu dẫn tới chúng](#321-bốn-bộ-dữ-liệu-và-chuỗi-nhu-cầu-dẫn-tới-chúng)
+    - [3.2.1 Năm bộ dữ liệu, và chuỗi nhu cầu dẫn tới chúng](#321-năm-bộ-dữ-liệu-và-chuỗi-nhu-cầu-dẫn-tới-chúng)
     - [3.2.2 ISIC 2024 SLICE-3D — dữ liệu huấn luyện chính](#322-isic-2024-slice-3d--dữ-liệu-huấn-luyện-chính)
     - [3.2.3 PAD-UFES-20 — bổ sung ca ác tính và miền lâm sàng](#323-pad-ufes-20--bổ-sung-ca-ác-tính-và-miền-lâm-sàng)
     - [3.2.4 HAM10000 — kiểm chứng chéo miền](#324-ham10000--kiểm-chứng-chéo-miền)
     - [3.2.5 Fitzpatrick17k — phân tích công bằng theo tông da](#325-fitzpatrick17k--phân-tích-công-bằng-theo-tông-da)
-    - [3.2.6 Hệ quả của thiết kế bốn bộ dữ liệu](#326-hệ-quả-của-thiết-kế-bốn-bộ-dữ-liệu)
+    - [3.2.6 Hệ quả của thiết kế các bộ dữ liệu](#326-hệ-quả-của-thiết-kế-các-bộ-dữ-liệu)
     - [3.2.7 Hợp nhất hệ nhãn](#327-hợp-nhất-hệ-nhãn)
     - [3.2.8 Tiền xử lý offline](#328-tiền-xử-lý-offline)
     - [3.2.9 Bộ lọc hai tầng cho các bộ dữ liệu đánh giá ngoài](#329-bộ-lọc-hai-tầng-cho-các-bộ-dữ-liệu-đánh-giá-ngoài)
     - [3.2.10 Tăng cường dữ liệu trực tuyến](#3210-tăng-cường-dữ-liệu-trực-tuyến)
+    - [3.2.11 DDI — bổ sung ảnh lâm sàng đa dạng tông da vào phía huấn luyện](#3211-ddi--bổ-sung-ảnh-lâm-sàng-đa-dạng-tông-da-vào-phía-huấn-luyện)
   - [3.3 Chiến lược chia dữ liệu chống rò rỉ](#33-chiến-lược-chia-dữ-liệu-chống-rò-rỉ)
   - [3.4 Kiến trúc mô hình](#34-kiến-trúc-mô-hình)
     - [3.4.1 Kiến trúc tổng quát](#341-kiến-trúc-tổng-quát)
@@ -167,6 +165,7 @@ The thesis states its limitations plainly: the in-domain test set is structurall
     - [3.6.1 Hai mức can thiệp](#361-hai-mức-can-thiệp)
     - [3.6.2 Lấy mẫu giảm động](#362-lấy-mẫu-giảm-động)
     - [3.6.3 Hệ quả lên phân phối huấn luyện](#363-hệ-quả-lên-phân-phối-huấn-luyện)
+    - [3.6.4 Lấy mẫu phân tầng theo nguồn](#364-lấy-mẫu-phân-tầng-theo-nguồn)
   - [3.7 Quy trình huấn luyện và nhánh đối chứng](#37-quy-trình-huấn-luyện-và-nhánh-đối-chứng)
   - [3.8 Kiểm chứng hai lựa chọn dữ liệu](#38-kiểm-chứng-hai-lựa-chọn-dữ-liệu)
     - [3.8.1 Loại PAD-UFES-20 khỏi dữ liệu huấn luyện](#381-loại-pad-ufes-20-khỏi-dữ-liệu-huấn-luyện)
@@ -177,6 +176,8 @@ The thesis states its limitations plainly: the in-domain test set is structurall
     - [3.11.1 Chọn fold để đưa lên thiết bị](#3111-chọn-fold-để-đưa-lên-thiết-bị)
     - [3.11.2 Chuyển đổi và kiểm tra tương đương](#3112-chuyển-đổi-và-kiểm-tra-tương-đương)
     - [3.11.3 Benchmark trên thiết bị](#3113-benchmark-trên-thiết-bị)
+    - [3.11.4 Ngưỡng quyết định và chế độ hiển thị của ứng dụng](#3114-ngưỡng-quyết-định-và-chế-độ-hiển-thị-của-ứng-dụng)
+  - [3.12 Bộ tiêu chí đánh giá "chạy tốt trên thiết bị biên"](#312-bộ-tiêu-chí-đánh-giá-chạy-tốt-trên-thiết-bị-biên)
 - [Chương 4. KẾT QUẢ THỰC NGHIỆM](#chương-4-kết-quả-thực-nghiệm)
   - [4.1 Quy mô thực nghiệm đã hoàn tất](#41-quy-mô-thực-nghiệm-đã-hoàn-tất)
   - [4.2 Hiệu năng trong miền của student và teacher](#42-hiệu-năng-trong-miền-của-student-và-teacher)
@@ -194,6 +195,15 @@ The thesis states its limitations plainly: the in-domain test set is structurall
   - [4.10 Lựa chọn mô hình triển khai](#410-lựa-chọn-mô-hình-triển-khai)
     - [4.10.1 So sánh hai ứng viên bằng khoảng tin cậy ghép cặp](#4101-so-sánh-hai-ứng-viên-bằng-khoảng-tin-cậy-ghép-cặp)
     - [4.10.2 Khuyến nghị và cái giá phải trả](#4102-khuyến-nghị-và-cái-giá-phải-trả)
+  - [4.11 Kết quả trên bộ chia dữ liệu dựng lại và phán quyết theo bộ tiêu chí ba trụ](#411-kết-quả-trên-bộ-chia-dữ-liệu-dựng-lại-và-phán-quyết-theo-bộ-tiêu-chí-ba-trụ)
+    - [4.11.1 Thiết lập thực nghiệm](#4111-thiết-lập-thực-nghiệm)
+    - [4.11.2 Ba can thiệp dữ liệu cho câu hỏi thứ hai](#4112-ba-can-thiệp-dữ-liệu-cho-câu-hỏi-thứ-hai)
+    - [4.11.3 Chọn mô hình phát hành theo quy tắc đăng ký trước](#4113-chọn-mô-hình-phát-hành-theo-quy-tắc-đăng-ký-trước)
+    - [4.11.4 Hiệu quả của chưng cất và so sánh với teacher](#4114-hiệu-quả-của-chưng-cất-và-so-sánh-với-teacher)
+    - [4.11.5 Khả năng xếp hạng theo từng miền ảnh](#4115-khả-năng-xếp-hạng-theo-từng-miền-ảnh)
+    - [4.11.6 Phán quyết theo bộ tiêu chí ba trụ](#4116-phán-quyết-theo-bộ-tiêu-chí-ba-trụ)
+    - [4.11.7 Thiết bị biên so với máy chủ](#4117-thiết-bị-biên-so-với-máy-chủ)
+    - [4.11.8 Phân tích khoảng hụt ở trụ III-b](#4118-phân-tích-khoảng-hụt-ở-trụ-iii-b)
 - [Chương 5. KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN](#chương-5-kết-luận-và-hướng-phát-triển)
   - [5.1 Trả lời câu hỏi nghiên cứu trung tâm](#51-trả-lời-câu-hỏi-nghiên-cứu-trung-tâm)
   - [5.2 Hạn chế của nghiên cứu](#52-hạn-chế-của-nghiên-cứu)
@@ -231,6 +241,7 @@ The thesis states its limitations plainly: the in-domain test set is structurall
 | CNN | Convolutional Neural Network | Mạng nơ-ron tích chập |
 | CPU | Central Processing Unit | Bộ xử lý trung tâm |
 | CV | Cross-Validation | Kiểm định chéo |
+| DDI | Diverse Dermatology Images | Bộ ảnh da liễu đa dạng tông da (Stanford) |
 | DF | Dermatofibroma | U xơ da |
 | FLOPs | Floating Point Operations | Số phép tính dấu chấm động |
 | FN | False Negative | Âm tính giả |
@@ -298,7 +309,7 @@ Danh mục tổng hợp các thuật ngữ tiếng Anh xuất hiện trong luậ
 | Malignant | Ác tính | Tổn thương ung thư. Gán nhãn **1** |
 | Melanoma (MEL) | U hắc tố ác tính | Loại ung thư da nguy hiểm nhất và là mục tiêu chính của bài toán; số liệu dịch tễ toàn cầu ở Mục 1.1. Gán nhãn **1** |
 | Nevus (NV) | Nốt ruồi | Tổn thương sắc tố lành tính; lớp đa số trong dữ liệu |
-| Non-dermoscopic | Không phải ảnh soi da | Ảnh chụp không qua thiết bị soi da; gần với ảnh smartphone hơn |
+| Non-dermoscopic | Không phải ảnh soi da | Ảnh chụp không qua thiết bị soi da; ảnh ISIC 2024 SLICE-3D thuộc loại này và có độ phân giải tương đương ảnh chụp bằng điện thoại |
 | Non-neoplastic | Không phải u | Bệnh viêm/nhiễm, nằm ngoài bài toán phân biệt lành–ác |
 | Prevalence | Tỉ lệ hiện mắc | Tỉ lệ mẫu dương trong một tập dữ liệu. Ở đây là **0,3885%** — cũng chính là đường cơ sở ngẫu nhiên của AUPRC |
 | Prospective validation | Thẩm định tiến cứu | Thu dữ liệu mới trên quần thể đích rồi mới chấm mô hình; đòi hỏi prevalence thật của quần thể đó và hiệu chuẩn trên chính quần thể đó. **Ngoài phạm vi** luận văn (Mục 1.7) |
@@ -406,6 +417,7 @@ Danh mục tổng hợp các thuật ngữ tiếng Anh xuất hiện trong luậ
 | Loss function | Hàm mất mát | Đại lượng mà quá trình huấn luyện cực tiểu hoá |
 | Mean Squared Error (MSE) | Sai số bình phương trung bình | Trung bình bình phương chênh lệch giữa giá trị dự đoán và giá trị thật; |
 | Numerical saturation | Bão hoà số học | Giá trị bị dồn về đúng biên biểu diễn được (0 hoặc 1), làm mất thông tin về khoảng cách. Lý do hàm mất mát tính trực tiếp trên logit thay vì lấy sigmoid rồi lấy logarit (Mục 3.4.5) |
+| Source-stratified sampling | Lấy mẫu phân tầng theo nguồn | Giữ tổng số ảnh lành tính mỗi epoch nhưng rút cho mỗi nguồn thiểu số tới năm ảnh lành tính trên mỗi ca ác tính của chính nó (Mục 3.6.4) |
 
 ### F. Đánh giá và kết luận thống kê
 
@@ -425,6 +437,7 @@ Danh mục tổng hợp các thuật ngữ tiếng Anh xuất hiện trong luậ
 | Headroom | Khoảng cách còn lại tới trần | Khoảng cách từ giá trị hiện tại tới trần lý thuyết. Cách trình bày đúng cho metric gần bão hoà như pAUC |
 | Independent variable | Biến độc lập | Yếu tố **duy nhất** được phép khác nhau giữa hai nhánh so sánh; mọi khác biệt đo được đều quy về nó. Ở phép so KD–đối chứng, biến độc lập là hàm mất mát |
 | Lift | Hệ số nâng | AUPRC chia cho prevalence — cho biết mô hình tốt hơn đoán mò bao nhiêu lần. **Bắt buộc dùng** khi so giữa các tập có prevalence khác nhau |
+| Non-inferiority test | Phép kiểm không kém hơn | Kết luận mô hình A không kém mô hình B quá một biên δ khi cận dưới khoảng tin cậy của hiệu số A − B lớn hơn −δ (Mục 2.5.5) |
 | Optimistic bias | Thiên lệch lạc quan | Xu hướng một chỉ số báo cao hơn thực tế; ở đây là vấn đề của AUC-ROC tại prevalence thấp |
 | Paired bootstrap | Bootstrap ghép cặp | Hai nhánh so sánh dùng **chung** bộ chỉ số ở mỗi lần lặp, giữ được tương quan giữa chúng. Phương pháp thống kê chính của luận văn |
 | Paired comparison | So sánh ghép cặp | Ghép hai nhánh **theo từng fold** rồi mới lấy hiệu, thay vì trừ hai giá trị trung bình. Giữ được tương quan giữa hai nhánh nên hiệu số ít nhiễu hơn hẳn |
@@ -433,6 +446,8 @@ Danh mục tổng hợp các thuật ngữ tiếng Anh xuất hiện trong luậ
 | pAUC@TPR≥80% | Diện tích ROC từng phần ở vùng độ nhạy ≥ 80% | **Metric chính thức của ISIC 2024**. Chỉ tính vùng vận hành có ý nghĩa lâm sàng; miền giá trị [0,02; 0,20] |
 | Pearson correlation (r) | Hệ số tương quan Pearson | Đo quan hệ tuyến tính giữa hai đại lượng, giá trị trong [−1; +1] |
 | Point estimate | Điểm ước lượng | Giá trị trung tâm (ví dụ Δ trung bình), **chưa** nói gì về độ chắc chắn |
+| Post-hoc | Quyết định sau khi xem kết quả | Quyết định — mốc, ngưỡng, tập con — được đưa ra sau khi đã thấy kết quả mà nó dùng để chấm; kết luận dựa trên đó chỉ mang tính khám phá |
+| Pre-registration | Đăng ký trước | Ghi và commit quy tắc chọn hoặc tiêu chí so sánh trước khi huấn luyện và trước khi xem kết quả (Mục 3.12) |
 | Precision | Độ chính xác dương tính | Trong số ca bị gắn cờ, bao nhiêu phần trăm thật sự ác tính |
 | Recall | Độ bao phủ | Đồng nghĩa Sensitivity — trong số ca ác tính, bao nhiêu phần trăm được phát hiện |
 | Sens@90%Spec / Sens@95%Spec | Độ nhạy tại độ đặc hiệu 90% / 95% | Điểm vận hành ở độ đặc hiệu cố định. **Con số triển khai trung thực nhất** |
@@ -443,6 +458,7 @@ Danh mục tổng hợp các thuật ngữ tiếng Anh xuất hiện trong luậ
 | True Negative (TN) | Âm tính thật | Ca lành tính được nhận đúng |
 | True Positive (TP) | Dương tính thật | Ca ác tính được phát hiện đúng |
 | True Positive Rate (TPR) | Tỉ lệ dương tính thật | Đồng nghĩa Sensitivity |
+| Wilson interval | Khoảng tin cậy Wilson | Khoảng tin cậy cho một tỉ lệ đếm được k/n, luôn nằm trong [0; 1]; dùng cho độ nhạy và độ đặc hiệu tại ngưỡng đóng băng (Mục 2.5.5) |
 | Youden's J | Chỉ số Youden J | $J = \text{Sens} + \text{Spec} - 1$; ngưỡng quyết định chọn tại điểm cực đại J. **Khác nhau giữa các fold** |
 
 ### G. Triển khai trên thiết bị biên
@@ -450,10 +466,12 @@ Danh mục tổng hợp các thuật ngữ tiếng Anh xuất hiện trong luậ
 | Thuật ngữ tiếng Anh | Nghĩa tiếng Việt | Giải thích ngắn gọn |
 |---|---|---|
 | Affinity (CPU affinity) | Ghim lõi | Buộc một luồng chạy trên lõi CPU xác định. Cần thiết để phép đo lặp lại được trên chip đa cụm |
+| App threshold (frozen) | Ngưỡng ứng dụng (đóng băng) | Ngưỡng mà ứng dụng so xác suất với nó; chọn trên ảnh PAD-UFES-20 của tập validation sao cho độ nhạy 90% rồi giữ cố định. Mọi đánh giá trụ III đo tại ngưỡng này (Mục 3.11.4) |
 | ARM / Cortex-X1, A76, A55 | (kiến trúc CPU di động) | Ba cụm lõi của chip Tensor G1 trên Pixel 6a: hiệu năng cao, trung bình, tiết kiệm điện |
 | Backend | Nền tảng thực thi | Thư viện toán tử mà đồ thị mô hình được ánh xạ xuống (ở đây: XNNPACK hoặc portable) |
 | Benchmark | Phép đo hiệu năng chuẩn hoá | Quy trình đo lặp lại được trên cùng một thiết bị, cùng đầu vào, cùng cấu hình, để các mô hình so sánh được với nhau (Mục 3.11.3) |
 | Cold start | Lần chạy đầu | Thời gian từ khi nạp mô hình tới kết quả đầu tiên; quyết định cảm nhận "ứng dụng có mở được không" |
+| Decision-flip rate | Tỉ lệ đổi quyết định | Tỉ lệ ảnh mà quyết định tại ngưỡng ứng dụng bị đổi khi ảnh đi qua pipeline camera thật của ứng dụng so với pipeline máy chủ (trụ II, Mục 3.12) |
 | Edge AI | Trí tuệ nhân tạo tại biên | Chạy mô hình trực tiếp trên thiết bị người dùng thay vì trên máy chủ đám mây |
 | ExecuTorch / `.pte` | (runtime suy luận của PyTorch) | Định dạng và runtime chạy mô hình PyTorch trên thiết bị di động |
 | FP32 | Dấu chấm động 32 bit | Độ chính xác số mặc định; luận văn **không** lượng tử hoá xuống thấp hơn. Bước phân giải quanh $1{,}0$ khoảng $6 \times 10^{-8}$ — đây là lý do $\sigma(z)$ làm tròn về đúng $1{,}0$ khi $z \gtrsim 17$ (Mục 3.4.5) |
@@ -494,11 +512,11 @@ Danh mục tổng hợp các thuật ngữ tiếng Anh xuất hiện trong luậ
 |---|---|---|
 | 1.1 | Các công trình chưng cất tri thức trong da liễu, giai đoạn 2024–2025 | 1.3.4 |
 | 1.2 | Các khoảng trống nghiên cứu và hệ quả của chúng | 1.4 |
-| 1.3 | Sáu câu hỏi nghiên cứu và lý do đặt ra mỗi câu | 1.6 |
+| 1.3 | Sáu câu hỏi kiểm chứng, lý do đặt ra và câu hỏi trung tâm mỗi câu phục vụ | 1.6 |
 | 1.4 | Bốn quyết định vạch phạm vi luận văn và phần bị loại khỏi phạm vi | 1.7 |
 | 1.5 | Các đóng góp của luận văn và nơi mỗi đóng góp được chứng minh bằng số liệu | 1.8 |
 | 2.1 | Ba nhóm phương pháp chưng cất theo loại tri thức được truyền | 2.3.2 |
-| 3.1 | Bốn bộ dữ liệu, đơn vị công bố và vai trò | 3.2.1 |
+| 3.1 | Năm bộ dữ liệu, đơn vị công bố và vai trò | 3.2.1 |
 | 3.2 | Phân loại 53 cột metadata của ISIC 2024 và lý do sử dụng hay loại bỏ | 3.2.2 |
 | 3.3 | Sáu lớp bệnh của PAD-UFES-20 và ánh xạ về nhị phân | 3.2.3 |
 | 3.4 | Thuộc tính của HAM10000 và cách luận văn sử dụng | 3.2.4 |
@@ -511,6 +529,8 @@ Danh mục tổng hợp các thuật ngữ tiếng Anh xuất hiện trong luậ
 | 3.11 | Quy mô ba tập dữ liệu sau hai bước chia | 3.3 |
 | 3.12 | Bộ teacher và bộ student, thông số thực đo | 3.4.7 |
 | 3.13 | Các độ đo được tính cho mỗi lượt chạy | 3.9 |
+| 3.14 | Ba trụ của tiêu chí "chạy tốt trên thiết bị biên" | 3.12 |
+| 3.15 | Các độ đo, mốc và trạng thái của mốc | 3.12 |
 | 4.1 | AUPRC in-domain ↑, mean ± std qua 5 fold | 4.2 |
 | 4.2 | pAUC@TPR≥80% in-domain ↑, mean ± std qua 5 fold | 4.2 |
 | 4.3 | Hiệu năng ba teacher standalone | 4.2 |
@@ -530,6 +550,15 @@ Danh mục tổng hợp các thuật ngữ tiếng Anh xuất hiện trong luậ
 | 4.17 | Thời gian xử lý một ảnh trên Pixel 6a, đo ở ba điều kiện khác nhau | 4.9.1 |
 | 4.18 | Hai ứng viên triển khai, đặt cạnh nhau trên chín trục | 4.10.1 |
 | 4.19 | Khoảng tin cậy ghép cặp giữa hai ứng viên | 4.10.1 |
+| 4.20 | Các nhánh huấn luyện trên bộ chia dựng lại | 4.11.1 |
+| 4.21 | Hiệu quả của ba can thiệp dữ liệu trên student chưng cất | 4.11.2 |
+| 4.22 | Chọn ứng viên theo AUPRC trên các ảnh PAD-UFES-20 của tập validation | 4.11.3 |
+| 4.23 | Hiệu quả chưng cất: student chưng cất − cùng student không chưng cất | 4.11.4 |
+| 4.24 | Student − teacher của chính nó, biên δ và nhãn theo phép kiểm không kém hơn | 4.11.4 |
+| 4.25 | Khả năng xếp hạng theo miền ảnh | 4.11.5 |
+| 4.26 | Phán quyết cho mô hình phát hành P0 theo bộ tiêu chí ba trụ | 4.11.6 |
+| 4.27 | Độ nhạy và độ đặc hiệu tại ngưỡng ứng dụng của từng ứng viên | 4.11.6 |
+| 4.28 | Máy chủ so với Pixel 6a — mô hình P0, fold 4 | 4.11.7 |
 | A.1 | Bảng đầy đủ 19 run in-domain | Phụ lục A |
 | A.2 | Δ do chưng cất trên HAM10000, đủ mười hai cặp | Phụ lục A |
 | A.3 | Độ nhạy tại độ đặc hiệu cố định 90%, trong miền và trên HAM10000 | Phụ lục A |
@@ -559,6 +588,7 @@ Danh mục tổng hợp các thuật ngữ tiếng Anh xuất hiện trong luậ
 | 3.5 | Quy trình huấn luyện hai giai đoạn và nhánh đối chứng | `report_phase_1/figures/kd_pipeline.svg` |
 | 3.6 | Đường triển khai và cổng kiểm tra tương đương | `report_phase_1/figures/export_parity.svg` |
 | 3.7 | Một phiên đo trên điện thoại | `report_phase_1/figures/benchmark_session.svg` |
+| 3.8 | Ba tầng đánh giá dữ liệu và các phép đo trên thiết bị biên | `report_phase_1/figures/eval_tiers_v2.svg` |
 | 4.1 | Ba tầng đánh giá độc lập và câu hỏi mỗi tầng trả lời | `report_phase_1/figures/eval_tiers.svg` |
 | 4.2 | Cách một khoảng tin cậy ghép cặp được dựng | `report_phase_1/figures/paired_bootstrap.svg` |
 | 4.3 | Toàn bộ đánh giá xuyên miền trên HAM10000 (3 panel) | `report_phase_1/figures/ham_summary.svg` |
@@ -569,11 +599,11 @@ Danh mục tổng hợp các thuật ngữ tiếng Anh xuất hiện trong luậ
 
 ## MỞ ĐẦU
 
-Luận văn này trả lời một câu hỏi kỹ thuật hẹp nhưng có hệ quả thực tiễn rõ ràng: **khi nén một mô hình phát hiện ung thư da xuống kích thước chạy được trên điện thoại, phương pháp chưng cất tri thức thực sự cứu lại được bao nhiêu phần hiệu năng đã mất, và điều đó có đúng cho mọi loại kiến trúc gọn nhẹ hay không?**
+Luận văn này trả lời hai câu hỏi có hệ quả thực tiễn trực tiếp cho một ứng dụng sàng lọc ung thư da chạy trên điện thoại: **làm thế nào để thu gọn và triển khai một mô hình học sâu phân loại tổn thương da lên thiết bị biên, và làm cách nào để mô hình ấy giữ được hiệu năng chẩn đoán ổn định trên ảnh chụp từ camera thực tế?**
 
-Câu hỏi này chưa được trả lời thoả đáng trong văn liệu vì ba lý do. Thứ nhất, các nghiên cứu chưng cất tri thức trong lĩnh vực da liễu hầu như không đặt kết quả cạnh một **nhánh đối chứng** tương ứng. Trong bốn công trình gần nhất được điểm lại ở Mục 1.3.4, ba công trình chỉ nêu accuracy tuyệt đối của mô hình sau chưng cất, công trình còn lại có báo cáo một hiệu số nhưng là hiệu số so với các framework chưng cất khác chứ không so với chính student của mình khi huấn luyện không có teacher. Thiếu hiệu số ghép cặp ấy thì không tách được phần thuộc về phương pháp khỏi phần vốn đã thuộc về kiến trúc được chọn. Thứ hai, các nghiên cứu này báo cáo **accuracy tuyệt đối** trên những tập có tỉ lệ ca ác tính cao hơn hẳn, trong khi bài toán sàng lọc thực tế có tỉ lệ ca ác tính dưới 1% — ở mức đó, một mô hình đoán "tất cả đều lành tính" đã đạt trên 99% accuracy mà không cứu được ai. Thứ ba, rất ít công trình đi tới cùng câu hỏi quyết định: *sau khi chưng cất, mô hình có thực sự chạy được trên một chiếc điện thoại phổ thông với độ trễ chấp nhận được không, và con số đo được có thuộc về đúng mô hình đã được đánh giá không?*
+Hai câu hỏi này chưa được trả lời thoả đáng trong văn liệu vì bốn lý do. Thứ nhất, các nghiên cứu chưng cất tri thức trong lĩnh vực da liễu hầu như không đặt kết quả cạnh một **nhánh đối chứng** tương ứng. Trong bốn công trình gần nhất được điểm lại ở Mục 1.3.4, ba công trình chỉ nêu accuracy tuyệt đối của mô hình sau chưng cất, công trình còn lại có báo cáo một hiệu số nhưng là hiệu số so với các framework chưng cất khác chứ không so với chính student của mình khi huấn luyện không có teacher. Thiếu hiệu số ghép cặp ấy thì không tách được phần thuộc về phương pháp khỏi phần vốn đã thuộc về kiến trúc được chọn. Thứ hai, các nghiên cứu này báo cáo **accuracy tuyệt đối** trên những tập có tỉ lệ ca ác tính cao hơn hẳn, trong khi bài toán sàng lọc thực tế có tỉ lệ ca ác tính dưới 1% — ở mức đó, một mô hình đoán "tất cả đều lành tính" đã đạt trên 99% accuracy mà không cứu được ai. Thứ ba, rất ít công trình đi tới cùng câu hỏi quyết định: *sau khi chưng cất, mô hình có thực sự chạy được trên một chiếc điện thoại phổ thông với độ trễ chấp nhận được không, và con số đo được có thuộc về đúng mô hình đã được đánh giá không?* Thứ tư, một mô hình học trên một nguồn ảnh thường suy giảm khi gặp ảnh từ nguồn khác, nhất là ở da tối màu [18, 6], nên điểm số trên một tập test cùng nguồn chưa cho biết mô hình có đúng với ảnh camera của người dùng hay không.
 
-Để trả lời, luận văn thiết kế một thực nghiệm đối chứng có kiểm soát ở quy mô **140 lượt huấn luyện**, trải **12 cặp teacher–student** thuộc bốn paradigm kiến trúc khác nhau, đánh giá trên **ba tầng độc lập** (trong miền, xuyên miền, và công bằng theo tông da), kết luận bằng **khoảng tin cậy bootstrap ghép cặp** thay vì đếm số trận thắng, và khép vòng bằng một **cổng kiểm tra tương đương số học** giữa mô hình chạy trên điện thoại và mô hình gốc.
+Để trả lời, luận văn thiết kế một thực nghiệm đối chứng có kiểm soát ở quy mô **140 lượt huấn luyện**, trải **12 cặp teacher–student** thuộc bốn paradigm kiến trúc khác nhau, đánh giá trên **ba tầng độc lập** (trong miền, xuyên miền, và công bằng theo tông da), kết luận bằng **khoảng tin cậy bootstrap ghép cặp** thay vì đếm số trận thắng, và khép vòng bằng một **cổng kiểm tra tương đương số học** giữa mô hình chạy trên điện thoại và mô hình gốc. Trên một bộ chia dữ liệu theo bệnh nhân dựng lại, luận văn thử thêm ba can thiệp dữ liệu nhằm vào câu hỏi thứ hai, chọn một mô hình phát hành theo quy tắc đã đăng ký trước, và chấm mô hình ấy theo một định nghĩa đo được của "chạy tốt trên thiết bị biên" — bộ tiêu chí ba trụ, đo tại chính ngưỡng quyết định của ứng dụng.
 
 ---
 
@@ -581,47 +611,47 @@ Câu hỏi này chưa được trả lời thoả đáng trong văn liệu vì b
 
 ## 1.1 Bối cảnh y tế và động lực nghiên cứu
 
-Ung thư da là một trong những loại ung thư phổ biến nhất trên toàn cầu. Theo dữ liệu GLOBOCAN 2022, ước tính có khoảng **331.722 ca mắc mới** u hắc tố ác tính (melanoma) và gần **58.667 ca tử vong** trong năm 2022, trong đó melanoma đứng thứ mười bảy còn ung thư da không phải hắc tố đứng thứ năm trong các loại ung thư phổ biến nhất [51]. Số ca mắc mới ở phần lớn quốc gia vẫn đứng yên hoặc tăng lên trong khi tỉ lệ tử vong đã giảm, và phần giảm ấy được quy cho việc nhận biết yếu tố nguy cơ, chẩn đoán sớm và tiến bộ trong điều trị [5]. Sức nặng của chẩn đoán sớm hiện ra rõ nhất ở một con số lâm sàng: tiên lượng sống sót sau 5 năm có thể đạt tới **99%** nếu bệnh được phát hiện ở giai đoạn khu trú [44]. Nói cách khác, phần lớn tử vong do melanoma không đến từ việc thiếu phương pháp điều trị, mà đến từ việc **phát hiện muộn**.
+Ung thư da là một trong những loại ung thư phổ biến nhất trên toàn cầu. Theo dữ liệu GLOBOCAN 2022, ước tính có khoảng **331.722 ca mắc mới** u hắc tố ác tính (melanoma) và gần **58.667 ca tử vong** trong năm 2022, trong đó melanoma đứng thứ mười bảy còn ung thư da không phải hắc tố đứng thứ năm trong các loại ung thư phổ biến nhất [55]. Số ca mắc mới ở phần lớn quốc gia vẫn đứng yên hoặc tăng lên trong khi tỉ lệ tử vong đã giảm, và phần giảm ấy được quy cho việc nhận biết yếu tố nguy cơ, chẩn đoán sớm và tiến bộ trong điều trị [7].
 
-Chẩn đoán lâm sàng truyền thống dựa chủ yếu vào kinh nghiệm của bác sĩ da liễu thông qua kỹ thuật soi da (dermoscopy) và các quy tắc nhận diện hình thái như ABCD. Quy trình này có hai điểm yếu mang tính hệ thống. Thứ nhất là **sự phụ thuộc vào chuyên gia**: độ chính xác chẩn đoán biến động mạnh theo trình độ người đọc ảnh [23], và ở nhiều khu vực, đặc biệt là tuyến y tế cơ sở tại các nước đang phát triển, mật độ bác sĩ da liễu trên dân số thấp tới mức việc tiếp cận khám chuyên khoa bị trì hoãn đáng kể. Thứ hai là **chi phí tiếp cận**: bệnh nhân phải di chuyển tới cơ sở có thiết bị soi da, khiến việc tự theo dõi định kỳ — vốn là cách hiệu quả nhất để bắt melanoma sớm — trở nên bất khả thi với phần lớn dân số.
+Chẩn đoán lâm sàng truyền thống dựa chủ yếu vào kinh nghiệm của bác sĩ da liễu thông qua kỹ thuật soi da (dermoscopy) và các quy tắc nhận diện hình thái như ABCD. Quy trình này có hai điểm yếu mang tính hệ thống. Thứ nhất là **sự phụ thuộc vào chuyên gia**: độ chính xác chẩn đoán biến động mạnh theo trình độ người đọc ảnh [26], và ước tính khoảng 3 tỉ người trên thế giới không tiếp cận được dịch vụ chăm sóc da liễu [6]. Thứ hai là **chi phí tiếp cận**: bệnh nhân phải di chuyển tới cơ sở có thiết bị soi da, khiến việc tự theo dõi định kỳ trở nên khó khăn với phần lớn dân số.
 
-Chính khoảng cách giữa "phát hiện ở giai đoạn khu trú cho tiên lượng sống 5 năm 99%" và "phần lớn dân số không tiếp cận được sàng lọc chuyên khoa" là động lực y tế của các hệ thống hỗ trợ chẩn đoán tự động (Computer-Aided Diagnosis — CAD). Bước ngoặt kỹ thuật đến từ công trình của Esteva và cộng sự (2017): một mạng nơ-ron tích chập thuần — huấn luyện đầu-cuối chỉ từ điểm ảnh và nhãn bệnh, không cần đặc trưng thủ công — đạt hiệu năng **ngang 21 bác sĩ da liễu có chứng chỉ** trên hai bài toán phân loại nhị phân [11]. Kể từ đó, các kiến trúc như EfficientNet [45] và Vision Transformer [8] liên tục nâng trần hiệu năng trên các tập dữ liệu chuẩn của ISIC.
+Chính khoảng cách giữa vai trò của chẩn đoán sớm và việc rất nhiều người không tiếp cận được khám chuyên khoa là động lực y tế của các hệ thống hỗ trợ chẩn đoán tự động (Computer-Aided Diagnosis — CAD). Bước ngoặt kỹ thuật đến từ công trình của Esteva và cộng sự (2017): một mạng nơ-ron tích chập thuần — huấn luyện đầu-cuối chỉ từ điểm ảnh và nhãn bệnh, không cần đặc trưng thủ công — đạt hiệu năng **ngang 21 bác sĩ da liễu có chứng chỉ** trên hai bài toán phân loại nhị phân [14]. Kể từ đó, các kiến trúc thị giác tổng quát mới như EfficientNet [49] và Vision Transformer [11] tiếp tục ra đời, và EfficientNet trở thành nền của giải pháp thắng cuộc thi phân loại melanoma SIIM-ISIC 2020 [19].
 
 ## 1.2 Động lực kỹ thuật: nghịch lý chính xác – triển khai
 
-Tuy nhiên, tiến bộ về độ chính xác đi kèm một hệ quả ít được nói tới trong các bảng xếp hạng: **mô hình càng chính xác thì càng xa tầm với của triển khai thực tế**. Giải pháp thắng cuộc tại ISIC 2020 là một ensemble 18 mô hình — 16 trong số đó thuộc họ EfficientNet, từ B3 tới B7, cùng hai backbone ngoài họ này là SE-ResNeXt-101 và ResNeSt-101 [16] — hiệu năng rất cao, nhưng một hệ thống như vậy không chạy được trực tiếp trên điện thoại. Điều này buộc kiến trúc triển khai phải chuyển sang mô hình đám mây, kéo theo ba rào cản đồng thời:
+Tuy nhiên, tiến bộ về độ chính xác đi kèm một hệ quả ít được nói tới trong các bảng xếp hạng: **mô hình càng chính xác thì càng xa tầm với của triển khai thực tế**. Giải pháp thắng cuộc tại ISIC 2020 là một ensemble 18 mô hình — 16 trong số đó thuộc họ EfficientNet, từ B3 tới B7, cùng hai backbone ngoài họ này là SE-ResNeXt-101 và ResNeSt-101 [19] — hiệu năng rất cao, nhưng một hệ thống như vậy không chạy được trực tiếp trên điện thoại. Điều này buộc kiến trúc triển khai phải chuyển sang mô hình đám mây, kéo theo ba rào cản đồng thời:
 
 1. **Độ trễ và phụ thuộc kết nối.** Một ứng dụng sàng lọc cộng đồng phải hoạt động ở nơi hạ tầng mạng yếu — chính là những nơi thiếu bác sĩ da liễu nhất. Yêu cầu tải ảnh lên máy chủ để suy luận làm mất đúng nhóm người dùng mà hệ thống nhắm tới.
-2. **Quyền riêng tư dữ liệu y tế.** Ảnh tổn thương da là dữ liệu y tế nhạy cảm. Việc truyền ảnh ra khỏi thiết bị đặt ra các vấn đề pháp lý và đạo đức đáng kể [39].
+2. **Quyền riêng tư dữ liệu y tế.** Ảnh tổn thương da là dữ liệu y tế nhạy cảm. Việc truyền ảnh ra khỏi thiết bị đặt ra các vấn đề pháp lý và đạo đức đáng kể [44].
 3. **Chi phí vận hành.** Suy luận trên đám mây có chi phí biên theo mỗi lượt sử dụng, không phù hợp với mô hình sàng lọc miễn phí quy mô lớn.
 
 Xu hướng chuyển dịch xử lý AI trực tiếp xuống thiết bị (**Edge AI**) giải quyết cả ba rào cản cùng lúc, và đó là hướng luận văn theo đuổi, với một điều kiện tự đặt ra ngay từ đầu: mô hình phải chạy được và **được đo trên chính thiết bị đích** chứ không chỉ đạt điểm cao trên máy chủ (Mục 3.11).
 
-Nhưng Edge AI đặt ra một đánh đổi riêng. Các mô hình gọn nhẹ như EfficientNet-B0 [45], MobileNetV3 [18] hay MobileViT [30] được tối ưu cho thiết bị di động nhưng thường phải chấp nhận suy giảm về độ chính xác so với mô hình lớn; khoảng cách ấy được đo cụ thể trên bài toán này ở Mục 4.2. Trong bài toán y tế, sự suy giảm này không đối xứng về mặt hậu quả: **bỏ sót một ca ác tính** (âm tính giả) có thể dẫn tới tử vong, trong khi một **dương tính giả** chỉ dẫn tới một lần khám xác nhận. Yêu cầu bất đối xứng đó được phản ánh trực tiếp trong thước đo chính thức của cuộc thi ISIC 2024: **pAUC@TPR≥80%** — chỉ tính phần diện tích dưới đường cong ROC ở vùng độ nhạy tối thiểu 80%, tức chỉ quan tâm tới hiệu năng ở chế độ vận hành mà một công cụ sàng lọc thực sự được phép hoạt động [20].
+Nhưng Edge AI đặt ra một đánh đổi riêng. Các mô hình gọn nhẹ như EfficientNet-B0 [49], MobileNetV3 [21] hay MobileViT [35] được tối ưu cho thiết bị di động nhưng thường phải chấp nhận suy giảm về độ chính xác so với mô hình lớn; khoảng cách ấy được đo cụ thể trên bài toán này ở Mục 4.2. Trong bài toán y tế, sự suy giảm này không đối xứng về mặt hậu quả: **bỏ sót một ca ác tính** (âm tính giả) có thể dẫn tới tử vong, trong khi một **dương tính giả** chỉ dẫn tới một lần khám xác nhận. Yêu cầu bất đối xứng đó được phản ánh trực tiếp trong thước đo chính thức của cuộc thi ISIC 2024: **pAUC@TPR≥80%** — chỉ tính phần diện tích dưới đường cong ROC ở vùng độ nhạy tối thiểu 80%, tức chỉ quan tâm tới hiệu năng ở chế độ vận hành mà một công cụ sàng lọc thực sự được phép hoạt động [23].
 
-**Chưng cất tri thức (Knowledge Distillation — KD)** [17] là hướng luận văn chọn để thu hẹp khoảng cách này. Ý tưởng là dùng một mô hình *giáo viên* (teacher) lớn, chính xác cao để hướng dẫn quá trình học của mô hình *học sinh* (student) gọn nhẹ thông qua các **nhãn mềm** (soft labels) — thứ mang thông tin về mức độ tự tin của teacher trên từng mẫu mà nhãn cứng 0/1 không chứa. Cơ chế ấy biến đổi ra sao khi bài toán chỉ còn một logit nhị phân được phân tích ở Mục 2.3.3.
+**Chưng cất tri thức (Knowledge Distillation — KD)** [20] là hướng luận văn chọn để thu hẹp khoảng cách này. Ý tưởng là dùng một mô hình *giáo viên* (teacher) lớn, chính xác cao để hướng dẫn quá trình học của mô hình *học sinh* (student) gọn nhẹ thông qua các **nhãn mềm** (soft labels) — thứ mang thông tin về mức độ tự tin của teacher trên từng mẫu mà nhãn cứng 0/1 không chứa. Cơ chế ấy biến đổi ra sao khi bài toán chỉ còn một logit nhị phân được phân tích ở Mục 2.3.3.
 
 ## 1.3 Các nghiên cứu liên quan theo trục thời gian
 
 ### 1.3.1 Giai đoạn đặt nền móng (2015–2019)
 
-Trước 2017, ứng dụng học sâu trong da liễu còn rất hạn chế. Bước ngoặt đến từ Esteva và cộng sự (2017) [11]: một CNN thuần phân loại ung thư da ngang 21 bác sĩ da liễu có chứng chỉ trên hai bài toán nhị phân, chỉ với dữ liệu ảnh. Kết quả này mở ra niềm tin rằng học sâu có thể trở thành công cụ CAD thực tiễn.
+Trước 2017, ứng dụng học sâu trong da liễu còn rất hạn chế. Bước ngoặt đến từ Esteva và cộng sự (2017) [14]: một CNN thuần phân loại ung thư da ngang 21 bác sĩ da liễu có chứng chỉ trên hai bài toán nhị phân, chỉ với dữ liệu ảnh. Kết quả này mở ra niềm tin rằng học sâu có thể trở thành công cụ CAD thực tiễn.
 
-Cũng trong giai đoạn này, Hinton và cộng sự (2015) đề xuất chưng cất tri thức [17] như một phương pháp nén mô hình. Dù được công bố sớm, ý tưởng này lúc đó **chưa được cộng đồng da liễu chú ý**. Năm 2019, hai kiến trúc gọn nhẹ quan trọng ra đời: EfficientNet [45] với chiến lược co giãn đồng hợp, và MobileNetV3 [18] với tích chập tách theo chiều sâu tối ưu qua tìm kiếm kiến trúc — cả hai đặt nền tảng cho dòng mô hình edge AI sau này.
+Cũng trong giai đoạn này, Hinton và cộng sự (2015) đề xuất chưng cất tri thức [20] như một phương pháp nén mô hình. Dù được công bố sớm, ý tưởng này lúc đó **chưa được cộng đồng da liễu chú ý**. Năm 2019, hai kiến trúc gọn nhẹ quan trọng ra đời: EfficientNet [49] với chiến lược co giãn đồng hợp, và MobileNetV3 [21] với tích chập tách theo chiều sâu tối ưu qua tìm kiếm kiến trúc — cả hai đặt nền tảng cho dòng mô hình edge AI sau này.
 
 ### 1.3.2 Giai đoạn mô hình lớn thống trị (2020–2021)
 
-Áp lực cạnh tranh trên các bảng xếp hạng ISIC đẩy các nhóm nghiên cứu theo hướng xây dựng mô hình ngày càng lớn; ensemble 18 mô hình thắng ISIC 2020 [16] đã nêu ở Mục 1.2 là ví dụ tiêu biểu của giai đoạn này. Năm 2021, Vision Transformer [8] đưa cơ chế self-attention vào phân loại ảnh và mở ra khả năng mô hình hoá quan hệ toàn cục — một kiến trúc thị giác tổng quát chứ không phải công trình về ảnh y tế. Nhược điểm là ViT gốc còn nặng hơn cả EfficientNet. Hai năm này bộc lộ rõ nghịch lý trung tâm: **mô hình càng chính xác thì càng xa tầm tay triển khai biên**.
+Áp lực cạnh tranh trên các bảng xếp hạng ISIC đẩy các nhóm nghiên cứu theo hướng xây dựng mô hình ngày càng lớn; ensemble 18 mô hình thắng ISIC 2020 [19] đã nêu ở Mục 1.2 là ví dụ tiêu biểu của giai đoạn này. Năm 2021, Vision Transformer [11] đưa cơ chế self-attention vào phân loại ảnh và mở ra khả năng mô hình hoá quan hệ toàn cục — một kiến trúc thị giác tổng quát chứ không phải công trình về ảnh y tế. Nhược điểm là ViT gốc còn nặng hơn cả EfficientNet. Hai năm này bộc lộ rõ nghịch lý trung tâm: **mô hình càng chính xác thì càng xa tầm tay triển khai biên**.
 
 ### 1.3.3 Giai đoạn tìm kiếm kiến trúc cân bằng (2022–2023)
 
-Cộng đồng bắt đầu tích cực tìm kiến trúc vừa chính xác vừa gọn nhẹ. MobileViT [30] là bước đi tiêu biểu: tích hợp self-attention toàn cục vào backbone CNN cục bộ trong một kiến trúc duy nhất, giảm số tham số xuống mức mobile mà không mất khả năng nắm bắt đặc trưng toàn cục. Tiếp nối, Ding và cộng sự (2023) đề xuất HI-MViT — biến thể MobileViT có thêm module giải thích — đạt F1 = 0,931 và AUC = 0,977 trên ISIC 2018 [7], cho thấy kiến trúc lai có thể cạnh tranh với mô hình lớn trên bài toán da liễu.
+Cộng đồng bắt đầu tích cực tìm kiến trúc vừa chính xác vừa gọn nhẹ. MobileViT [35] là bước đi tiêu biểu: tích hợp self-attention toàn cục vào backbone CNN cục bộ trong một kiến trúc duy nhất, giảm số tham số xuống mức mobile mà không mất khả năng nắm bắt đặc trưng toàn cục. Tiếp nối, Ding và cộng sự (2023) đề xuất HI-MViT — biến thể MobileViT có thêm module giải thích — đạt F1 = 0,931 và AUC = 0,977 trên ISIC 2018 [9], cho thấy kiến trúc lai có thể cạnh tranh với mô hình lớn trên bài toán da liễu.
 
 ### 1.3.4 Giai đoạn KD ứng dụng vào da liễu (2024–2025)
 
 Năm 2024 đánh dấu hai chuyển biến quan trọng xảy ra đồng thời.
 
-**Về phía dữ liệu**, ISIC 2024 công bố bộ SLICE-3D với hơn 400.000 ảnh non-dermoscopic thu bằng thiết bị chụp toàn thân trong điều kiện gần với ảnh smartphone [20] — bộ dữ liệu thực tế nhất từ trước tới nay cho kịch bản ứng dụng cộng đồng.
+**Về phía dữ liệu**, ISIC 2024 công bố bộ SLICE-3D gồm hơn 400.000 ảnh tổn thương cắt từ ảnh chụp toàn thân 3D, không phải ảnh soi da, có độ phân giải quang học tương đương ảnh chụp bằng điện thoại [23, 27].
 
 **Về phía kỹ thuật**, đây là lúc KD bắt đầu được chú ý nghiêm túc trong lĩnh vực này; Bảng 1.1 điểm lại các công trình tiêu biểu của giai đoạn.
 
@@ -629,12 +659,12 @@ Năm 2024 đánh dấu hai chuyển biến quan trọng xảy ra đồng thời.
 
 | Công trình | Thiết kế | Nhánh đối chứng không chưng cất | Accuracy tuyệt đối đã báo cáo |
 |---|---|---|---|
-| Islam et al. (2024) [21] | Chưng cất từ ensemble 3 teacher (ResNet152V2, ConvNeXt, ViT) → student 2,03 MB | Không | 98,75% (HAM10000) |
-| Saha et al. (2025) [42] | Hai pha: pha một chưng cất giữa bốn teacher và bốn student đều thuộc họ CNN cổ điển, pha hai chưng cất tiếp sang một mạng 0,29 M tham số | Không | 88,6–88,9% (HAM10000) |
-| Winata et al. (2025) [53] | MTAKD — nhiều teacher "bỏ phiếu" đồng thuận trước khi truyền tri thức | Không — hiệu số **+0,75%** và **+1,1%** mà bài báo cáo là so với framework chưng cất khác, không phải so với student của chính họ | 87,53% (ISIC 2019); 44,75% (Fitzpatrick17k-C) |
-| Pavel et al. (2025) [37] | KD đa tầng với layer fusion, teacher lai ViT + ConvNeXT | **Có** — "hybrid student baseline" | 95,88% (HAM10000) |
+| Islam et al. (2024) [24] | Chưng cất từ ensemble 3 teacher (ResNet152V2, ConvNeXt, ViT) → student 2,03 MB | Không | 98,75% (HAM10000) |
+| Saha et al. (2025) [47] | Hai pha: pha một chưng cất giữa bốn teacher và bốn student đều thuộc họ CNN cổ điển, pha hai chưng cất tiếp sang một mạng 0,29 M tham số | Không | 88,6–88,9% (HAM10000) |
+| Winata et al. (2025) [58] | MTAKD — nhiều teacher "bỏ phiếu" đồng thuận trước khi truyền tri thức | Không — hiệu số **+0,75%** và **+1,1%** mà bài báo cáo là so với framework chưng cất khác, không phải so với student của chính họ | 87,53% (ISIC 2019); 44,75% (Fitzpatrick17k-C) |
+| Pavel et al. (2025) [42] | KD đa tầng với layer fusion, teacher lai ViT + ConvNeXT | **Có** — "hybrid student baseline" | 95,88% (HAM10000) |
 
-Song song, các kiến trúc cổ điển vẫn tiếp tục được áp dụng cho bài toán này, và đều báo cáo theo cùng một cách: accuracy tuyệt đối trên một bộ ISIC hoặc HAM10000 [1], [29], [32], [49].
+Song song, các kiến trúc cổ điển vẫn tiếp tục được áp dụng cho bài toán này, và đều báo cáo theo cùng một cách: accuracy tuyệt đối trên một bộ ISIC hoặc HAM10000 [2], [34], [37], [53].
 
 ## 1.4 Khoảng trống nghiên cứu
 
@@ -646,7 +676,7 @@ Nhìn lại toàn bộ hành trình mười năm, một điều đáng chú ý l
 |---|---|---|
 | 1 | Các nghiên cứu KD trong da liễu hầu như không **so sánh chính student ấy ở hai trạng thái có và không chưng cất**; thứ được báo cáo chủ yếu là accuracy tuyệt đối của mô hình sau chưng cất (Mục 1.3.4) | Không làm rõ được hiệu quả thực sự của chưng cất, vì phần do chưng cất mang lại không tách được khỏi phần vốn đã thuộc về kiến trúc student |
 | 2 | Khi có nhiều teacher, các công trình hoặc **gộp chúng lại** thành một nguồn tri thức duy nhất, hoặc chỉ xếp hạng bằng điểm số tuyệt đối trên cùng một miền ảnh; vì vậy cả hai câu hỏi — **teacher mạnh hơn có dạy tốt hơn không**, và **thứ tự teacher có đổi khi đổi miền đánh giá không** — đều còn bỏ ngỏ | Chưa có căn cứ đã kiểm chứng để chọn teacher: mặc định phổ biến là lấy backbone có điểm cao nhất rồi coi như nó cũng dạy tốt nhất, trong khi chính giả định ấy chưa được kiểm |
-| 3 | Bộ ISIC 2024 — bộ benchmark quy mô lớn gần ảnh smartphone nhất — **chưa được khai thác trong bối cảnh KD** (Bảng 1.1) | Các kết quả của mô hình chạy trên thiết bị di động, khi được huấn luyện bằng chính bộ dữ liệu này, chưa được kiểm chứng |
+| 3 | Bộ ISIC 2024 — bộ dữ liệu quy mô lớn có độ phân giải quang học tương đương ảnh chụp bằng điện thoại [27] — **chưa được khai thác trong bối cảnh KD** ở các công trình của Bảng 1.1 | Các kết quả của mô hình chạy trên thiết bị di động, khi được huấn luyện bằng chính bộ dữ liệu này, chưa được kiểm chứng |
 | 4 | Rất ít công trình đi tới câu hỏi cuối: **sau chưng cất, student có hoạt động tốt hơn trên điện thoại thật không** — tức có đạt độ chính xác cao hơn ở cùng mức độ trễ hay không — và số đo có thuộc về đúng mô hình đã đánh giá không | Khoảng cách giữa "kết quả trên giấy" và "sản phẩm chạy được" không được đo |
 
 Để kiểm chứng cả bốn khoảng trống này, luận văn thiết lập một quy trình thực nghiệm gồm bốn thành phần, mỗi thành phần ứng với một khoảng trống. Thứ nhất, mỗi cặp teacher–student đều kèm một nhánh đối chứng không chưng cất của chính student ấy, hai nhánh chỉ khác nhau đúng ở hàm mất mát. Thứ hai, một ma trận 3 teacher × 4 student được đo trên ba tầng đánh giá độc lập — trong miền, xuyên miền và theo tông da — đủ để tách cả hai vế của câu hỏi về teacher. Thứ ba, ISIC 2024 SLICE-3D được dùng làm dữ liệu huấn luyện chính. Thứ tư, mô hình sau chưng cất đi hết chặng export–kiểm tra tương đương–benchmark, khép lại bằng phép đo trên điện thoại thật.
@@ -659,7 +689,7 @@ Luận văn đặt bài toán trong khung **phân loại nhị phân**:
 
 Ánh xạ nhãn tuân theo quy ước lâm sàng tiêu chuẩn: melanoma, ung thư biểu mô tế bào đáy (BCC) và ung thư biểu mô tế bào vảy (SCC) được gán nhãn **ác tính (1)**; nốt ruồi (nevus), dày sừng lành tính (benign keratosis) và các tổn thương lành tính khác được gán nhãn **lành tính (0)**. Riêng dày sừng ánh sáng (actinic keratosis) là tổn thương tiền ung thư mà hai bộ dữ liệu dùng hai quy ước khác nhau; luận văn giữ nguyên quy ước của từng bộ, trình bày ở Mục 3.2.7.
 
-Bài toán mang ba thách thức đặc trưng, và cả ba đều định hình toàn bộ thiết kế của luận văn:
+Bài toán mang bốn thách thức đặc trưng, và cả bốn đều định hình toàn bộ thiết kế của luận văn:
 
 **Thách thức 1 — Mất cân bằng lớp cực đoan.** Bộ ISIC 2024 SLICE-3D chỉ chứa khoảng **0,1%** mẫu ác tính (tỉ lệ xấp xỉ 1:1000). Sau khi trộn thêm PAD-UFES-20, prevalence của tập test đo được là **0,3885%**. Ở mức này, *accuracy* mất hoàn toàn ý nghĩa: một mô hình luôn dự đoán "lành tính" đạt **99,61% accuracy** mà không phát hiện được ca nào. AUC-ROC cũng bị lạc quan hoá (optimistic bias) vì phần lớn diện tích dưới đường cong được đóng góp bởi các mẫu âm tính vốn rất dễ phân loại. Do đó luận văn dùng **AUPRC** làm chỉ số chính — đường cơ sở ngẫu nhiên của AUPRC *chính là prevalence*, nên con số này không thể bị thổi phồng bởi lớp đa số.
 
@@ -667,28 +697,34 @@ Bài toán mang ba thách thức đặc trưng, và cả ba đều định hình
 
 **Thách thức 3 — Ràng buộc triển khai biên.** Mô hình cuối cùng phải đủ nhỏ và đủ nhanh để chạy thời gian thực trên thiết bị Android phổ thông. Điều này đặt ra ràng buộc cứng lên số tham số, FLOPs và độ trễ — và quan trọng hơn, buộc luận văn phải **đo trên thiết bị thật** thay vì suy diễn từ FLOPs, vì hai hiệu ứng chi phối độ trễ thực tế đều không nằm trong FLOPs: nền tảng thực thi mà đồ thị mô hình được ánh xạ xuống có thể nới khoảng cách giữa hai kiến trúc ra tới **181 lần** (Mục 4.9.1), và điều tiết nhiệt làm ba kiến trúc chạy trên backend tăng tốc chậm thêm **45–49%** sau năm phút chạy liên tục (Bảng 4.17).
 
-Ba thách thức này không độc lập với nhau: ràng buộc triển khai giới hạn dung lượng mô hình, mà mô hình càng nhỏ thì càng khó học được lớp thiểu số ở prevalence dưới 1%. Chính sức ép đồng thời đó dẫn tới các câu hỏi nghiên cứu ở mục sau.
+**Thách thức 4 — Dịch chuyển miền giữa ảnh huấn luyện và ảnh camera của người dùng.** Một mô hình học trên một nguồn ảnh thường suy giảm khi gặp ảnh từ nguồn khác — khác thiết bị chụp, khác điều kiện ánh sáng, khác tông da. Văn liệu đã ghi nhận hiện tượng này: trên Fitzpatrick17k, mô hình phân loại bệnh da chính xác nhất trên những tông da giống với tông da trong dữ liệu huấn luyện của nó [18]; trên bộ DDI, các mô hình AI da liễu hiện đại bộc lộ hạn chế đáng kể, nhất là trên da tối màu và các bệnh ít gặp [6]. Với một ứng dụng camera, đây là hoàn cảnh thường ngày chứ không phải ngoại lệ, nên hiệu năng trên ảnh khác nguồn phải được đo tại chính ngưỡng quyết định mà ứng dụng sử dụng, và đo riêng theo từng nhóm tông da (Mục 3.12).
+
+Bốn thách thức này không độc lập với nhau: ràng buộc triển khai giới hạn dung lượng mô hình, mà mô hình càng nhỏ thì càng khó học được lớp thiểu số ở prevalence dưới 1%; còn dịch chuyển miền khiến một mô hình đạt điểm cao trên tập test cùng nguồn vẫn có thể bỏ sót nhiều ca ác tính trên ảnh của người dùng. Chính sức ép đồng thời đó dẫn tới các câu hỏi nghiên cứu ở mục sau.
 
 ## 1.6 Câu hỏi nghiên cứu
 
-Câu hỏi trung tâm của luận văn là:
+Luận văn được dẫn dắt bởi hai câu hỏi nghiên cứu trung tâm, xoay quanh việc mô hình chạy tốt trên thiết bị biên:
 
-> *Liệu phương pháp chưng cất tri thức có thực sự mang lại cải thiện đáng kể và nhất quán về hiệu năng cho các mô hình gọn nhẹ thuộc nhiều paradigm thiết kế khác nhau, và chất lượng của teacher có ảnh hưởng như thế nào đến hiệu quả KD trên student?*
+> *Câu hỏi 1. Làm thế nào để thu gọn và triển khai mô hình học sâu phân loại tổn thương da lên thiết bị biên?*
+>
+> *Câu hỏi 2. Làm cách nào duy trì hiệu năng chẩn đoán ổn định trên miền ảnh chụp từ camera thực tế?*
 
-Câu hỏi này được tách thành sáu câu hỏi kiểm chứng được. Hai vế của nó thành hai câu cốt lõi — Q3 hỏi tính nhất quán qua các paradigm, Q2 hỏi ảnh hưởng của chất lượng teacher — còn Q4 hỏi thêm một điều mà cả hai vế chưa đụng tới: student sau chưng cất có vượt được teacher không. Ba câu còn lại là phụ trợ nhưng không thể bỏ: Q1 và Q6 kiểm chứng hai lựa chọn dữ liệu mà mọi kết quả sau đó đều dựa lên, còn Q5 chuyển kết quả thành một quyết định triển khai cụ thể. Bảng 1.3 nêu đủ sáu câu hỏi kèm lý do đặt ra từng câu.
+Câu hỏi thứ nhất ứng với thách thức 3, câu hỏi thứ hai ứng với thách thức 4 ở Mục 1.5. Trong khung này, chưng cất tri thức là một giải pháp cho câu hỏi thứ nhất chứ không phải đối tượng nghiên cứu tự thân; hiệu quả của nó vẫn được đo, nhưng bằng phép so sánh ghép cặp với một nhánh đối chứng không chưng cất. Cũng vì vậy, "chạy tốt trên thiết bị biên" không được để ở dạng một khẩu hiệu: luận văn định nghĩa nó thành một bộ tiêu chí đo được — tốc độ trên thiết bị thật, sự trùng khớp giữa thiết bị và máy chủ, cùng độ nhạy và độ đặc hiệu tại ngưỡng của ứng dụng trên ảnh chụp bằng điện thoại và trên ảnh lâm sàng khác nguồn (Mục 3.12).
 
-**Bảng 1.3**. Sáu câu hỏi nghiên cứu và lý do đặt ra mỗi câu
+Hai câu hỏi trung tâm được trả lời qua sáu câu hỏi kiểm chứng đặt ra cho thiết kế thực nghiệm ban đầu — ma trận 3 teacher × 4 student — cùng một nhóm thí nghiệm bổ sung trên bộ chia dữ liệu dựng lại (Mục 4.11). Trong sáu câu, Q3 hỏi tính nhất quán của chưng cất qua các paradigm kiến trúc, Q2 hỏi ảnh hưởng của chất lượng teacher, Q4 hỏi student sau chưng cất có vượt được teacher không; Q1 và Q6 kiểm chứng hai lựa chọn dữ liệu mà mọi kết quả sau đó đều dựa lên, còn Q5 chuyển kết quả thành một quyết định triển khai cụ thể. Bảng 1.3 nêu đủ sáu câu hỏi, lý do đặt ra từng câu và câu hỏi trung tâm mà mỗi câu phục vụ.
 
-| Mã | Câu hỏi | Vì sao cần hỏi |
-|---|---|---|
-| **Q1** | Trộn PAD-UFES-20 vào tập huấn luyện có làm mô hình tốt hơn không? | Đây là một lựa chọn thiết kế dữ liệu, không phải chân lý. Nếu không chứng minh, mọi kết quả sau đó đều dựa trên một giả định chưa kiểm chứng |
-| **Q2** | Teacher mạnh hơn có tạo ra student tốt hơn không? | Văn liệu KD ngoài lĩnh vực da liễu ghi nhận hiện tượng teacher quá mạnh dạy kém [4, 31] (Mục 2.3.2); cần biết hiện tượng đó có xảy ra ở bài toán này không |
-| **Q3** | Chưng cất có cải thiện student nhất quán qua các paradigm kiến trúc khác nhau không? | Nếu chỉ đúng với một họ kiến trúc thì kết luận không tổng quát hoá được |
-| **Q4** | Student sau chưng cất có vượt được teacher không? | Là mục tiêu tối hậu của nén mô hình; nếu có, cần biết vượt ở metric nào |
-| **Q5** | Nếu chỉ được triển khai một mô hình duy nhất thì chọn gì? | Câu hỏi kỹ thuật thực tiễn mà một luận văn ứng dụng phải trả lời được |
-| **Q6** | Tỉ lệ undersampling 1:5 có phải lựa chọn đúng không? | Cùng lý do như Q1 — một siêu tham số quan trọng không nên được chọn theo thói quen |
+**Bảng 1.3**. Sáu câu hỏi kiểm chứng, lý do đặt ra và câu hỏi trung tâm mỗi câu phục vụ
 
-Sáu câu hỏi này quy định toàn bộ phần còn lại của luận văn: Q4 được trả lời ở Mục 4.2, Q3 ở Mục 4.3, Q2 ở Mục 4.5 và 4.8, Q1 và Q6 ở Mục 4.6.1 và 4.6.2, Q5 ở Mục 4.10; câu trả lời đầy đủ cho cả sáu, kèm mức chắc chắn mà bằng chứng cho phép, được tập hợp ở Mục 5.1.
+| Mã | Câu hỏi | Vì sao cần hỏi | Phục vụ câu hỏi trung tâm |
+|---|---|---|:---:|
+| **Q1** | Trộn PAD-UFES-20 vào tập huấn luyện có làm mô hình tốt hơn không? | Đây là một lựa chọn thiết kế dữ liệu, không phải chân lý. Nếu không chứng minh, mọi kết quả sau đó đều dựa trên một giả định chưa kiểm chứng | 2 |
+| **Q2** | Teacher mạnh hơn có tạo ra student tốt hơn không? | Văn liệu KD ngoài lĩnh vực da liễu ghi nhận hiện tượng teacher quá mạnh dạy kém [5, 36] (Mục 2.3.2); cần biết hiện tượng đó có xảy ra ở bài toán này không | 1 và 2 |
+| **Q3** | Chưng cất có cải thiện student nhất quán qua các paradigm kiến trúc khác nhau không? | Nếu chỉ đúng với một họ kiến trúc thì kết luận không tổng quát hoá được | 1 |
+| **Q4** | Student sau chưng cất có vượt được teacher không? | Mục tiêu của chưng cất khi nén là giữ được hiệu năng của teacher trên một mô hình nhỏ hơn [20]; cần biết student giữ được tới đâu, và nếu vượt thì vượt ở metric nào | 1 |
+| **Q5** | Nếu chỉ được triển khai một mô hình duy nhất thì chọn gì? | Câu hỏi kỹ thuật thực tiễn mà một luận văn ứng dụng phải trả lời được | 1 và 2 |
+| **Q6** | Tỉ lệ undersampling 1:5 có phải lựa chọn đúng không? | Cùng lý do như Q1 — một siêu tham số quan trọng không nên được chọn theo thói quen | 1 |
+
+Sáu câu hỏi này quy định phần lớn Chương 4: Q4 được trả lời ở Mục 4.2, Q3 ở Mục 4.3, Q2 ở Mục 4.5 và 4.8, Q1 và Q6 ở Mục 4.6.1 và 4.6.2, Q5 ở Mục 4.10. Mục 4.11 bổ sung phần trả lời trực tiếp cho hai câu hỏi trung tâm trên mô hình phát hành: ba can thiệp dữ liệu nhằm vào câu hỏi thứ hai, vòng chọn ứng viên theo quy tắc đăng ký trước, và phán quyết theo bộ tiêu chí ba trụ. Câu trả lời cho hai câu hỏi trung tâm và cho sáu câu hỏi kiểm chứng, kèm mức chắc chắn mà bằng chứng cho phép, được tập hợp ở Mục 5.1.
 
 ## 1.7 Phạm vi và giới hạn của luận văn
 
@@ -698,21 +734,21 @@ Mục này vì vậy đi theo **bốn quyết định** đã định hình luậ
 
 **Quyết định thứ nhất — rút gọn bài toán về phân loại nhị phân.**
 
-Đầu vào là một ảnh tổn thương **đơn lẻ** ở độ phân giải 224×224; đầu ra là **một logit duy nhất** trả lời câu hỏi lành tính hay ác tính. Ba lý do dẫn tới lựa chọn này. Thứ nhất, nó khớp với quyết định mà ứng dụng đích cần hỗ trợ: người dùng cộng đồng cần biết *"có nên đi khám không?"*, chứ không cần một chẩn đoán bệnh danh. Thứ hai — và đây là lý do có sức ràng buộc lớn nhất — bốn bộ dữ liệu mà luận văn sử dụng có hệ nhãn hoàn toàn khác nhau, từ nhị phân sẵn có tới 114 lớp bệnh; **chỉ ở mức nhị phân thì cả bốn mới nằm trên cùng một trục đánh giá**. Thứ ba, một đầu ra duy nhất giữ cho đồ thị tính toán đơn giản, điều kiện thuận lợi cho bước export sang thiết bị di động ở Quyết định thứ tư.
+Đầu vào là một ảnh tổn thương **đơn lẻ** ở độ phân giải 224×224; đầu ra là **một logit duy nhất** trả lời câu hỏi lành tính hay ác tính. Ba lý do dẫn tới lựa chọn này. Thứ nhất, nó khớp với quyết định mà ứng dụng đích cần hỗ trợ: người dùng cộng đồng cần biết *"có nên đi khám không?"*, chứ không cần một chẩn đoán bệnh danh. Thứ hai — và đây là lý do có sức ràng buộc lớn nhất — năm bộ dữ liệu mà luận văn sử dụng có hệ nhãn hoàn toàn khác nhau, từ nhị phân sẵn có tới 114 lớp bệnh; **chỉ ở mức nhị phân thì cả năm bộ mới có chung một hệ nhãn**. Thứ ba, một đầu ra duy nhất giữ cho đồ thị tính toán đơn giản, điều kiện thuận lợi cho bước export sang thiết bị di động ở Quyết định thứ tư.
 
 **Quyết định thứ hai — chỉ dùng chưng cất theo logit.**
 
-Hàm mất mát là công thức Hinton chuẩn [17], với thành phần nhãn cứng được thay bằng Focal Loss [25] để xử lý mất cân bằng. Lựa chọn này cũng có ba lý do, và cả ba đều xuất phát từ các ràng buộc đã đặt ra ở trên. Thứ nhất, chưng cất theo logit **không cần lớp chiếu** để khớp số chiều đặc trưng — điều kiện bắt buộc khi ma trận thực nghiệm ghép 3 teacher với 4 student có số chiều khác nhau hoàn toàn. Thứ hai, nó **không đụng vào đồ thị tính toán của student**, nên mô hình xuất ra vẫn export sang định dạng thiết bị di động nguyên vẹn. Thứ ba, đây là đường cơ sở chuẩn của lĩnh vực, nên kết quả so sánh được với văn liệu.
+Hàm mất mát là công thức Hinton chuẩn [20], với thành phần nhãn cứng được thay bằng Focal Loss [30] để xử lý mất cân bằng. Lựa chọn này cũng có ba lý do, và cả ba đều xuất phát từ các ràng buộc đã đặt ra ở trên. Thứ nhất, chưng cất theo logit **không cần lớp chiếu** để khớp số chiều đặc trưng — điều kiện bắt buộc khi ma trận thực nghiệm ghép 3 teacher với 4 student có số chiều khác nhau hoàn toàn. Thứ hai, nó **không đụng vào đồ thị tính toán của student**, nên mô hình xuất ra vẫn export sang định dạng thiết bị di động nguyên vẹn. Thứ ba, đây là đường cơ sở chuẩn của lĩnh vực, nên kết quả so sánh được với văn liệu.
 
 Ranh giới này đặt hai họ phương pháp chưng cất khác ra ngoài phạm vi: **chưng cất theo đặc trưng** (khớp biểu diễn ở các tầng ẩn) và **chưng cất theo quan hệ** (khớp quan hệ giữa các mẫu trong batch). Hai họ này vi phạm điều kiện theo hai cách khác nhau: chưng cất theo đặc trưng cần lớp chiếu để khớp số chiều, còn chưng cất theo quan hệ tuy không cần lớp chiếu nhưng vẫn phải lấy thêm vector đặc trưng của student ngoài logit, và kèm theo các trọng số riêng phải tinh chỉnh lại cho bài toán nhị phân. Luận văn **không khảo sát** chúng, và Bảng 2.1 ở Mục 2.3.2 ghi rõ vị trí của hai nhóm này trong phân loại các phương pháp chưng cất.
 
-**Quyết định thứ ba — phạm vi đánh giá nằm trong bốn bộ dữ liệu đã sử dụng.**
+**Quyết định thứ ba — phạm vi đánh giá nằm trong các bộ dữ liệu đã sử dụng.**
 
-Mọi con số luận văn báo cáo đều sinh ra từ việc chấm mô hình trên bốn bộ dữ liệu ở Bảng 3.1, theo đúng vai trò của từng bộ: ISIC 2024 SLICE-3D và PAD-UFES-20 vừa dùng để huấn luyện vừa cho tập test trong miền, còn HAM10000 và Fitzpatrick17k **chỉ** dùng để đánh giá — kiểm chứng chéo miền và phân tích công bằng theo tông da — và không bao giờ tham gia huấn luyện. Đây là đánh giá **hồi cứu**, nên kết luận của luận văn chỉ có hiệu lực trong phạm vi quần thể mà bốn bộ dữ liệu này đại diện. **Thẩm định lâm sàng tiến cứu** nằm ngoài phạm vi vì nó đòi hỏi quần thể đích thật, prevalence thật của quần thể đó và hiệu chuẩn fit trên chính quần thể đó — một thiết kế nghiên cứu khác, chứ không phải phiên bản lớn hơn của thiết kế này. Mục 5.2 nêu rõ mô hình chưa sẵn sàng cho sử dụng lâm sàng cùng các con số chứng minh điều đó.
+Mọi con số luận văn báo cáo đều sinh ra từ việc chấm mô hình trên các bộ dữ liệu ở Bảng 3.1, theo đúng vai trò của từng bộ: ISIC 2024 SLICE-3D và PAD-UFES-20 vừa dùng để huấn luyện vừa cho tập test trong miền; HAM10000 và Fitzpatrick17k **chỉ** dùng để đánh giá — kiểm chứng chéo miền và phân tích công bằng theo tông da — và không bao giờ tham gia huấn luyện; còn DDI chỉ được bổ sung vào phần huấn luyện và không bao giờ được chấm. Đây là đánh giá **hồi cứu**, nên kết luận của luận văn chỉ có hiệu lực trong phạm vi quần thể mà các bộ dữ liệu này đại diện. **Thẩm định lâm sàng tiến cứu** nằm ngoài phạm vi vì nó đòi hỏi quần thể đích thật, prevalence thật của quần thể đó và hiệu chuẩn fit trên chính quần thể đó — một thiết kế nghiên cứu khác, chứ không phải phiên bản lớn hơn của thiết kế này. Mục 5.2 nêu rõ mô hình chưa sẵn sàng cho sử dụng lâm sàng cùng các con số chứng minh điều đó.
 
 **Quyết định thứ tư — đi bao xa trên đường triển khai.**
 
-Luận văn không dừng ở việc báo cáo số liệu huấn luyện mà đi tới **mô hình chạy được trên điện thoại thật**: export sang định dạng ExecuTorch ở độ chính xác FP32, một **cổng kiểm tra tương đương số học** giữa mô hình đã export và bản gốc, đo hiệu năng trên Pixel 6a dưới điều kiện có kiểm soát, và phân tích Pareto giữa độ chính xác và độ trễ.
+Luận văn không dừng ở việc báo cáo số liệu huấn luyện mà đi tới **mô hình chạy được trên điện thoại thật**: export sang định dạng ExecuTorch ở độ chính xác FP32, một **cổng kiểm tra tương đương số học** giữa mô hình đã export và bản gốc, đo hiệu năng trên Pixel 6a dưới điều kiện có kiểm soát, và phân tích Pareto giữa độ chính xác và độ trễ. Ở đầu cuối của đường ấy là một ứng dụng Android viết bằng Kotlin, chạy hoàn toàn ngoại tuyến và chỉ hiển thị kết luận nhị phân tại một ngưỡng quyết định đã đóng băng (Mục 3.11.4).
 
 Toàn bộ đường triển khai giữ nguyên FP32. **Lượng tử hoá INT8** nằm ngoài phạm vi và không được thực hiện, vì bốn kiến trúc student đã được chọn theo tiêu chí tối ưu độ trễ trên thiết bị di động.
 
@@ -724,10 +760,10 @@ Bảng 1.4 tóm tắt bốn quyết định trên. Điểm cần giữ khi đọ
 
 | Quyết định | Trong phạm vi thực nghiệm | Ngoài phạm vi thực nghiệm | Lý do vạch ranh giới ở đây | Tình trạng của phần nằm ngoài |
 |---|---|---|---|---|
-| **1. Bài toán** | Phân loại nhị phân, ảnh đơn lẻ 224×224, một logit | Phân loại đa lớp theo bệnh danh | Bốn bộ dữ liệu chỉ có hệ nhãn chung ở mức nhị phân; đa lớp sẽ phá ba tầng đánh giá | Đòi hỏi thiết kế nghiên cứu khác |
+| **1. Bài toán** | Phân loại nhị phân, ảnh đơn lẻ 224×224, một logit | Phân loại đa lớp theo bệnh danh | Các bộ dữ liệu chỉ có hệ nhãn chung ở mức nhị phân; đa lớp sẽ phá ba tầng đánh giá | Đòi hỏi thiết kế nghiên cứu khác |
 | **2. Phương pháp** | Chưng cất theo logit (Hinton + Focal Loss) | Chưng cất theo đặc trưng và theo quan hệ | Không cần lớp chiếu (điều kiện của ma trận 3×4) và không đụng đồ thị student (điều kiện của export) | Lựa chọn có chủ đích; nhánh quan hệ mở lại được nếu tinh chỉnh trọng số cho bài toán nhị phân, nhánh đặc trưng cần thêm lớp chiếu |
-| **3. Bằng chứng** | Đối chứng ceteris paribus · 5-fold CV · 3 tầng đánh giá · paired bootstrap CI · 2 ablation dữ liệu | Thẩm định lâm sàng tiến cứu | Cần quần thể đích thật và hiệu chuẩn trên chính quần thể đó — là nghiên cứu khác, không phải bản mở rộng | Đòi hỏi thiết kế nghiên cứu khác |
-| **4. Triển khai** | Export FP32 · cổng kiểm tra tương đương · benchmark Pixel 6a · Pareto | Lượng tử hoá INT8 | Bốn student đã được chọn theo tiêu chí tối ưu độ trễ di động nên bước này không cần thiết | Lựa chọn có chủ đích; mở lại được nếu ràng buộc tốc độ hoặc dung lượng siết chặt hơn |
+| **3. Bằng chứng** | Đối chứng ceteris paribus · 5-fold CV · 3 tầng đánh giá · paired bootstrap CI · 2 ablation dữ liệu · bộ tiêu chí ba trụ tại ngưỡng ứng dụng | Thẩm định lâm sàng tiến cứu | Cần quần thể đích thật và hiệu chuẩn trên chính quần thể đó — là nghiên cứu khác, không phải bản mở rộng | Đòi hỏi thiết kế nghiên cứu khác |
+| **4. Triển khai** | Export FP32 · cổng kiểm tra tương đương · benchmark Pixel 6a · Pareto · ứng dụng Android ngoại tuyến | Lượng tử hoá INT8 | Bốn student đã được chọn theo tiêu chí tối ưu độ trễ di động nên bước này không cần thiết | Lựa chọn có chủ đích; mở lại được nếu ràng buộc tốc độ hoặc dung lượng siết chặt hơn |
 
 ## 1.8 Đóng góp của luận văn
 
@@ -769,9 +805,13 @@ Ba thành phần dưới đây phục vụ **một mục đích duy nhất**: b�
 
 *Trên nền đó mới là phép đo hiệu năng*, và nó bao gồm cả những hiệu ứng mà benchmark thông thường bỏ qua: **điều tiết nhiệt**, làm ba kiến trúc chạy trên backend tăng tốc chậm đi 45–49% sau năm phút, và bằng chứng cho thấy **dung lượng tệp không dự đoán được tốc độ**. Nhờ vậy, phân tích Pareto ở Chương 4 dựa trên con số mà ứng dụng thật nhìn thấy, không phải con số đẹp nhất mà máy đạt được lúc còn nguội.
 
+**Đóng góp thứ năm — một định nghĩa đo được cho "chạy tốt trên thiết bị biên", và một phán quyết trung thực theo định nghĩa đó.**
+
+Một mô hình có AUPRC cao hơn nhánh đối chứng của nó chưa cho biết nó đã dùng được trên điện thoại hay chưa. Luận văn thay câu hỏi định tính ấy bằng một bộ tiêu chí ba trụ — chạy được, giữ chất lượng giữa thiết bị và máy chủ, đúng với người dùng tại chính ngưỡng quyết định của ứng dụng — kèm mốc cụ thể cho từng độ đo và quy tắc đọc theo cả khoảng tin cậy (Mục 3.12). Áp lên mô hình phát hành, bộ tiêu chí cho một kết quả không dễ chịu nhưng có ích: mô hình đạt (tạm) trên ảnh chụp bằng điện thoại cùng nguồn và cho kết quả trùng máy chủ trên điện thoại thật, nhưng bỏ sót khoảng 40–50% ca ác tính trên ảnh lâm sàng khác nguồn, nên phán quyết là không đạt (Mục 4.11.6). Đi cùng là bằng chứng ghép cặp cho thấy, trong các thử nghiệm đã làm, bổ sung dữ liệu thật đa dạng có ích còn một cấu hình tăng cường ảnh nhắm vào khác biệt miền thì không (Mục 4.11.2) — chỉ ra nơi cần đầu tư tiếp cho câu hỏi thứ hai.
+
 **Định vị các đóng góp trên.**
 
-Ba đóng góp đầu thuộc về **khoa học**, đóng góp thứ tư thuộc về **kỹ thuật và quy trình**. Cần nói rõ điều luận văn **không** đóng góp: không có toán tử mới, không có kiến trúc mới, không có hàm mất mát mới — hàm mất mát chưng cất là công thức Hinton chuẩn với thành phần nhãn cứng thay bằng Focal Loss. Đây là một **nghiên cứu thực nghiệm có hệ thống**, và giá trị của nó nằm ở quy mô có kiểm soát, độ nghiêm ngặt của đánh giá, cùng các phát hiện mà chỉ một thiết kế đủ rộng mới bộc lộ được. Mục 5.1 định vị chi tiết so với văn liệu.
+Ba đóng góp đầu thuộc về **khoa học**, đóng góp thứ tư thuộc về **kỹ thuật và quy trình**, còn đóng góp thứ năm gồm một phần **phương pháp đánh giá** (5a) và một phần **khoa học** (5b). Cần nói rõ điều luận văn **không** đóng góp: không có toán tử mới, không có kiến trúc mới, không có hàm mất mát mới — hàm mất mát chưng cất là công thức Hinton chuẩn với thành phần nhãn cứng thay bằng Focal Loss. Đây là một **nghiên cứu thực nghiệm có hệ thống**, và giá trị của nó nằm ở quy mô có kiểm soát, độ nghiêm ngặt của đánh giá, cùng các phát hiện mà chỉ một thiết kế đủ rộng mới bộc lộ được. Mục 5.1 định vị chi tiết so với văn liệu.
 
 Bảng 1.5 chỉ ra nơi mỗi đóng góp được chứng minh bằng số liệu, để người đọc đối chiếu trực tiếp.
 
@@ -785,6 +825,8 @@ Bảng 1.5 chỉ ra nơi mỗi đóng góp được chứng minh bằng số li�
 | **3a** | Không tồn tại "teacher tốt nhất" độc lập với miền triển khai | Mục 4.5; số liệu ở Mục 4.7 và 4.8 | Khoa học |
 | **3b** | Bất bình đẳng theo tông da nằm ở nhóm trung bình, không phải nhóm tối | Mục 4.8; điều kiện dữ liệu ở Mục 3.2.5 | Khoa học |
 | **4** | Pipeline tái lập được, cổng kiểm tra tương đương chứng minh là cần thiết, đo trên thiết bị có kiểm soát nhiệt | Mục 3.11, 4.9 | Kỹ thuật |
+| **5a** | Bộ tiêu chí ba trụ đo tại ngưỡng ứng dụng, đọc theo cả khoảng tin cậy; phán quyết cho mô hình phát hành | Mục 3.12; số liệu ở Mục 4.11.6 | Phương pháp |
+| **5b** | Bổ sung dữ liệu thật đa dạng và lấy mẫu theo nguồn có ích ngoài miền; tăng cường ảnh nhắm miền thì không | Mục 4.11.2 | Khoa học |
 
 ---
 
@@ -796,9 +838,9 @@ Bảng 1.5 chỉ ra nơi mỗi đóng góp được chứng minh bằng số li�
 
 Một điểm dễ bị bỏ qua khi đọc văn liệu về phân loại tổn thương da là **không phải mọi "ảnh da" đều thuộc cùng một miền dữ liệu**. Có ít nhất ba loại ảnh khác nhau về bản chất quang học:
 
-- **Ảnh soi da (dermoscopic).** Chụp qua thiết bị soi da có nguồn sáng phân cực và tiếp xúc trực tiếp với bề mặt da, loại bỏ phản xạ bề mặt và cho phép nhìn thấy cấu trúc dưới lớp sừng. Đây là loại ảnh của HAM10000 [46] và của phần lớn các cuộc thi ISIC trước 2024. Ảnh rất đồng nhất về ánh sáng, khung hình luôn tập trung vào tổn thương.
-- **Ảnh lâm sàng (clinical).** Chụp bằng máy ảnh thường hoặc điện thoại, ở khoảng cách tự nhiên, dưới ánh sáng phòng khám không kiểm soát. Đây là loại ảnh của PAD-UFES-20 [33] và Fitzpatrick17k [15]. Biến thiên rất lớn về ánh sáng, góc chụp, độ phóng đại; nhiều ảnh còn chứa cả vùng da lành, quần áo, hoặc toàn bộ chi.
-- **Ảnh cắt từ chụp toàn thân 3D (3D-TBP crop).** Đây là loại ảnh của ISIC 2024 SLICE-3D [20]: cắt tự động từ ảnh chụp toàn thân độ phân giải cao. Về đặc tính quang học, loại này **gần với ảnh smartphone hơn là ảnh soi da** — chính đặc điểm này khiến ISIC 2024 trở thành bộ dữ liệu thực tế nhất từ trước tới nay cho kịch bản sàng lọc cộng đồng, và là lý do luận văn chọn nó làm dữ liệu huấn luyện chính.
+- **Ảnh soi da (dermoscopic).** Chụp qua thiết bị soi da có nguồn sáng phân cực và tiếp xúc trực tiếp với bề mặt da, loại bỏ phản xạ bề mặt và cho phép nhìn thấy cấu trúc dưới lớp sừng. Đây là loại ảnh của HAM10000 [50] và của phần lớn các cuộc thi ISIC trước 2024. Ảnh rất đồng nhất về ánh sáng, khung hình luôn tập trung vào tổn thương.
+- **Ảnh lâm sàng (clinical).** Chụp bằng máy ảnh thường hoặc điện thoại, ở khoảng cách tự nhiên, dưới ánh sáng phòng khám không kiểm soát. Đây là loại ảnh của PAD-UFES-20 [38] và Fitzpatrick17k [18]. Biến thiên rất lớn về ánh sáng, góc chụp, độ phóng đại; nhiều ảnh còn chứa cả vùng da lành, quần áo, hoặc toàn bộ chi.
+- **Ảnh cắt từ chụp toàn thân 3D (3D-TBP crop).** Đây là loại ảnh của ISIC 2024 SLICE-3D [23]: cắt tự động từ ảnh chụp toàn thân độ phân giải cao. Về đặc tính quang học, loại ảnh này không qua thiết bị soi da và có độ phân giải tương đương ảnh chụp bằng điện thoại [27] — lý do luận văn chọn nó làm dữ liệu huấn luyện chính.
 
 Sự phân biệt này không mang tính học thuật thuần tuý. Một mô hình huấn luyện trên ảnh soi da thường **suy giảm mạnh** khi gặp ảnh lâm sàng, và ngược lại. Chương 4 định lượng chính xác mức suy giảm đó, và cho thấy nó là mất mát về **năng lực phân biệt** chứ không chỉ là lệch ngưỡng — một phân biệt quan trọng vì loại thứ hai sửa được bằng hiệu chuẩn còn loại thứ nhất thì không.
 
@@ -818,15 +860,15 @@ Luận văn sử dụng bảy kiến trúc backbone. Tiêu chí chọn là **hi�
 
 ### 2.2.1 Mạng tích chập và hướng co giãn có nguyên tắc
 
-**EfficientNet** [45] đưa ra khái niệm *compound scaling*: thay vì tăng riêng lẻ chiều sâu, chiều rộng hay độ phân giải, ba chiều được co giãn đồng thời theo một tỉ lệ cố định tìm bằng tìm kiếm lưới. **EfficientNetV2** cải tiến bằng khối *fused-MBConv* — thay tích chập depthwise ở các tầng đầu bằng tích chập thường để tận dụng tốt hơn đơn vị tính toán của GPU hiện đại — và bằng *progressive learning* điều chỉnh cường độ tăng cường dữ liệu theo độ phân giải trong quá trình huấn luyện. Trong luận văn, **EfficientNetV2-M** (52,86M tham số) đóng vai trò teacher đại diện cho CNN thế hệ mới.
+**EfficientNet** [49] đưa ra khái niệm *compound scaling*: thay vì tăng riêng lẻ chiều sâu, chiều rộng hay độ phân giải, ba chiều được co giãn đồng thời theo một tỉ lệ cố định tìm bằng tìm kiếm lưới. **EfficientNetV2** cải tiến bằng khối *fused-MBConv* — thay tích chập depthwise ở các tầng đầu bằng tích chập thường để tận dụng tốt hơn đơn vị tính toán của GPU hiện đại — và bằng *progressive learning* điều chỉnh cường độ tăng cường dữ liệu theo độ phân giải trong quá trình huấn luyện. Trong luận văn, **EfficientNetV2-M** (52,86M tham số) đóng vai trò teacher đại diện cho CNN thế hệ mới.
 
-**ConvNeXt** đi theo hướng ngược lại với trào lưu Transformer: giữ nguyên khung tích chập nhưng nhập khẩu từng thành phần thiết kế của Transformer (kernel lớn 7×7, chuẩn hoá lớp thay vì chuẩn hoá batch, cấu trúc inverted bottleneck, hàm kích hoạt GELU). **ConvNeXtV2** [54] bổ sung *Global Response Normalization* và một quy trình tiền huấn luyện tự giám sát dạng autoencoder che mặt nạ. Luận văn dùng **ConvNeXtV2-Base** (87,69M) làm teacher thứ hai.
+**ConvNeXt** đi theo hướng ngược lại với trào lưu Transformer: giữ nguyên khung tích chập nhưng nhập khẩu từng thành phần thiết kế của Transformer (kernel lớn 7×7, chuẩn hoá lớp thay vì chuẩn hoá batch, cấu trúc inverted bottleneck, hàm kích hoạt GELU). **ConvNeXtV2** [59] bổ sung *Global Response Normalization* và một quy trình tiền huấn luyện tự giám sát dạng autoencoder che mặt nạ. Luận văn dùng **ConvNeXtV2-Base** (87,69M) làm teacher thứ hai.
 
 ### 2.2.2 Transformer thị giác và kiến trúc lai
 
-**Vision Transformer (ViT)** [8] chia ảnh thành các mảnh (patch) 16×16, coi mỗi mảnh như một token và áp dụng khối Transformer chuẩn. Ưu điểm là khả năng mô hình hoá quan hệ **toàn cục** ngay từ tầng đầu; nhược điểm là chi phí bậc hai theo số token và nhu cầu dữ liệu huấn luyện rất lớn.
+**Vision Transformer (ViT)** [11] chia ảnh thành các mảnh (patch) 16×16, coi mỗi mảnh như một token và áp dụng khối Transformer chuẩn. Ưu điểm là khả năng mô hình hoá quan hệ **toàn cục** ngay từ tầng đầu; nhược điểm là chi phí bậc hai theo số token và nhu cầu dữ liệu huấn luyện rất lớn.
 
-**MaxViT** [47] đề xuất khối *multi-axis attention*: mỗi khối kết hợp một nhánh attention **cục bộ theo khối** (block attention) và một nhánh attention **thưa toàn cục theo lưới** (grid attention), cho phép trường tiếp nhận toàn cục với chi phí tuyến tính theo số điểm ảnh. Luận văn dùng **MaxViT-Base** (118,70M) làm teacher thứ ba — teacher lớn nhất và, như Chương 4 cho thấy, cũng là teacher mạnh nhất trên AUPRC trong miền.
+**MaxViT** [51] đề xuất khối *multi-axis attention*: mỗi khối kết hợp một nhánh attention **cục bộ theo khối** (block attention) và một nhánh attention **thưa toàn cục theo lưới** (grid attention), cho phép trường tiếp nhận toàn cục với chi phí tuyến tính theo số điểm ảnh. Luận văn dùng **MaxViT-Base** (118,70M) làm teacher thứ ba — teacher lớn nhất và, như Chương 4 cho thấy, cũng là teacher mạnh nhất trên AUPRC trong miền.
 
 Việc chọn ba teacher này không ngẫu nhiên: cả ba đều thuộc nhóm backbone dung lượng lớn tốt nhất hiện có, đồng thời đại diện cho **ba paradigm** (CNN fused-MBConv, ConvNet hiện đại, và lai CNN–Transformer) và có **chất lượng khác nhau đo được**, nên bộ ba này trả lời được câu hỏi Q2 về ảnh hưởng của chất lượng teacher.
 
@@ -834,12 +876,12 @@ Việc chọn ba teacher này không ngẫu nhiên: cả ba đều thuộc nhóm
 
 Bốn student đều là những kiến trúc tốt nhất hiện có cho bài toán "làm mạng nhanh trên ARM", và bốn kiến trúc ấy đại diện cho bốn hướng tiếp cận khác nhau của chính bài toán đó:
 
-- **MobileNetV4-Conv-Medium** [41] (8,44M) — hướng kinh điển: tích chập **tách theo chiều sâu** (depthwise-separable), tối ưu qua tìm kiếm kiến trúc tự động. Đại diện cho CNN nhẹ truyền thống đã trưởng thành.
-- **FastViT-SA12** [48] (10,56M) — hướng **tái tham số hoá cấu trúc** (structural reparameterization): huấn luyện với nhiều nhánh song song để có sức biểu diễn cao, rồi **hợp nhất các nhánh thành một tích chập duy nhất** tại thời điểm suy luận, nên chi phí suy luận thấp hơn hẳn chi phí huấn luyện.
-- **EfficientFormerV2-S2** [24] (12,13M) — hướng **lai attention–CNN** thực thụ: giữ các khối attention thật ở tầng sâu (nơi độ phân giải đã giảm nên chi phí attention chấp nhận được) và dùng tích chập ở tầng nông.
-- **RepViT-M1.0** [50] (6,40M) — hướng **ViT-hoá một CNN thuần**: giữ khung tích chập nhưng áp dụng các nguyên tắc thiết kế rút ra từ ViT (tách riêng token mixer và channel mixer, tỉ lệ mở rộng, vị trí chuẩn hoá). Nhẹ nhất trong bộ.
+- **MobileNetV4-Conv-Medium** [46] (8,44M) — hướng kinh điển: tích chập **tách theo chiều sâu** (depthwise-separable), tối ưu qua tìm kiếm kiến trúc tự động. Đại diện cho CNN nhẹ truyền thống đã trưởng thành.
+- **FastViT-SA12** [52] (10,56M) — hướng **tái tham số hoá cấu trúc** (structural reparameterization): huấn luyện với nhiều nhánh song song để có sức biểu diễn cao, rồi **hợp nhất các nhánh thành một tích chập duy nhất** tại thời điểm suy luận, nên chi phí suy luận thấp hơn hẳn chi phí huấn luyện.
+- **EfficientFormerV2-S2** [29] (12,13M) — hướng **lai attention–CNN** thực thụ: giữ các khối attention thật ở tầng sâu (nơi độ phân giải đã giảm nên chi phí attention chấp nhận được) và dùng tích chập ở tầng nông.
+- **RepViT-M1.0** [54] (6,40M) — hướng **ViT-hoá một CNN thuần**: giữ khung tích chập nhưng áp dụng các nguyên tắc thiết kế rút ra từ ViT (tách riêng token mixer và channel mixer, tỉ lệ mở rộng, vị trí chuẩn hoá). Nhẹ nhất trong bộ.
 
-Cả bốn đều được nạp từ thư viện `timm` [52] và yêu cầu phiên bản `≥ 1.0`; không kiến trúc nào trong số này có trong các phiên bản 0.9.x.
+Cả bốn đều được nạp từ thư viện `timm` [56] và yêu cầu phiên bản `≥ 1.0`; không kiến trúc nào trong số này có trong các phiên bản 0.9.x.
 
 **Vì sao giữ nguyên sự đa dạng ấy thay vì thu về một họ.** Tiêu chí chọn là hiệu năng, nhưng bốn kiến trúc đứng đầu theo tiêu chí ấy vốn thuộc bốn hướng thiết kế khác nhau — và luận văn giữ nguyên điều đó thay vì thay bớt để bộ student đồng nhất hơn. Lý do là nếu bốn student chỉ là bốn kích thước khác nhau của cùng một họ CNN, kết luận "KD giúp mô hình nhẹ" sẽ không phân biệt được với "KD giúp họ kiến trúc này". Việc trải bốn paradigm khiến kết luận có sức nặng tổng quát hơn — và như Mục 4.3 cho thấy, **cả bốn paradigm đều hưởng lợi**, điều mà một thiết kế một-cặp không thể khẳng định.
 
@@ -847,7 +889,7 @@ Cả bốn đều được nạp từ thư viện `timm` [52] và yêu cầu phi
 
 ### 2.3.1 Công thức gốc của Hinton
 
-Hinton, Vinyals và Dean (2015) [17] quan sát rằng phân phối xác suất đầu ra của một mô hình đã huấn luyện chứa nhiều thông tin hơn nhãn cứng: khi mô hình phân loại một ảnh xe tải, xác suất mà nó gán cho "xe buýt" thường cao hơn nhiều so với "cà rốt", và **tỉ lệ tương đối giữa các lớp sai** đó mã hoá cấu trúc tương đồng giữa các lớp. Thông tin này được gọi là *dark knowledge*.
+Hinton, Vinyals và Dean (2015) [20] quan sát rằng phân phối xác suất đầu ra của một mô hình đã huấn luyện chứa nhiều thông tin hơn nhãn cứng: khi mô hình phân loại một ảnh xe tải, xác suất mà nó gán cho "xe buýt" thường cao hơn nhiều so với "cà rốt", và **tỉ lệ tương đối giữa các lớp sai** đó mã hoá cấu trúc tương đồng giữa các lớp. Thông tin này được gọi là *dark knowledge*.
 
 Để bộc lộ thông tin đó, softmax được làm mềm bằng **nhiệt độ** $T$:
 
@@ -861,19 +903,19 @@ Hệ số $T^2$ là cần thiết vì gradient của thành phần mềm tỉ l�
 
 ### 2.3.2 Phân loại các phương pháp chưng cất
 
-Gou và cộng sự (2021) [13] hệ thống hoá lĩnh vực thành ba nhóm theo **loại tri thức** được truyền, tóm tắt ở Bảng 2.1.
+Gou và cộng sự (2021) [16] hệ thống hoá lĩnh vực thành ba nhóm theo **loại tri thức** được truyền, tóm tắt ở Bảng 2.1.
 
 **Bảng 2.1**. Ba nhóm phương pháp chưng cất theo loại tri thức được truyền
 
 | Nhóm | Tri thức truyền đi | Ví dụ | Trong luận văn |
 |---|---|---|---|
-| **Response-based** | Đầu ra cuối (logit / xác suất) | Hinton et al. [17] | ✅ Phương pháp chính |
+| **Response-based** | Đầu ra cuối (logit / xác suất) | Hinton et al. [20] | ✅ Phương pháp chính |
 | **Feature-based** | Biểu diễn trung gian ở các tầng ẩn | FitNets, attention transfer | ⬜ Không khảo sát |
-| **Relation-based** | Quan hệ **giữa các mẫu** trong batch (khoảng cách, góc) | RKD, Park et al. [34] | ⬜ Không khảo sát |
+| **Relation-based** | Quan hệ **giữa các mẫu** trong batch (khoảng cách, góc) | RKD, Park et al. [39] | ⬜ Không khảo sát |
 
 Luận văn dùng **response-based KD** làm phương pháp chính vì ba lý do thực tiễn: (i) không cần projector nên teacher và student có thể khác hoàn toàn về số chiều đặc trưng — điều kiện bắt buộc khi ma trận có 3 teacher × 4 student với các số chiều khác nhau; (ii) không đụng vào đồ thị tính toán của student, nên mô hình xuất ra vẫn export được sang ExecuTorch nguyên vẹn; (iii) là đường cơ sở chuẩn để so sánh với văn liệu.
 
-Một kết quả khác của văn liệu chưng cất liên quan trực tiếp tới thiết kế của luận văn là **teacher mạnh hơn không đồng nghĩa với student tốt hơn**. Cho và Hariharan (2019) [4] khảo sát nhiều cặp kiến trúc và thấy những teacher chính xác hơn lại thường dạy kém hơn, nguyên nhân là chênh lệch năng lực giữa hai mạng: một student nhỏ không đủ sức bắt chước teacher quá lớn. Mirzadeh và cộng sự (2020) [31] phát biểu cùng hiện tượng theo hướng khác, rằng hiệu năng student suy giảm khi khoảng cách teacher–student rộng ra, nên với một student đã cố định thì không thể dùng teacher lớn tuỳ ý. Cả hai công trình đều đặt câu hỏi ấy ngoài lĩnh vực da liễu, còn trong da liễu thì đây vẫn là khoảng trống (Mục 1.4), và đó là lý do câu hỏi Q2 tồn tại.
+Một kết quả khác của văn liệu chưng cất liên quan trực tiếp tới thiết kế của luận văn là **teacher mạnh hơn không đồng nghĩa với student tốt hơn**. Cho và Hariharan (2019) [5] khảo sát nhiều cặp kiến trúc và thấy những teacher chính xác hơn lại thường dạy kém hơn, nguyên nhân là chênh lệch năng lực giữa hai mạng: một student nhỏ không đủ sức bắt chước teacher quá lớn. Mirzadeh và cộng sự (2020) [36] phát biểu cùng hiện tượng theo hướng khác, rằng hiệu năng student suy giảm khi khoảng cách teacher–student rộng ra, nên với một student đã cố định thì không thể dùng teacher lớn tuỳ ý. Cả hai công trình đều đặt câu hỏi ấy ngoài lĩnh vực da liễu, còn trong da liễu thì đây vẫn là khoảng trống (Mục 1.4), và đó là lý do câu hỏi Q2 tồn tại.
 
 ### 2.3.3 Cơ chế của KD thoái hoá thành gì trong bài toán nhị phân một logit
 
@@ -904,7 +946,7 @@ Có ba nhóm giải pháp chuẩn, và luận văn kết hợp hai trong số đ
 
 ### 2.4.2 Focal Loss
 
-Lin và cộng sự (2017) [25] đề xuất Focal Loss cho bài toán phát hiện vật thể — nơi tỉ lệ nền/tiền cảnh cũng ở mức 1:1000. Ý tưởng là **giảm trọng số đóng góp của các mẫu đã được phân loại tốt**:
+Lin và cộng sự (2017) [30] đề xuất Focal Loss cho bài toán phát hiện vật thể — nơi tỉ lệ nền/tiền cảnh cũng ở mức 1:1000. Ý tưởng là **giảm trọng số đóng góp của các mẫu đã được phân loại tốt**:
 
 $$\text{FL}(p_t) = -\alpha_t (1 - p_t)^{\gamma} \log(p_t) \tag{2.4}$$
 
@@ -922,7 +964,7 @@ Mục 4.6.2 kiểm chứng lựa chọn tỉ lệ 1:5 này bằng một thí ngh
 
 ### 2.4.4 Bổ sung dữ liệu giàu ca dương
 
-Nhóm giải pháp thứ ba là **thay đổi chính phân phối dữ liệu**: trộn thêm một bộ dữ liệu có tỉ lệ ca ác tính cao hơn nhiều. PAD-UFES-20 [33] có 2.298 ảnh lâm sàng với tỉ lệ ác tính cao hơn ISIC hai bậc độ lớn. Việc trộn nó vào có hai tác dụng đồng thời: nâng prevalence từ ~0,1% lên ~0,39%, **và** bổ sung một miền ảnh (lâm sàng, chụp bằng điện thoại) gần với kịch bản triển khai hơn ảnh ISIC.
+Nhóm giải pháp thứ ba là **thay đổi chính phân phối dữ liệu**: trộn thêm một bộ dữ liệu có tỉ lệ ca ác tính cao hơn nhiều. PAD-UFES-20 [38] có 2.298 ảnh lâm sàng với tỉ lệ ác tính cao hơn ISIC hai bậc độ lớn. Việc trộn nó vào có hai tác dụng đồng thời: nâng prevalence từ ~0,1% lên ~0,39%, **và** bổ sung một miền ảnh (lâm sàng, chụp bằng điện thoại) gần với kịch bản triển khai hơn ảnh ISIC.
 
 Đây cũng là một lựa chọn thiết kế cần chứng minh chứ không giả định — Mục 4.6.1 dành riêng cho việc đó.
 
@@ -936,19 +978,19 @@ Nhóm giải pháp thứ ba là **thay đổi chính phân phối dữ liệu**:
 
 ### 2.5.2 AUPRC — chỉ số chính
 
-Đường cong Precision–Recall vẽ precision theo recall khi quét ngưỡng. Khác với ROC, **đường cơ sở ngẫu nhiên của AUPRC chính là prevalence** — đặc tính khiến nó là lựa chọn đúng cho dữ liệu mất cân bằng nặng [43]. Ở prevalence 0,3885%, một mô hình đoán mò cho AUPRC ≈ 0,0039. Do đó AUPRC = 0,65 tương đương **lift khoảng 167×** so với đoán mò — một phát biểu vừa có ý nghĩa vừa không thổi phồng.
+Đường cong Precision–Recall vẽ precision theo recall khi quét ngưỡng. Khác với ROC, **đường cơ sở ngẫu nhiên của AUPRC chính là prevalence** — đặc tính khiến nó là lựa chọn đúng cho dữ liệu mất cân bằng nặng [48]. Ở prevalence 0,3885%, một mô hình đoán mò cho AUPRC ≈ 0,0039. Do đó AUPRC = 0,65 tương đương **lift khoảng 167×** so với đoán mò — một phát biểu vừa có ý nghĩa vừa không thổi phồng.
 
 Hệ quả phương pháp quan trọng, được dùng nhiều lần ở Chương 4: **không bao giờ so AUPRC thô giữa hai tập dữ liệu (hoặc hai nhóm) có prevalence khác nhau**. Muốn so thì phải chuẩn hoá theo đường cơ sở, tức so **lift = AUPRC / prevalence**. Mục 4.8 cho thấy một phân tích công bằng bỏ qua quy tắc này sẽ đi tới kết luận **ngược hẳn** với sự thật.
 
 ### 2.5.3 pAUC@TPR≥80% — metric chính thức của ISIC 2024
 
-Ban tổ chức ISIC 2024 [20] lập luận rằng một công cụ sàng lọc chỉ có ý nghĩa khi vận hành ở **độ nhạy tối thiểu**; hiệu năng ở vùng độ nhạy thấp là vô nghĩa về mặt lâm sàng dù đóng góp diện tích cho AUC. Vì vậy metric chính thức chỉ tính **phần diện tích dưới đường cong ROC trong vùng TPR ≥ 80%**:
+Ban tổ chức ISIC 2024 [23] lập luận rằng một công cụ sàng lọc chỉ có ý nghĩa khi vận hành ở **độ nhạy tối thiểu**; hiệu năng ở vùng độ nhạy thấp là vô nghĩa về mặt lâm sàng dù đóng góp diện tích cho AUC. Vì vậy metric chính thức chỉ tính **phần diện tích dưới đường cong ROC trong vùng TPR ≥ 80%**:
 
 $$\text{pAUC}_{80} = \int_{\text{TPR} \geq 0{,}8} \text{TPR} \, d(\text{FPR}) \tag{2.5}$$
 
 Miền giá trị là $[0{,}02;\ 0{,}20]$: một mô hình ngẫu nhiên đạt ≈ 0,02, mô hình hoàn hảo đạt 0,20.
 
-Trong cài đặt của luận văn, pAUC được tính bằng cách **đảo nhãn và điểm số** để biến vùng "TPR ≥ 0,8" của đường cong gốc thành vùng "FPR ≤ 0,2", rồi dùng pAUC có hiệu chỉnh McClish [28] của thư viện chuẩn. Cách này tránh phải tự tích phân từng phần và cho kết quả trùng khớp định nghĩa chính thức.
+Trong cài đặt của luận văn, pAUC được tính bằng cách **đảo nhãn và điểm số** để biến vùng "TPR ≥ 0,8" của đường cong gốc thành vùng "FPR ≤ 0,2", rồi dùng pAUC có hiệu chỉnh McClish [33] của thư viện chuẩn. Cách này tránh phải tự tích phân từng phần và cho kết quả trùng khớp định nghĩa chính thức.
 
 **Một lưu ý trình bày rất quan trọng.** Vì trần của pAUC chỉ là 0,20 và các mô hình trong luận văn đều nằm trong dải 0,1718–0,1859, mọi khác biệt đều xuất hiện ở chữ số thập phân thứ ba. Trình bày "KD cải thiện +0,005 pAUC" là **tự làm hại kết quả của chính mình**. Cách trình bày đúng cho một metric gần bão hoà là **phần trăm headroom được xoá**:
 
@@ -960,7 +1002,21 @@ Mục 4.3 dùng cách trình bày này và cho ra con số **22,7% trung bình**
 
 Ngoài các metric tổng hợp theo toàn dải ngưỡng, luận văn còn báo cáo **Sens@90%Spec** và **Sens@95%Spec** — độ nhạy đạt được khi cố định độ đặc hiệu ở 90% và 95%. Đây là những con số **triển khai** trung thực nhất: chúng trả lời trực tiếp câu hỏi *"nếu tôi chỉ chấp nhận 5% dương tính giả, tôi bắt được bao nhiêu phần trăm ca ác tính?"*. Mục 4.7 cho thấy chính hai chỉ số này bộc lộ rõ nhất giới hạn thật của mô hình khi chuyển miền.
 
-Ngưỡng quyết định nhị phân được chọn theo **chỉ số Youden's J** [55] ($J = \text{Sens} + \text{Spec} - 1$, lấy ngưỡng cực đại hoá $J$). Cần lưu ý ngay: ngưỡng này **khác nhau giữa các fold**, nên khi triển khai phải lấy đúng ngưỡng của fold được đem đi triển khai.
+Ngưỡng quyết định nhị phân được chọn theo **chỉ số Youden's J** [60] ($J = \text{Sens} + \text{Spec} - 1$, lấy ngưỡng cực đại hoá $J$). Cần lưu ý ngay: ngưỡng này **khác nhau giữa các fold**, nên khi triển khai phải lấy đúng ngưỡng của fold được đem đi triển khai.
+
+### 2.5.5 Khoảng tin cậy cho tỉ lệ tại ngưỡng cố định và phép kiểm không kém hơn
+
+Các chỉ số ở ba mục trước đều tổng hợp trên toàn dải ngưỡng, nên độ bất định của chúng được ước lượng bằng bootstrap (Mục 3.10). Khi ngưỡng đã được chọn và **đóng băng** từ trước, độ nhạy và độ đặc hiệu đo trên tập test trở thành hai tỉ lệ đếm được — $k$ ca đúng trên $n$ ca — và sai số của chúng chỉ còn là sai số nhị thức. Luận văn dùng **khoảng tin cậy Wilson** [57] cho các tỉ lệ này:
+
+$$\frac{\hat{p} + \dfrac{z^2}{2n} \pm z\sqrt{\dfrac{\hat{p}(1-\hat{p})}{n} + \dfrac{z^2}{4n^2}}}{1 + \dfrac{z^2}{n}}, \qquad \hat{p} = \frac{k}{n},\quad z = 1{,}96 \tag{2.7}$$
+
+Khác với khoảng $\hat{p} \pm z\sqrt{\hat{p}(1-\hat{p})/n}$, khoảng (2.7) luôn nằm trong đoạn $[0;\ 1]$ và không co về độ rộng 0 khi $k = n$ — hai tính chất cần thiết ở đây, vì độ nhạy cần đo nằm gần biên trên và nhiều nhóm cần đo có cỡ nhỏ. Chẳng hạn, 165 ca được phát hiện trên 189 ca ác tính cho $\hat{p} = 0{,}873$ và khoảng Wilson $[0{,}818;\ 0{,}913]$. Khoảng (2.7) giả định các ảnh độc lập với nhau; giả định này bị vi phạm khi một bệnh nhân góp nhiều ảnh, và Mục 3.10 trình bày cách luận văn kiểm tra gần đúng mức vi phạm ấy.
+
+Câu hỏi thứ hai mà phần này phải trả lời là cách chứng minh một mô hình nhỏ **không kém** một mô hình lớn. Phép kiểm "có khác nhau không" không trả lời được câu hỏi ấy: một khoảng tin cậy của hiệu số chứa 0 chỉ nói chưa đủ bằng chứng để thấy khác biệt, không nói hai mô hình tương đương. Phép kiểm **không kém hơn** (*non-inferiority*) đặt trước một biên $\delta > 0$ và kết luận student không kém teacher khi cận dưới khoảng tin cậy 95% của hiệu số $\Delta = \text{student} - \text{teacher}$ lớn hơn $-\delta$:
+
+$$\text{không kém hơn} \iff \mathrm{lo}_{95\%}(\Delta) > -\delta \tag{2.8}$$
+
+Phép kiểm này chỉ nói việc thu gọn không làm mất quá $\delta$; nó không nói chưng cất có tác dụng — câu hỏi đó cần phép so với nhánh đối chứng không chưng cất.
 
 ---
 
@@ -1001,36 +1057,41 @@ Hệ thống được tổ chức thành bốn tầng nối tiếp, mỗi tầng
   └──────────────────────────────────────────────────────────────────┘
 ```
 
-Một nguyên tắc kiến trúc quan trọng: **mọi tầng đều ghi ra artifact đủ để tái tính, không chỉ ghi ra số tổng kết**. Cụ thể, mỗi lượt chạy ghi lại dự đoán ở mức từng ảnh — nhãn thật, xác suất, quyết định và nguồn ảnh — cho cả tập kiểm định lẫn tập test. Nhờ đó, mọi phân tích ở Chương 4 — đường PR, phân rã theo miền ảnh, khoảng tin cậy bootstrap, cắt theo nhóm nhân khẩu — đều thực hiện được **offline, không cần chạy lại suy luận**. Đây là lựa chọn thiết kế trả lãi rất lớn: một số phân tích quan trọng nhất của luận văn (Mục 4.4, 4.11.3) chỉ nảy sinh **sau khi** toàn bộ huấn luyện đã kết thúc.
+Một nguyên tắc kiến trúc quan trọng: **mọi tầng đều ghi ra artifact đủ để tái tính, không chỉ ghi ra số tổng kết**. Cụ thể, mỗi lượt chạy ghi lại dự đoán ở mức từng ảnh — nhãn thật, xác suất, quyết định và nguồn ảnh — cho cả tập kiểm định lẫn tập test. Nhờ đó, mọi phân tích ở Chương 4 — đường PR, phân rã theo miền ảnh, khoảng tin cậy bootstrap, cắt theo nhóm nhân khẩu — đều thực hiện được **offline, không cần chạy lại suy luận**. Đây là lựa chọn thiết kế trả lãi rất lớn: một số phân tích quan trọng nhất của luận văn (Mục 4.4 và Mục 4.11.8) chỉ nảy sinh **sau khi** toàn bộ huấn luyện đã kết thúc.
+
+Trên bộ chia dữ liệu dựng lại (Mục 4.11), sơ đồ này giữ nguyên bốn tầng với ba bổ sung: tầng dữ liệu nhận thêm 656 ảnh DDI ở phía huấn luyện (Mục 3.2.11), tầng huấn luyện student dùng bộ lấy mẫu phân tầng theo nguồn và lưu thêm một checkpoint theo AUPRC (Mục 3.6.4 và 3.7), và tầng đánh giá chấm mô hình phát hành theo bộ tiêu chí ba trụ (Mục 3.12).
 
 ## 3.2 Dữ liệu và tiền xử lý
 
-### 3.2.1 Bốn bộ dữ liệu, và chuỗi nhu cầu dẫn tới chúng
+### 3.2.1 Năm bộ dữ liệu, và chuỗi nhu cầu dẫn tới chúng
 
-Bốn bộ dữ liệu của luận văn không được chọn song song rồi ghép lại. Chúng là lời giải cho một **chuỗi nhu cầu nối tiếp**, trong đó mỗi bộ được đưa vào để giải quyết một vấn đề do bộ trước tạo ra. Trình bày theo đúng chuỗi đó là cách duy nhất làm rõ vì sao cần đủ bốn bộ chứ không phải hai hay ba.
+Năm bộ dữ liệu của luận văn không được chọn song song rồi ghép lại. Chúng là lời giải cho một **chuỗi nhu cầu nối tiếp**, trong đó mỗi bộ được đưa vào để giải quyết một vấn đề do bộ trước tạo ra. Trình bày theo đúng chuỗi đó là cách duy nhất làm rõ vì sao cần đủ năm bộ chứ không phải hai hay ba.
 
-Điểm xuất phát là kịch bản triển khai: một ứng dụng sàng lọc chạy trên điện thoại. Nhu cầu đầu tiên vì thế là **ảnh huấn luyện phải giống ảnh mà ứng dụng sẽ gặp**, ở quy mô đủ lớn và ở tỉ lệ ca bệnh thực tế. **ISIC 2024 SLICE-3D** đáp ứng cả ba điều kiện đó, và là bộ dữ liệu công khai duy nhất đáp ứng được.
+Điểm xuất phát là kịch bản triển khai: một ứng dụng sàng lọc chạy trên điện thoại. Nhu cầu đầu tiên vì thế là **ảnh huấn luyện phải giống ảnh mà ứng dụng sẽ gặp**, ở quy mô đủ lớn và ở tỉ lệ ca bệnh thực tế. **ISIC 2024 SLICE-3D** đáp ứng cả ba điều kiện đó.
 
-Nhưng chọn ISIC 2024 lập tức sinh ra hai vấn đề mới. Thứ nhất, chỉ khoảng 0,1% ảnh là ác tính — thấp tới mức mỗi epoch sau khi cân bằng lại còn quá ít ca dương. Thứ hai, dù gần ảnh điện thoại, ảnh của bộ này vẫn được thu bằng một hệ thống chuẩn hoá, nên mô hình chưa từng nhìn thấy ảnh chụp trong điều kiện phòng khám thật. **PAD-UFES-20** — ảnh chụp bằng điện thoại thông thường, giàu ca ác tính — được trộn vào để giải quyết đồng thời cả hai vấn đề này.
+Nhưng chọn ISIC 2024 lập tức sinh ra hai vấn đề mới. Thứ nhất, chỉ khoảng 0,1% ảnh là ác tính — thấp tới mức mỗi epoch sau khi cân bằng lại còn quá ít ca dương. Thứ hai, dù có độ phân giải quang học tương đương ảnh chụp bằng điện thoại [27], ảnh của bộ này vẫn được thu bằng một hệ thống chuẩn hoá, nên mô hình chưa từng nhìn thấy ảnh chụp trong điều kiện phòng khám thật. **PAD-UFES-20** — ảnh chụp bằng điện thoại thông thường, giàu ca ác tính — được trộn vào để giải quyết đồng thời cả hai vấn đề này.
 
 Đến đây đã đủ dữ liệu để huấn luyện, nhưng chưa đủ để **biết mô hình có tổng quát hoá được hay không**. Muốn trả lời câu đó thì cần dữ liệu mà mô hình chưa từng thấy, và quan trọng hơn — dữ liệu ấy phải khác dữ liệu huấn luyện theo một **hướng đã biết**, thì mới quy được sự suy giảm về đúng nguyên nhân. **HAM10000** là ảnh soi da chuẩn hoá, tức lệch khỏi dữ liệu huấn luyện theo hướng *ngược lại* với PAD; còn **Fitzpatrick17k** là ảnh lâm sàng trường rộng và là bộ da liễu công khai lớn duy nhất có chú thích tông da, nên nó vừa lệch theo một hướng thứ hai vừa mở ra trục phân tích công bằng.
 
-Yêu cầu "mô hình chưa từng thấy" nghe hiển nhiên nhưng rất dễ bị vi phạm trong thực tế, nên luận văn không để nó ở dạng cam kết mà **thực thi bằng mã**. Hai bộ đánh giá ngoài khai báo ngay trong tệp cấu hình một danh sách cấm tường minh gồm **ba việc** — huấn luyện, dùng làm tập validation, và **chọn ngưỡng quyết định** — rồi bước chuẩn bị dữ liệu kết thúc bằng một phép so ảnh với tập nội bộ, **dừng chương trình với mã thoát 2** nếu phát hiện trùng lặp. Cả hai bộ đều đã qua kiểm tra này và sạch. Việc cấm cả ba thay vì chỉ cấm huấn luyện là có chủ đích: nếu chỉ cấm huấn luyện mà vẫn cho phép dò ngưỡng trên bộ ngoài, kết quả xuyên miền sẽ lạc quan một cách có hệ thống mà gần như không thể phát hiện từ bảng số. Bảng 3.1 tổng hợp bốn bộ dữ liệu, đơn vị công bố và vai trò của từng bộ trong luận văn.
+Mắt xích cuối của chuỗi xuất hiện khi chính hai bộ đánh giá ngoài cho thấy mô hình suy giảm rõ rệt khi đổi miền ảnh. Muốn thu hẹp khoảng cách ấy từ phía huấn luyện thì cần thêm ảnh lâm sàng thật, đa dạng về tông da và có nhãn đáng tin cậy. **DDI** (*Diverse Dermatology Images*) đáp ứng các điều kiện đó: đây là bộ ảnh lâm sàng do chuyên gia tuyển chọn, có xác nhận mô bệnh học và đa dạng tông da [6]. Khác với bốn bộ còn lại, DDI **chỉ được bổ sung vào phần huấn luyện** và không bao giờ được chấm; cách bổ sung nó được trình bày ở Mục 3.2.11.
 
-**Bảng 3.1**. Bốn bộ dữ liệu, đơn vị công bố và vai trò
+Yêu cầu "mô hình chưa từng thấy" nghe hiển nhiên nhưng rất dễ bị vi phạm trong thực tế, nên luận văn không để nó ở dạng cam kết mà **thực thi bằng mã**. Hai bộ đánh giá ngoài khai báo ngay trong tệp cấu hình một danh sách cấm tường minh gồm **ba việc** — huấn luyện, dùng làm tập validation, và **chọn ngưỡng quyết định** — rồi bước chuẩn bị dữ liệu kết thúc bằng một phép so ảnh với tập nội bộ, **dừng chương trình với mã thoát 2** nếu phát hiện trùng lặp. Cả hai bộ đều đã qua kiểm tra này và sạch. Việc cấm cả ba thay vì chỉ cấm huấn luyện là có chủ đích: nếu chỉ cấm huấn luyện mà vẫn cho phép dò ngưỡng trên bộ ngoài, kết quả xuyên miền sẽ lạc quan một cách có hệ thống mà gần như không thể phát hiện từ bảng số. Bảng 3.1 tổng hợp năm bộ dữ liệu, đơn vị công bố và vai trò của từng bộ trong luận văn.
+
+**Bảng 3.1**. Năm bộ dữ liệu, đơn vị công bố và vai trò
 
 | Bộ dữ liệu | Đơn vị công bố | Năm | Số ảnh công bố | Loại ảnh | Hệ nhãn gốc | Vai trò |
 |---|---|---|---|---|---|---|
-| **ISIC 2024 SLICE-3D** [20] | International Skin Imaging Collaboration (ISIC) | 2024 | 401.059 | Non-dermoscopic — ảnh cắt từ chụp toàn thân 3D | Nhị phân sẵn (`target`) | **Huấn luyện chính** + tập test nội bộ |
-| **PAD-UFES-20** [33] | Chương trình Hỗ trợ Da liễu và Phẫu thuật (PAD), Đại học Liên bang Espírito Santo (UFES), Brazil | 2020 | 2.298 | Lâm sàng, chụp bằng điện thoại | 6 lớp bệnh | **Bổ sung ca ác tính** + bổ sung miền lâm sàng |
-| **HAM10000** [46] | Nhóm ViDIR, Đại học Y Vienna (Áo), kết hợp một phòng khám tại Queensland, Úc | 2018 | 10.015 | Soi da (dermoscopic) | 7 lớp bệnh | **Chỉ** kiểm chứng chéo miền |
-| **Fitzpatrick17k** [15] | Groh và cộng sự — ảnh từ hai atlas da liễu trực tuyến | 2021 | 16.577 | Lâm sàng (ảnh atlas) | 114 bệnh + thang tông da I–VI | **Chỉ** phân tích công bằng |
+| **ISIC 2024 SLICE-3D** [23] | International Skin Imaging Collaboration (ISIC) | 2024 | 401.059 | Non-dermoscopic — ảnh cắt từ chụp toàn thân 3D | Nhị phân sẵn (`target`) | **Huấn luyện chính** + tập test nội bộ |
+| **PAD-UFES-20** [38] | Chương trình Hỗ trợ Da liễu và Phẫu thuật (PAD), Đại học Liên bang Espírito Santo (UFES), Brazil | 2020 | 2.298 | Lâm sàng, chụp bằng điện thoại | 6 lớp bệnh | **Bổ sung ca ác tính** + bổ sung miền lâm sàng |
+| **HAM10000** [50] | Nhóm ViDIR, Đại học Y Vienna (Áo), kết hợp một phòng khám tại Queensland, Úc | 2018 | 10.015 | Soi da (dermoscopic) | 7 lớp bệnh | **Chỉ** kiểm chứng chéo miền |
+| **Fitzpatrick17k** [18] | Groh và cộng sự — ảnh từ hai atlas da liễu trực tuyến | 2021 | 16.577 | Lâm sàng (ảnh atlas) | 114 bệnh + thang tông da I–VI | **Chỉ** phân tích công bằng |
+| **DDI** [6] | Daneshjou và cộng sự, Trường Y Stanford | 2022 | 656 | Lâm sàng, nhãn xác nhận mô bệnh học, đa dạng tông da | Tên bệnh + nhãn ác tính + ba nhóm tông da | **Chỉ** bổ sung huấn luyện |
 
-Bốn mục tiếp theo trình bày từng bộ theo cùng một trật tự: nó đến từ đâu, nó mang theo những thuộc tính gì, và luận văn dùng hay bỏ từng thuộc tính vì lý do gì.
+Bốn mục tiếp theo trình bày bốn bộ đầu theo cùng một trật tự: nó đến từ đâu, nó mang theo những thuộc tính gì, và luận văn dùng hay bỏ từng thuộc tính vì lý do gì. DDI được trình bày riêng ở Mục 3.2.11, sau phần tiền xử lý, vì nó được nối thêm vào một bộ chia đã có sẵn.
 
 ### 3.2.2 ISIC 2024 SLICE-3D — dữ liệu huấn luyện chính
 
-SLICE-3D (*Skin Lesion Image Crops Extracted from 3D TBP*) là bộ dữ liệu của cuộc thi ISIC 2024, do **International Skin Imaging Collaboration** công bố [20]. Điểm khiến nó khác hẳn các bộ ISIC đời trước nằm ở cách tạo ảnh: ảnh không được chụp riêng cho từng tổn thương mà được **cắt tự động từ ảnh chụp toàn thân độ phân giải cao**. Hệ quả quang học là ảnh không có nguồn sáng phân cực, không tiếp xúc da và độ phóng đại thay đổi theo vị trí — tức mang đúng những đặc tính của một bức ảnh chụp thường, và đó chính là lý do luận văn chọn nó.
+SLICE-3D (*Skin Lesion Image Crops Extracted from 3D TBP*) là bộ dữ liệu của cuộc thi ISIC 2024, do **International Skin Imaging Collaboration** công bố [23]. Điểm khiến nó khác hẳn các bộ ISIC đời trước nằm ở cách tạo ảnh: ảnh không được chụp riêng cho từng tổn thương mà được **cắt tự động từ ảnh chụp toàn thân độ phân giải cao**. Hệ quả quang học là ảnh không có nguồn sáng phân cực, không tiếp xúc da và độ phóng đại thay đổi theo vị trí — tức mang đúng những đặc tính của một bức ảnh chụp thường, và đó chính là lý do luận văn chọn nó.
 
 Hai lý do còn lại củng cố lựa chọn ấy. Với hơn 400 nghìn ảnh, bộ này đủ lớn để giữ ràng buộc patient-disjoint mà mỗi fold vẫn còn hàng trăm nghìn ảnh huấn luyện — điều kiện để 5-fold cross-validation có ý nghĩa. Và tỉ lệ ca ác tính khoảng 0,1% phản ánh đúng thực tế sàng lọc; đây là **điểm khó chứ không phải khuyết điểm của bộ dữ liệu**, vì nó buộc luận văn phải giải bài toán mất cân bằng cực đoan như một vấn đề thật, thay vì làm việc trên một tập đã được cân bằng nhân tạo như phần lớn văn liệu.
 
@@ -1052,7 +1113,7 @@ Sau tiền xử lý, pipeline quy mọi nguồn dữ liệu về **sáu cột th
 
 ### 3.2.3 PAD-UFES-20 — bổ sung ca ác tính và miền lâm sàng
 
-PAD-UFES-20 được thu thập trong khuôn khổ **Chương trình Hỗ trợ Da liễu và Phẫu thuật (PAD)** của **Đại học Liên bang Espírito Santo (UFES), Brazil**, một chương trình khám chữa bệnh miễn phí cho cư dân vùng nông thôn [33]. Chi tiết quan trọng nhất về bộ này không nằm ở kích thước mà ở cách thu ảnh: ảnh được **chụp bằng điện thoại thông thường trong điều kiện phòng khám thực tế**, không phải bằng thiết bị chuyên dụng.
+PAD-UFES-20 được thu thập trong khuôn khổ **Chương trình Hỗ trợ Da liễu và Phẫu thuật (PAD)** của **Đại học Liên bang Espírito Santo (UFES), Brazil**, một chương trình khám chữa bệnh miễn phí cho cư dân vùng nông thôn [38]. Chi tiết quan trọng nhất về bộ này không nằm ở kích thước mà ở cách thu ảnh: ảnh được **chụp bằng điện thoại thông thường trong điều kiện phòng khám thực tế**, không phải bằng thiết bị chuyên dụng.
 
 Như đã nêu ở Mục 3.2.1, bộ này giải quyết đồng thời hai vấn đề mà ISIC 2024 để lại. Về tỉ lệ ca bệnh, trộn PAD nâng prevalence từ khoảng 0,1% lên **0,3885%** — vẫn rất mất cân bằng, nhưng đủ để mỗi epoch sau khi lấy mẫu lại có số ca dương dùng được. Về miền ảnh — và đây mới là đóng góp quan trọng hơn — PAD mang vào tập huấn luyện đúng loại biến thiên mà ứng dụng sẽ gặp: ánh sáng phòng khám không kiểm soát, góc chụp tuỳ tay người cầm máy, hậu cảnh không chuẩn hoá.
 
@@ -1077,7 +1138,7 @@ Quyết định này cũng có một cái giá phải nêu ngay từ chương ph
 
 ### 3.2.4 HAM10000 — kiểm chứng chéo miền
 
-HAM10000 (*Human Against Machine with 10.000 training images*) do nhóm ViDIR của **Đại học Y Vienna** công bố trên *Scientific Data* [46], tập hợp ảnh từ hai nguồn địa lý khác nhau: kho lưu trữ của khoa Da liễu tại Vienna và một phòng khám da liễu tại Queensland, Úc.
+HAM10000 (*Human Against Machine with 10.000 training images*) do nhóm ViDIR của **Đại học Y Vienna** công bố trên *Scientific Data* [50], tập hợp ảnh từ hai nguồn địa lý khác nhau: kho lưu trữ của khoa Da liễu tại Vienna và một phòng khám da liễu tại Queensland, Úc.
 
 Lý do chọn bộ này thoạt nghe nghịch lý: **chính vì nó thuộc miền ảnh ngược với dữ liệu huấn luyện**. HAM10000 là ảnh soi da — chụp qua thiết bị có nguồn sáng phân cực, tiếp xúc trực tiếp với da — trong khi mô hình được huấn luyện trên ảnh non-dermoscopic và ảnh điện thoại. Một bộ dữ liệu cùng miền sẽ không kiểm chứng được điều gì; giá trị của HAM10000 nằm đúng ở khoảng cách của nó so với dữ liệu huấn luyện. Bên cạnh đó, vì phần lớn văn liệu phân loại tổn thương da báo cáo trên bộ này nên kết quả đặt được vào bối cảnh so sánh. Bảng 3.4 tóm tắt thuộc tính của bộ này và cách luận văn sử dụng nó.
 
@@ -1095,7 +1156,7 @@ Cột `lesion_id` là lý do bộ này cần tới ba biến thể split thay v�
 
 ### 3.2.5 Fitzpatrick17k — phân tích công bằng theo tông da
 
-Fitzpatrick17k do Groh và cộng sự công bố tại hội thảo CVPR 2021 [15], gồm ảnh thu từ hai atlas da liễu trực tuyến. Lý do chọn bộ này ngắn gọn và mang tính quyết định: **đây là bộ dữ liệu da liễu công khai quy mô lớn duy nhất có chú thích tông da**. Không có nó thì câu hỏi *"mô hình có hoạt động đồng đều trên các tông da khác nhau không?"* không thể trả lời bằng số — mà đó là câu hỏi bắt buộc với một công cụ nhắm tới cộng đồng đa sắc tộc. Đồng thời, vì đây là ảnh lâm sàng trường rộng nên nó lệch khỏi dữ liệu huấn luyện theo một hướng khác hẳn HAM10000, và Mục 3.2.6 sẽ cho thấy sự khác hướng ấy quan trọng đến mức nào. Bảng 3.5 nêu thuộc tính của bộ này cùng cách luận văn sử dụng nó.
+Fitzpatrick17k do Groh và cộng sự công bố tại hội thảo CVPR 2021 [18], gồm ảnh thu từ hai atlas da liễu trực tuyến. Lý do chọn bộ này ngắn gọn và mang tính quyết định: **đây là bộ dữ liệu da liễu công khai quy mô lớn duy nhất có chú thích tông da**. Không có nó thì câu hỏi *"mô hình có hoạt động đồng đều trên các tông da khác nhau không?"* không thể trả lời bằng số — mà đó là câu hỏi bắt buộc với một công cụ nhắm tới cộng đồng đa sắc tộc. Đồng thời, vì đây là ảnh lâm sàng trường rộng nên nó lệch khỏi dữ liệu huấn luyện theo một hướng khác hẳn HAM10000, và Mục 3.2.6 sẽ cho thấy sự khác hướng ấy quan trọng đến mức nào. Bảng 3.5 nêu thuộc tính của bộ này cùng cách luận văn sử dụng nó.
 
 **Bảng 3.5**. Thuộc tính của Fitzpatrick17k và cách luận văn sử dụng
 
@@ -1116,9 +1177,11 @@ Bộ này đặt ra một khó khăn thực tế ảnh hưởng trực tiếp t�
 
 Ba giới hạn của bộ dữ liệu phải đi kèm mọi kết luận công bằng rút ra từ nó. Nhãn tông da do **người chú thích gán từ ảnh** chứ không phải đo trên bệnh nhân, nên mang sai số chủ quan — và việc chính bộ dữ liệu chứa hai cột chú thích độc lập là bằng chứng cho điều đó. Ảnh đến từ **atlas trực tuyến**, tức đã qua chọn lọc biên tập: các ca được đưa lên atlas thường là ca điển hình hoặc ca hiếm đáng dạy, không phải mẫu ngẫu nhiên của quần thể. Và tính tái lập của phần công bằng **phụ thuộc vào một bản sao lưu bên ngoài** còn tồn tại, dù mọi tệp đều đã được xác minh mã băm. Kèm theo đó là một lưu ý về bản quyền: nhãn giấy phép do người tải bản sao lưu tự đặt không có thẩm quyền đối với ảnh atlas gốc, nên mọi trích dẫn phải theo điều khoản của bản phát hành Fitzpatrick17k gốc.
 
-### 3.2.6 Hệ quả của thiết kế bốn bộ dữ liệu
+Một giới hạn thứ tư được chỉ ra sau khi luận văn đã dùng bộ này: Fitzpatrick17k chứa nhiều ảnh **gần trùng** — các bản của cùng một ảnh chỉ khác nhau chút ít — mà phép khử trùng lặp theo mã băm ở Mục 3.2.8 không bắt được. Abhishek và cộng sự phát hiện 2.297 cụm ảnh trùng trong bộ này và đề xuất một tập đã làm sạch là Fitzpatrick17k-C [1]. Ảnh gần trùng làm các hàng của tập test không còn độc lập, trái với giả định của khoảng tin cậy Wilson (Mục 2.5.5). Vì vậy, từ ngày 04/10/2026, trụ III-b của bộ tiêu chí ở Mục 3.12 được chấm trên phần giao giữa biến thể chính và Fitzpatrick17k-C, gồm 3.086 trên 4.320 ảnh; quyết định này được đưa ra sau khi đã thấy kết quả trên biến thể chính nên được khai là post-hoc. Các phép đo khác trên Fitzpatrick17k vẫn dùng biến thể chính.
 
-Mục 3.2.1 giải thích vì sao cần từng bộ. Mục này nêu điều ngược lại: **tổ hợp bốn bộ ấy mua được gì và phải trả giá gì** khi đọc kết quả.
+### 3.2.6 Hệ quả của thiết kế các bộ dữ liệu
+
+Mục 3.2.1 giải thích vì sao cần từng bộ. Mục này nêu điều ngược lại: **tổ hợp các bộ ấy mua được gì và phải trả giá gì** khi đọc kết quả.
 
 Điều mua được quan trọng nhất là **hai bộ đánh giá ngoài dịch chuyển theo hai hướng khác nhau, chứ không phải hai bản sao của nhau**. HAM10000 đi về phía ảnh soi da chuẩn hoá; Fitzpatrick17k đi về phía ảnh lâm sàng trường rộng với tông da đa dạng. Chính sự khác hướng đó làm lộ ra kết quả sắc bén nhất của luận văn: teacher tốt nhất trên bộ này lại là teacher tệ nhất trên bộ kia (Mục 4.5). Nếu chỉ có **một** bộ đánh giá ngoài, kết luận thu được sẽ là *"teacher X chưng cất tốt nhất"* — và đó sẽ là một kết luận **sai**, sai theo cách không thể phát hiện từ bên trong thiết kế một-bộ-ngoài.
 
@@ -1130,10 +1193,11 @@ Bảng 3.6 tóm lại vai trò không thay thế được của từng bộ, b�
 
 | Bộ dữ liệu | Trục nó phụ trách | Nếu bỏ bộ này thì mất gì |
 |---|---|---|
-| ISIC 2024 SLICE-3D | Quy mô + miền gần ảnh điện thoại + prevalence thực tế | Không còn dữ liệu huấn luyện, và không còn bài toán mất cân bằng thật để giải |
+| ISIC 2024 SLICE-3D | Quy mô + độ phân giải tương đương ảnh điện thoại + prevalence thực tế | Không còn dữ liệu huấn luyện, và không còn bài toán mất cân bằng thật để giải |
 | PAD-UFES-20 | Ca ác tính + miền ảnh điện thoại thật | Prevalence tụt về ~0,1%; mô hình chưa từng thấy ảnh lâm sàng; **mất toàn bộ câu hỏi nghiên cứu Q1** |
 | HAM10000 | Dịch chuyển miền sang ảnh **soi da** | Mất bằng chứng mạnh nhất về hiệu quả chưng cất, và mất phép thử xem ngưỡng quyết định có chuyển miền được hay không (Mục 4.7) |
 | Fitzpatrick17k | Dịch chuyển miền sang ảnh **lâm sàng trường rộng** + trục **tông da** | Không trả lời được câu hỏi công bằng, và mất phát hiện về tương tác teacher × miền (Mục 4.5) |
+| DDI | Ảnh lâm sàng đa dạng tông da, có xác nhận mô bệnh học — chỉ ở phía huấn luyện | Mất một can thiệp dữ liệu đã cải thiện có ý nghĩa student chưng cất trên cả hai bộ đánh giá ngoài (Mục 4.11.2) |
 
 ### 3.2.7 Hợp nhất hệ nhãn
 
@@ -1146,7 +1210,7 @@ Bảng 3.6 tóm lại vai trò không thay thế được của từng bộ, b�
 | actinic keratosis (ACK / AKIEC) | **0** ở phía huấn luyện, **1** trên HAM10000 | Tổn thương tiền ung thư — hai bộ dùng hai quy ước khác nhau |
 | non-neoplastic (chỉ Fitzpatrick17k) | **0** trong biến thể phụ, **loại** trong biến thể chính | Bệnh viêm/nhiễm nằm ngoài bài toán lành–ác |
 
-Ánh xạ của **actinic keratosis** là điểm gây tranh cãi hợp lý: đây là tổn thương **tiền ung thư**, có thể tiến triển thành ung thư biểu mô tế bào vảy, và cả hai quy ước đều tồn tại. Lý do nằm ngay ở định nghĩa lớp: lớp `akiec` của HAM10000 gộp chung dày sừng ánh sáng với **ung thư biểu mô nội biểu mô** (bệnh Bowen), và chính tài liệu của bộ này ghi nhận rằng có tác giả coi cả nhóm là tiền thân của ung thư biểu mô tế bào vảy chứ không phải ung thư thực thụ [46]. Luận văn không áp một quy ước chung cho mọi bộ dữ liệu: ở phía huấn luyện, ACK của PAD-UFES-20 được xếp vào lành tính; ở phía đánh giá, AKIEC của HAM10000 được xếp vào ác tính. Chỗ lệch này được xử lý bằng đo đạc chứ không bằng lập luận — một biến thể split riêng (`no_akiec`) loại bỏ hoàn toàn 228 ca AKIEC khỏi tập HAM10000 để Mục 4.7 kiểm tra xem kết luận có đổi hay không, và kết quả là **không đổi**.
+Ánh xạ của **actinic keratosis** là điểm gây tranh cãi hợp lý: đây là tổn thương **tiền ung thư**, có thể tiến triển thành ung thư biểu mô tế bào vảy, và cả hai quy ước đều tồn tại. Lý do nằm ngay ở định nghĩa lớp: lớp `akiec` của HAM10000 gộp chung dày sừng ánh sáng với **ung thư biểu mô nội biểu mô** (bệnh Bowen), và chính tài liệu của bộ này ghi nhận rằng có tác giả coi cả nhóm là tiền thân của ung thư biểu mô tế bào vảy chứ không phải ung thư thực thụ [50]. Luận văn không áp một quy ước chung cho mọi bộ dữ liệu: ở phía huấn luyện, ACK của PAD-UFES-20 được xếp vào lành tính; ở phía đánh giá, AKIEC của HAM10000 được xếp vào ác tính. Chỗ lệch này được xử lý bằng đo đạc chứ không bằng lập luận — một biến thể split riêng (`no_akiec`) loại bỏ hoàn toàn 228 ca AKIEC khỏi tập HAM10000 để Mục 4.7 kiểm tra xem kết luận có đổi hay không, và kết quả là **không đổi**.
 
 ### 3.2.8 Tiền xử lý offline
 
@@ -1175,7 +1239,7 @@ $$s_x = \frac{224}{W}, \qquad s_y = \frac{224}{H} \tag{3.1}$$
 
 nên ảnh bị kéo hoặc nén nhẹ khi $H \neq W$. Đây là lựa chọn có chủ đích thay cho phương án cắt giữa: cắt giữa sẽ **mất phần rìa tổn thương** ở những ảnh mà tổn thương không nằm chính giữa khung, mà ranh giới tổn thương lại chính là đặc trưng chẩn đoán quan trọng. Biến dạng tỉ lệ, ngược lại, là một phép biến đổi mà mạng tích chập chịu đựng tốt và còn được tăng cường thêm ở bước co giãn ngẫu nhiên khi huấn luyện.
 
-Phép nội suy dùng nhân **Lanczos** [9], một nhân sinc có cửa sổ:
+Phép nội suy dùng nhân **Lanczos** [12], một nhân sinc có cửa sổ:
 
 $$L(x) = \begin{cases} \operatorname{sinc}(x)\,\operatorname{sinc}(x/a), & |x| < a \\ 0, & |x| \ge a \end{cases} \qquad \text{với } \operatorname{sinc}(x) = \frac{\sin(\pi x)}{\pi x} \tag{3.2}$$
 
@@ -1185,7 +1249,7 @@ $$I_{\text{đích}}(u) = \sum_{k} I_{\text{nguồn}}(k)\, L(u - k) \tag{3.3}$$
 
 Lanczos được chọn thay cho nội suy song tuyến tính vì đây chủ yếu là phép **thu nhỏ** ảnh: nhân sinc có cửa sổ xấp xỉ tốt bộ lọc thông thấp lý tưởng, nên vừa hạn chế hiện tượng răng cưa vừa giữ được độ sắc của biên tổn thương — điều mà nội suy song tuyến tính làm mờ đi đáng kể ở tỉ lệ thu nhỏ lớn.
 
-**Bước 4 — lọc ảnh không mang thông tin.** Ảnh sau khi co giãn được chuyển sang thang xám theo công thức luma của chuẩn ITU-R BT.601 [22]:
+**Bước 4 — lọc ảnh không mang thông tin.** Ảnh sau khi co giãn được chuyển sang thang xám theo công thức luma của chuẩn ITU-R BT.601 [25]:
 
 $$I_{\text{xám}} = 0{,}299\,R + 0{,}587\,G + 0{,}114\,B \tag{3.4}$$
 
@@ -1261,7 +1325,7 @@ Cần nói thêm một điều nữa, nhẹ hơn nhưng cũng đúng: trên ản
 
 ### 3.2.10 Tăng cường dữ liệu trực tuyến
 
-Trong khi tiền xử lý chạy một lần, tăng cường dữ liệu diễn ra **ngay trong vòng huấn luyện**: mỗi lần một ảnh được lấy ra, nó chịu một chuỗi biến đổi ngẫu nhiên khác nhau (cài đặt bằng thư viện Albumentations [3]), nên mô hình gần như không bao giờ nhìn thấy đúng cùng một ma trận pixel hai lần.
+Trong khi tiền xử lý chạy một lần, tăng cường dữ liệu diễn ra **ngay trong vòng huấn luyện**: mỗi lần một ảnh được lấy ra, nó chịu một chuỗi biến đổi ngẫu nhiên khác nhau (cài đặt bằng thư viện Albumentations [4]), nên mô hình gần như không bao giờ nhìn thấy đúng cùng một ma trận pixel hai lần.
 
 Ở bài toán này, tăng cường không phải một biện pháp chính quy hoá thông thường mà là **đối trọng trực tiếp với chiến lược lấy mẫu**. Như sẽ trình bày ở Mục 3.6, bộ lấy mẫu giữ lại **toàn bộ** ảnh ác tính ở mọi epoch và chỉ thay đổi tập ảnh lành tính. Nghĩa là trong suốt hàng chục epoch, mô hình gặp đi gặp lại đúng chừng ấy ca ác tính — áp lực ghi nhớ nặng nhất của cả pipeline rơi vào **đúng lớp mà ta quan tâm nhất**. Tăng cường là biện pháp chính để mỗi lần gặp lại ấy không phải là một lần lặp y hệt.
 
@@ -1286,6 +1350,14 @@ Cả ba đều bị loại vì lý do riêng của bài toán chứ không phả
 Cuối cùng, cần phân biệt tăng cường với một thao tác luôn được áp dụng nhưng **không phải** tăng cường: chuẩn hoá giá trị pixel theo trung bình và độ lệch chuẩn của ImageNet. Đây là phép biến đổi **tất định**, áp dụng như nhau cho cả tập huấn luyện lẫn tập kiểm tra, và nó tồn tại vì mọi backbone đều khởi tạo từ trọng số tiền huấn luyện trên ImageNet nên kỳ vọng đầu vào ở đúng thang đó.
 
 Một cấu hình tăng cường mạnh hơn cũng đã được chuẩn bị như đòn bẩy chống quá khớp, nhưng kiểm tra ở Mục 4.2 cho thấy **không cần dùng tới** — và đó là một kết quả, không phải một thiếu sót.
+
+### 3.2.11 DDI — bổ sung ảnh lâm sàng đa dạng tông da vào phía huấn luyện
+
+DDI gồm 656 ảnh lâm sàng, trong đó 171 ca ác tính và 485 ca lành tính, chia theo thang Fitzpatrick thành ba nhóm I–II, III–IV và V–VI với lần lượt 208, 241 và 207 ảnh; nhãn của bộ này được xác nhận bằng mô bệnh học [6]. Công trình công bố bộ dữ liệu còn cho thấy hai điều liên quan trực tiếp tới luận văn: các mô hình AI da liễu hiện đại suy giảm đáng kể trên DDI, nhất là ở da tối màu và các bệnh ít gặp, và việc tinh chỉnh mô hình trên chính ảnh DDI giúp thu hẹp khoảng cách giữa da sáng và da tối [6].
+
+Cách bổ sung được thiết kế để chỉ đổi đúng một biến. Toàn bộ 656 ảnh — không ảnh nào bị loại ở bước tiền xử lý — được **nối thêm vào tập huấn luyện của cả năm fold**, còn tập validation và tập test giữ nguyên từng byte. Nhờ vậy, một nhánh đối chứng đã huấn luyện trước đó trên cùng bộ chia mà không có DDI vẫn dùng lại được nguyên vẹn, và mọi chênh lệch giữa hai nhánh quy về đúng việc có hay không có DDI. Số ca ác tính trong tập huấn luyện của mỗi fold tăng thêm 17,3–18,9% tuỳ fold; ở fold 0 là từ 906 lên 1.077 ca.
+
+Ba hệ quả của cách làm này cần được nêu cùng kết quả. Thứ nhất, DDI không bao giờ được chấm: hiệu ứng của nó chỉ đo gián tiếp qua các tập đánh giá ở Mục 4.11.2. Thứ hai, bản phát hành của DDI không có mã bệnh nhân, nên mỗi ảnh được coi là một nhóm riêng khi chia dữ liệu — chấp nhận được chỉ vì DDI không bao giờ xuất hiện ở tập validation hay tập test. Thứ ba, DDI đổi cùng lúc tông da của dữ liệu huấn luyện, kiểu ảnh lâm sàng và số ca dương, nên kết quả không cho biết phần cải thiện nào đến từ yếu tố nào.
 
 ## 3.3 Chiến lược chia dữ liệu chống rò rỉ
 
@@ -1367,7 +1439,7 @@ Nhiệm vụ của khối này là chuyển ảnh tổn thương thành một **
 
 Mô hình không khởi đầu từ trọng số ngẫu nhiên mà từ trọng số đã học trên ImageNet, rồi được huấn luyện tiếp **toàn bộ** trên dữ liệu da liễu, không tầng nào bị giữ nguyên. Ảnh đời thường dạy cho mô hình cách nhìn hình khối và kết cấu nói chung, nhưng chưa nói được gì về bất đối xứng hay biến thiên màu bên trong một tổn thương — ImageNet là điểm xuất phát chứ không phải đích đến. Việc này khác với đóng băng teacher ở giai đoạn chưng cất, vốn thuộc về hàm mất mát (Mục 3.5). *Stochastic depth* để sẵn nhưng không bật ở lượt chạy nào, vì Mục 4.2 cho thấy cấu hình hiện tại chưa cần đến nó.
 
-Còn một chi tiết nữa quyết định thí nghiệm có lặp lại được hay không, và nó nằm ở chỗ mô hình xuất phát từ đâu. Cùng một kiến trúc thường có vài bộ trọng số ImageNet, huấn luyện theo những công thức khác nhau, và bộ được lấy làm mặc định có thể thay đổi khi thư viện `timm` [52] lên phiên bản mới. Luận văn vì vậy **nêu đích danh** bộ trọng số dùng cho từng mô hình thay vì để thư viện tự quyết. Nếu để mặc định, cùng một lệnh chạy lại sau vài tháng có thể khởi đầu từ một điểm khác mà không có gì báo hiệu, và những con số thu được khi ấy không còn đặt cạnh nhau để so sánh được nữa.
+Còn một chi tiết nữa quyết định thí nghiệm có lặp lại được hay không, và nó nằm ở chỗ mô hình xuất phát từ đâu. Cùng một kiến trúc thường có vài bộ trọng số ImageNet, huấn luyện theo những công thức khác nhau, và bộ được lấy làm mặc định có thể thay đổi khi thư viện `timm` [56] lên phiên bản mới. Luận văn vì vậy **nêu đích danh** bộ trọng số dùng cho từng mô hình thay vì để thư viện tự quyết. Nếu để mặc định, cùng một lệnh chạy lại sau vài tháng có thể khởi đầu từ một điểm khác mà không có gì báo hiệu, và những con số thu được khi ấy không còn đặt cạnh nhau để so sánh được nữa.
 
 ### 3.4.3 Số chiều đặc trưng
 
@@ -1379,7 +1451,7 @@ Nguyên tắc thay thế là **đo thay vì hỏi**. Một ảnh giả được 
 
 Đến cuối đường đi, vector đặc trưng phải được quy về một quyết định. Việc đó do **đầu phân loại** đảm nhiệm, và khối này giống hệt nhau ở cả bảy mô hình: một tầng dropout để hạn chế quá khớp, rồi một phép chiếu tuyến tính đưa cả vector về một con số. Tỉ lệ dropout là chỗ duy nhất còn khác nhau — cao hơn ở nhóm teacher (0,2–0,3), thấp hơn ở nhóm student (0,1–0,2) — theo đúng quan hệ giữa dung lượng mô hình và nguy cơ quá khớp: mô hình càng nhiều tham số thì càng dễ học thuộc dữ liệu huấn luyện.
 
-Con số đi ra là **một logit duy nhất, không phải hai**. Đây là một kết quả chuẩn của lý thuyết tầng đầu ra [12]: với đầu ra hai chiều $(z_0, z_1)$ đi qua softmax, xác suất của lớp dương là
+Con số đi ra là **một logit duy nhất, không phải hai**. Đây là một kết quả chuẩn của lý thuyết tầng đầu ra [15]: với đầu ra hai chiều $(z_0, z_1)$ đi qua softmax, xác suất của lớp dương là
 
 $$p_1 \;=\; \frac{e^{z_1}}{e^{z_0} + e^{z_1}} \;=\; \frac{1}{1 + e^{-(z_1 - z_0)}} \;=\; \sigma(z_1 - z_0) \tag{3.9}$$
 
@@ -1393,23 +1465,23 @@ Mô hình dừng lại ở logit, tức một con số chưa phải xác suất.
 
 $$\mathcal{L} \;=\; -\Big[\, y \log \sigma(z) \;+\; (1-y) \log\big(1 - \sigma(z)\big) \Big] \tag{3.10}$$
 
-Với $z$ đủ lớn, $\sigma(z)$ làm tròn về đúng $1{,}0$ trong dấu phẩy động, và $\log(1 - 1{,}0) = -\infty$. Dạng thực sự được dùng — cũng là dạng thư viện huấn luyện cài đặt sẵn [36] — gộp cả hai bước rồi rút gọn thành
+Với $z$ đủ lớn, $\sigma(z)$ làm tròn về đúng $1{,}0$ trong dấu phẩy động, và $\log(1 - 1{,}0) = -\infty$. Dạng thực sự được dùng — cũng là dạng thư viện huấn luyện cài đặt sẵn [41] — gộp cả hai bước rồi rút gọn thành
 
 $$\mathcal{L} \;=\; \max(z, 0) \;-\; z\,y \;+\; \log\big(1 + e^{-|z|}\big) \tag{3.11}$$
 
-Hai dạng bằng nhau về mặt toán học, nhưng dạng sau **không bao giờ dựng ra $\sigma(z)$** nên không có giá trị trung gian nào bị bão hoà; số hạng mũ cũng luôn có số mũ âm nên không tràn. Đây là cách xử lý tràn số tiêu chuẩn cho họ hàm mũ–logarit [12, §4.1].
+Hai dạng bằng nhau về mặt toán học, nhưng dạng sau **không bao giờ dựng ra $\sigma(z)$** nên không có giá trị trung gian nào bị bão hoà; số hạng mũ cũng luôn có số mũ âm nên không tràn. Đây là cách xử lý tràn số tiêu chuẩn cho họ hàm mũ–logarit [15, §4.1].
 
 Ranh giới ấy còn quyết định cách kiểm tra mô hình sau khi đưa lên điện thoại. Tệp `.pte` xuất ra cho điện thoại cũng dừng ở logit, nên **cổng kiểm tra tương đương** ở Mục 3.11.2 so sánh trên đúng thang đó. Đây là điều bắt buộc chứ không phải một lựa chọn thuận tiện, và lý do định lượng được bằng đạo hàm của chính hàm sigmoid:
 
 $$\sigma'(z) \;=\; \sigma(z)\big[1 - \sigma(z)\big] \;\le\; \tfrac{1}{4}, \qquad \sigma'(z) \sim e^{-|z|} \ \text{ khi } |z| \to \infty \tag{3.12}$$
 
-Độ dốc này — mức thay đổi của xác suất ứng với một đơn vị logit — **suy giảm theo hàm mũ** khi $|z|$ lớn. Ở vùng $|z| \gtrsim 17$, phần dư $1 - \sigma(z)$ đã nhỏ hơn bước phân giải của dấu phẩy động 32-bit quanh $1{,}0$ [19], nên hai logit chênh nhau bao nhiêu tuỳ ý trong vùng đó vẫn cho **cùng một** xác suất. Đối chiếu trên xác suất vì thế sẽ **bỏ lọt đúng loại lỗi mà cổng kiểm tra tương đương sinh ra để bắt** — chính là loại lỗi đã xảy ra một lần trong dự án, khi logit sai lệch tới 13 bậc độ lớn.
+Độ dốc này — mức thay đổi của xác suất ứng với một đơn vị logit — **suy giảm theo hàm mũ** khi $|z|$ lớn. Ở vùng $|z| \gtrsim 17$, phần dư $1 - \sigma(z)$ đã nhỏ hơn bước phân giải của dấu phẩy động 32-bit quanh $1{,}0$ [22], nên hai logit chênh nhau bao nhiêu tuỳ ý trong vùng đó vẫn cho **cùng một** xác suất. Đối chiếu trên xác suất vì thế sẽ **bỏ lọt đúng loại lỗi mà cổng kiểm tra tương đương sinh ra để bắt** — chính là loại lỗi đã xảy ra một lần trong dự án, khi logit sai lệch tới 13 bậc độ lớn.
 
 ![Hình 3.3 — Cùng một sai lệch logit, hai hệ quả trái ngược](../report_phase_1/figures/sigmoid_saturation.png)
 
 **Hình 3.3.** Vì sao cổng kiểm tra tương đương so sánh trên logit chứ không trên xác suất. Cùng một sai lệch $\Delta z = 2$: ở giữa đường cong nó đổi xác suất tới $0{,}462$, ở vùng bão hoà nó chỉ đổi $1{,}8 \times 10^{-9}$ và biến mất hoàn toàn sau khi làm tròn về float32. Tệp nguồn: `report_phase_1/figures/sigmoid_saturation.svg` (bản báo cáo) và `report_phase_1/figures/sigmoid_saturation_slide.svg` (bản 16:9).
 
-Cuối cùng, vì sigmoid đơn điệu tăng nên nó không làm đổi thứ tự các mẫu. AUPRC, pAUC và AUC cho cùng một giá trị dù tính trên logit hay trên xác suất — nhờ đó việc hiệu chỉnh lại xác suất hiển thị ở Mục 3.11 có thể làm hoàn toàn về sau mà **không đụng tới con số nào ở Chương 4**.
+Cuối cùng, vì sigmoid đơn điệu tăng nên nó không làm đổi thứ tự các mẫu. AUPRC, pAUC và AUC cho cùng một giá trị dù tính trên logit hay trên xác suất — nhờ đó ứng dụng có thể ra quyết định bằng cách so trực tiếp đầu ra của mô hình với một ngưỡng (Mục 3.11.4) mà **không đụng tới con số nào ở Chương 4**.
 
 ### 3.4.6 Một cách dựng cho bảy mô hình
 
@@ -1439,13 +1511,13 @@ Chuẩn đầu ra chung còn khiến teacher và student **thay thế được c
 
 Teacher học hoàn toàn từ nhãn thật, không có thành phần nhãn mềm nào. Khó khăn nằm ở tỉ lệ hiện mắc 0,39%: với một hàm entropy chéo thông thường, mỗi mẫu lành tính dễ chỉ đóng góp một lượng gradient rất nhỏ, nhưng số lượng của chúng lớn tới mức tổng đóng góp vẫn lấn át toàn bộ nhóm ác tính. Mô hình khi ấy học được cách nói "lành tính" rất thành thạo mà không học được gì đáng kể về thứ cần phát hiện.
 
-**Focal Loss** [25] can thiệp đúng vào chỗ đó. Nó nhân thêm một hệ số làm tắt dần đóng góp của những mẫu đã được phân loại tốt, nên gradient tự động dồn về các mẫu còn khó (dạng đầy đủ ở Mục 2.4). Luận văn dùng $\gamma = 2{,}0$ và $\alpha = 0{,}25$.
+**Focal Loss** [30] can thiệp đúng vào chỗ đó. Nó nhân thêm một hệ số làm tắt dần đóng góp của những mẫu đã được phân loại tốt, nên gradient tự động dồn về các mẫu còn khó (dạng đầy đủ ở Mục 2.4). Luận văn dùng $\gamma = 2{,}0$ và $\alpha = 0{,}25$.
 
-Riêng giá trị $\alpha = 0{,}25$ dễ bị đọc sai nên cần nói rõ. Đây **không phải** tỉ lệ lớp, cũng không phải $1 -$ prevalence. Đó là giá trị gốc trong bài báo RetinaNet [25], và điều đáng chú ý là nó **giảm** trọng số của lớp dương chứ không tăng: nhiệm vụ tập trung vào mẫu hiếm được giao cho $\gamma$, còn $\alpha$ chỉ tinh chỉnh thêm. Quan trọng hơn, trong luận văn này $\alpha$ không tác động một mình — nó nhân chồng lên bộ lấy mẫu giảm 1:5 ở Mục 3.6, vốn đã nâng tỉ lệ ác tính trong mỗi lô từ 0,39% lên khoảng 16,7%. Trọng số thực tế mà lớp dương nhận được là **tích của hai cơ chế**, nên đọc riêng con số $0{,}25$ rồi kết luận rằng thiết kế đang hạ thấp lớp ác tính là hiểu sai.
+Riêng giá trị $\alpha = 0{,}25$ dễ bị đọc sai nên cần nói rõ. Đây **không phải** tỉ lệ lớp, cũng không phải $1 -$ prevalence. Đó là giá trị gốc trong bài báo RetinaNet [30], và điều đáng chú ý là nó **giảm** trọng số của lớp dương chứ không tăng: nhiệm vụ tập trung vào mẫu hiếm được giao cho $\gamma$, còn $\alpha$ chỉ tinh chỉnh thêm. Quan trọng hơn, trong luận văn này $\alpha$ không tác động một mình — nó nhân chồng lên bộ lấy mẫu giảm 1:5 ở Mục 3.6, vốn đã nâng tỉ lệ ác tính trong mỗi lô từ 0,39% lên khoảng 16,7%. Trọng số thực tế mà lớp dương nhận được là **tích của hai cơ chế**, nên đọc riêng con số $0{,}25$ rồi kết luận rằng thiết kế đang hạ thấp lớp ác tính là hiểu sai.
 
 ### 3.5.2 Hàm mất mát chưng cất
 
-Ở giai đoạn hai, student nhận cùng lúc hai nguồn tín hiệu: nhãn thật của dữ liệu, và đánh giá của teacher về chính tấm ảnh đó. Hàm mất mát là tổ hợp có trọng số của hai nguồn ấy — dạng nhị phân của công thức chưng cất gốc [17], với thành phần nhãn cứng thay bằng Focal Loss [25]:
+Ở giai đoạn hai, student nhận cùng lúc hai nguồn tín hiệu: nhãn thật của dữ liệu, và đánh giá của teacher về chính tấm ảnh đó. Hàm mất mát là tổ hợp có trọng số của hai nguồn ấy — dạng nhị phân của công thức chưng cất gốc [20], với thành phần nhãn cứng thay bằng Focal Loss [30]:
 
 $$\mathcal{L}_{\text{total}} \;=\; \alpha\,\mathcal{L}_{\text{hard}} \;+\; (1 - \alpha)\,T^2\,\mathcal{L}_{\text{soft}} \tag{3.13}$$
 
@@ -1465,13 +1537,13 @@ Hai siêu tham số $T$ và $\alpha$ được **cố định từ đầu và gi�
 
 ### 3.5.3 Số hạng mềm
 
-Số hạng mềm là nơi tri thức của teacher thực sự đi vào student, và hai chi tiết của nó cần được nói rõ. Dạng hàm thoạt nhìn khác công thức gốc: Hinton [17] đo chênh lệch giữa hai phân phối softmax bằng **độ đo KL**, còn ở đây là entropy chéo nhị phân. Khác biệt này chỉ là hình thức. Với một logit, phân phối của teacher là một biến Bernoulli tham số $\tilde{y}$, của student là Bernoulli tham số $\tilde{p} = \sigma(z_s/T)$, và khai triển KL giữa hai biến Bernoulli cho:
+Số hạng mềm là nơi tri thức của teacher thực sự đi vào student, và hai chi tiết của nó cần được nói rõ. Dạng hàm thoạt nhìn khác công thức gốc: Hinton [20] đo chênh lệch giữa hai phân phối softmax bằng **độ đo KL**, còn ở đây là entropy chéo nhị phân. Khác biệt này chỉ là hình thức. Với một logit, phân phối của teacher là một biến Bernoulli tham số $\tilde{y}$, của student là Bernoulli tham số $\tilde{p} = \sigma(z_s/T)$, và khai triển KL giữa hai biến Bernoulli cho:
 
 $$\mathrm{KL}\big(\tilde{y} \,\big\|\, \tilde{p}\big) \;=\; \underbrace{-\big[\tilde{y}\log\tilde{p} + (1-\tilde{y})\log(1-\tilde{p})\big]}_{\text{entropy chéo nhị phân}} \;-\; \underbrace{H(\tilde{y})}_{\text{không chứa tham số student}} \tag{3.15}$$
 
 Entropy $H(\tilde{y})$ của mục tiêu mềm là hằng số đối với mọi tham số của student, vì teacher đóng băng, nên nó triệt tiêu khi lấy đạo hàm. Cực tiểu hoá entropy chéo cho **đúng một gradient** với cực tiểu hoá KL: dùng BCE ở đây là dạng nhị phân của công thức gốc, không phải một biến thể.
 
-Nhiệt độ $T$ thì có vai trò thực chất hơn nhiều. Teacher hiếm khi lưỡng lự: với phần lớn ảnh lành tính, $\sigma(z_t)$ sát 0 tới mức mục tiêu mềm gần như trùng khớp nhãn cứng, và khi ấy KD không còn gì để truyền. Chia cho $T$ kéo các giá trị đó về gần $0{,}5$ hơn, nhờ vậy chênh lệch độ tự tin giữa các mẫu — thứ duy nhất teacher truyền được trong bài toán một logit (Mục 2.3.3) — mới đủ biên độ tác động lên gradient. Hệ số $T^2$ đi kèm thì có lý do định lượng: phép chia $z_s/T$ đưa một thừa số $1/T$ vào đạo hàm của số hạng mềm, mục tiêu mềm cũng phẳng đi theo $1/T$, nên độ lớn gradient của nhánh mềm suy giảm theo $1/T^2$ [17]. Không nhân bù thì tăng $T$ sẽ âm thầm làm nhẹ nhánh mềm, và tỉ lệ $\alpha : (1-\alpha)$ ghi trong thiết kế không còn phản ánh tỉ lệ đóng góp thật. Nhân lại $T^2$ giữ cho ý nghĩa của $\alpha$ độc lập với $T$ — điều kiện để hai siêu tham số này được chọn tách rời nhau.
+Nhiệt độ $T$ thì có vai trò thực chất hơn nhiều. Teacher hiếm khi lưỡng lự: với phần lớn ảnh lành tính, $\sigma(z_t)$ sát 0 tới mức mục tiêu mềm gần như trùng khớp nhãn cứng, và khi ấy KD không còn gì để truyền. Chia cho $T$ kéo các giá trị đó về gần $0{,}5$ hơn, nhờ vậy chênh lệch độ tự tin giữa các mẫu — thứ duy nhất teacher truyền được trong bài toán một logit (Mục 2.3.3) — mới đủ biên độ tác động lên gradient. Hệ số $T^2$ đi kèm thì có lý do định lượng: phép chia $z_s/T$ đưa một thừa số $1/T$ vào đạo hàm của số hạng mềm, mục tiêu mềm cũng phẳng đi theo $1/T$, nên độ lớn gradient của nhánh mềm suy giảm theo $1/T^2$ [20]. Không nhân bù thì tăng $T$ sẽ âm thầm làm nhẹ nhánh mềm, và tỉ lệ $\alpha : (1-\alpha)$ ghi trong thiết kế không còn phản ánh tỉ lệ đóng góp thật. Nhân lại $T^2$ giữ cho ý nghĩa của $\alpha$ độc lập với $T$ — điều kiện để hai siêu tham số này được chọn tách rời nhau.
 
 ## 3.6 Chiến lược xử lý mất cân bằng lớp
 
@@ -1511,11 +1583,23 @@ Cái giá đi kèm là mô hình được huấn luyện dưới một tỉ lệ
 
 $$\pi_{\text{huấn luyện}} = \frac{1}{1 + r} = 16{,}67\% \tag{3.18}$$
 
-cao hơn tỉ lệ thật khoảng **42,9 lần**. Hệ quả trực tiếp là xác suất mô hình xuất ra bị lệch lên một cách có hệ thống — không phải sai sót mà là hệ quả toán học của việc đổi prior. Khả năng **xếp hạng** không bị ảnh hưởng, nên mọi chỉ số ở Chương 4 vẫn đọc được như thường; nhưng con số "% nguy cơ" hiển thị cho người dùng thì phải được hiệu chỉnh lại, và đó chính là lý do tồn tại của Mục 3.11.
+cao hơn tỉ lệ thật khoảng **42,9 lần**. Hệ quả trực tiếp là xác suất mô hình xuất ra bị lệch lên một cách có hệ thống — không phải sai sót mà là hệ quả toán học của việc đổi prior. Khả năng **xếp hạng** không bị ảnh hưởng, nên mọi chỉ số ở Chương 4 vẫn đọc được như thường; nhưng chính vì vậy xác suất thô không được hiển thị cho người dùng như một con số "% nguy cơ": ứng dụng chỉ dùng nó để so với ngưỡng quyết định và chỉ hiển thị kết luận nhị phân (Mục 3.11.4).
 
 Cũng cần nhắc lại rằng trọng số mà lớp dương thực nhận là **tích** của hai cơ chế: bộ lấy mẫu nâng tỉ lệ lên 16,67%, rồi $\alpha = 0{,}25$ của Focal Loss nhân thêm một lần nữa (Mục 3.5.1). Đọc riêng một trong hai con số sẽ cho kết luận sai về mức độ ưu tiên thực tế dành cho lớp ác tính.
 
 Tỉ lệ $r = 5$ được lấy từ đề cương và giữ nguyên cho mọi lượt chạy, nên bản thân nó cũng là một lựa chọn cần kiểm chứng chứ không phải một hằng số hiển nhiên. Mục 4.6.2 kiểm chứng bằng một thí nghiệm loại trừ trên ba mức 1:3, 1:5 và 1:10.
+
+### 3.6.4 Lấy mẫu phân tầng theo nguồn
+
+Bộ lấy mẫu ở Mục 3.6.2 rút ảnh lành tính từ toàn bộ pool mà không phân biệt nguồn. Khi pool gồm hàng trăm nghìn ảnh ISIC và chỉ vài trăm ảnh lành tính từ các nguồn nhỏ, phép rút đều ấy khiến ảnh lành tính của các nguồn nhỏ gần như vắng mặt ở mỗi epoch — trong khi đó lại là loại ảnh gần với ảnh mà ứng dụng sẽ gặp. Trên bộ chia dựng lại có DDI, luận văn vì vậy dùng một biến thể **phân tầng theo nguồn**: tổng số ảnh lành tính mỗi epoch vẫn là $r \cdot N_{\text{ác}}$, nhưng mỗi nguồn thiểu số $s$ — PAD-UFES-20 và DDI — được rút
+
+$$n_{\text{lành}}^{(s)} = \min\big(r \cdot N_{\text{ác}}^{(s)},\ N_{\text{lành}}^{(s)}\big), \qquad r = 5 \tag{3.19}$$
+
+ảnh lành tính của chính nó, phần còn lại lấy từ ISIC.
+
+Ở fold 0, phép rút đều cho trung bình chỉ 17,2 ảnh lành tính PAD-UFES-20 và 10,3 ảnh lành tính DDI mỗi epoch. Với biến thể phân tầng, toàn bộ 809 ảnh lành tính PAD-UFES-20 và 485 ảnh lành tính DDI có mặt ở mọi epoch, vì cả hai nguồn đều có ít ảnh lành tính hơn năm lần số ca ác tính của chính nó (669 và 171 ca). Số ảnh lành tính ISIC mỗi epoch giảm tương ứng từ trung bình 5.357,5 xuống 4.091, nên tổng vẫn là 5.385 ảnh, đúng bằng năm lần 1.077 ca ác tính.
+
+Biến thể này được kiểm chứng bằng một phép so ghép cặp với bộ lấy mẫu cũ, có tiêu chí đạt được đăng ký trước (Mục 4.11.2). Nó chỉ tác động lên tập huấn luyện; tập validation và tập test vẫn giữ phân phối thật như ở Mục 3.6.3.
 
 ## 3.7 Quy trình huấn luyện và nhánh đối chứng
 
@@ -1529,15 +1613,17 @@ Teacher được huấn luyện trước, độc lập, như một bài toán ph
 
 Nhánh đối chứng được định nghĩa bằng **sự vắng mặt** của teacher, chứ không phải bằng việc vô hiệu hoá ảnh hưởng của teacher. Phân biệt này không phải chuyện chữ nghĩa. Một teacher vẫn hiện diện trong quy trình — dù phần đóng góp của nó vào hàm mất mát đã bị đặt về 0 — vẫn chiếm tài nguyên và vẫn tham gia vào từng bước huấn luyện, và khi đó hai nhánh đã khác nhau ở nhiều hơn một điểm. Loại bỏ teacher hẳn đưa nhánh đối chứng trở về đúng quy trình của bước một, chỉ khác ở chỗ mô hình được huấn luyện là một kiến trúc student.
 
-Ngoài hàm mất mát, hai nhánh chia sẻ mọi thứ. Chúng đọc cùng một fold, xuất phát từ cùng một hạt giống ngẫu nhiên và chạy ở chế độ tính toán tất định, nên chạy lại một lượt sẽ cho đúng kết quả cũ. Những thành phần huấn luyện còn lại — bộ tối ưu AdamW [27], lịch trình học suy giảm dạng cosin có giai đoạn khởi động [14, 26], phép cắt gradient [35] — đều là lựa chọn chuẩn của lĩnh vực chứ không phải đóng góp của luận văn, và được giữ nguyên ở cả hai phía. Nhờ vậy hiệu số $\Delta = \text{metric}_{\text{KD}} - \text{metric}_{\text{baseline}}$ quy được về đúng một nguyên nhân, và đó là nền của toàn bộ phần trả lời câu hỏi nghiên cứu ở Chương 4.
+Ngoài hàm mất mát, hai nhánh chia sẻ mọi thứ. Chúng đọc cùng một fold, xuất phát từ cùng một hạt giống ngẫu nhiên và chạy ở chế độ tính toán tất định, nên chạy lại một lượt sẽ cho đúng kết quả cũ. Những thành phần huấn luyện còn lại — bộ tối ưu AdamW [32], lịch trình học suy giảm dạng cosin có giai đoạn khởi động [17, 31], phép cắt gradient [40] — đều là lựa chọn chuẩn của lĩnh vực chứ không phải đóng góp của luận văn, và được giữ nguyên ở cả hai phía. Nhờ vậy hiệu số $\Delta = \text{metric}_{\text{KD}} - \text{metric}_{\text{baseline}}$ quy được về đúng một nguyên nhân, và đó là nền của toàn bộ phần trả lời câu hỏi nghiên cứu ở Chương 4.
 
-Đơn vị so sánh là một **cặp**: lượt chưng cất từ một teacher sang một student, ghép với lượt đối chứng của đúng student đó, và ghép **theo từng fold** chứ không ghép hai giá trị trung bình — cách so sánh mà Dietterich [6] chỉ ra là điều kiện để chênh lệch giữa hai thuật toán không bị lẫn với dao động của phép chia dữ liệu. Ba teacher và bốn student cho mười hai cặp, nhưng chỉ cần **bốn** nhánh đối chứng: nhánh đối chứng phụ thuộc kiến trúc student chứ không phụ thuộc teacher, nên mỗi nhánh làm mốc so chung cho ba lượt chưng cất từ ba teacher khác nhau.
+Đơn vị so sánh là một **cặp**: lượt chưng cất từ một teacher sang một student, ghép với lượt đối chứng của đúng student đó, và ghép **theo từng fold** chứ không ghép hai giá trị trung bình — cách so sánh mà Dietterich [8] chỉ ra là điều kiện để chênh lệch giữa hai thuật toán không bị lẫn với dao động của phép chia dữ liệu. Ba teacher và bốn student cho mười hai cặp, nhưng chỉ cần **bốn** nhánh đối chứng: nhánh đối chứng phụ thuộc kiến trúc student chứ không phụ thuộc teacher, nên mỗi nhánh làm mốc so chung cho ba lượt chưng cất từ ba teacher khác nhau.
 
-Trong quy trình có một chỗ cố ý không đối xứng: thời điểm **dừng** huấn luyện và thời điểm **chọn ra** mô hình tốt nhất không căn cứ trên cùng một đại lượng. Việc dừng dựa vào giá trị hàm mất mát trên tập validation, còn việc chọn mô hình dựa vào pAUC. Dừng sớm vốn hoạt động như một dạng chính quy hoá [12, §7.8], nhưng hiệu quả của nó phụ thuộc rất nhiều vào đại lượng được theo dõi [38]. Hàm mất mát biến thiên đều đặn qua các vòng huấn luyện; pAUC thì không, vì nó chỉ dựa trên một số rất ít mẫu ác tính trong tập validation nên có thể nhảy vọt chỉ vì vài mẫu đổi thứ hạng. Lấy một đại lượng dao động như vậy làm căn cứ dừng sẽ khiến quá trình huấn luyện kết thúc ở một vòng may mắn thay vì ở đúng lúc mô hình bắt đầu quá khớp.
+Trong quy trình có một chỗ cố ý không đối xứng: thời điểm **dừng** huấn luyện và thời điểm **chọn ra** mô hình tốt nhất không căn cứ trên cùng một đại lượng. Việc dừng dựa vào giá trị hàm mất mát trên tập validation, còn việc chọn mô hình dựa vào pAUC. Dừng sớm vốn hoạt động như một dạng chính quy hoá [15, §7.8], nhưng hiệu quả của nó phụ thuộc rất nhiều vào đại lượng được theo dõi [43]. Hàm mất mát biến thiên đều đặn qua các vòng huấn luyện; pAUC thì không, vì nó chỉ dựa trên một số rất ít mẫu ác tính trong tập validation nên có thể nhảy vọt chỉ vì vài mẫu đổi thứ hạng. Lấy một đại lượng dao động như vậy làm căn cứ dừng sẽ khiến quá trình huấn luyện kết thúc ở một vòng may mắn thay vì ở đúng lúc mô hình bắt đầu quá khớp.
 
 Thiết kế trên được nhân lên thành **140 lượt huấn luyện**. Tám mươi lượt phục vụ phép so chưng cất với đối chứng: mỗi kiến trúc student được huấn luyện một lần với từng teacher và một lần không có teacher nào, toàn bộ lặp lại trên năm fold. Sáu mươi lượt còn lại thuộc về các teacher và các thí nghiệm loại trừ ở Mục 3.8. Mục 4.1 báo cáo hiện trạng hoàn tất của từng nhóm.
 
 Giới hạn của thiết kế này cần nói rõ. Nó đo tác động của chưng cất **dưới đúng cấu hình $T$ và $\alpha$ đã cố định ở Mục 3.5.2**, không phải tác động của chưng cất nói chung: một bộ tham số khác có thể cho hiệu số khác. Đổi lại, vì cấu hình ấy giống nhau ở cả mười hai cặp nên các hiệu số **so được với nhau**, và đó mới là điều luận văn thực sự cần: không phải một con số tuyệt đối cho "chưng cất cải thiện được bao nhiêu", mà là cơ sở để nói teacher nào dạy tốt hơn và chưng cất có hiệu quả nhất quán trên mọi kiến trúc student hay không.
+
+Trên bộ chia dựng lại, quy trình giữ nguyên với một bổ sung ở khâu chọn checkpoint. Bên cạnh checkpoint chính chọn theo pAUC trên tập validation, các lượt huấn luyện student dùng bộ lấy mẫu phân tầng theo nguồn lưu thêm một checkpoint theo AUPRC trên tập validation — chỉ số chính của luận văn ở prevalence thấp (Mục 2.5.2) — và chính checkpoint này được đem đi triển khai. Thời điểm dừng huấn luyện vẫn căn cứ trên hàm mất mát trên tập validation.
 
 ## 3.8 Kiểm chứng hai lựa chọn dữ liệu
 
@@ -1555,7 +1641,7 @@ Riêng ở tầng student còn một ràng buộc nữa: thí nghiệm bắt bu�
 
 Thí nghiệm thứ hai giữ cố định một cặp chưng cất — EfficientNetV2-M dạy MobileNetV4-Conv-Medium — cùng hạt giống, fold và siêu tham số, rồi chỉ thay giá trị $r$ trong công thức lấy mẫu ở Mục 3.6.2, thêm hai mức 1:3 và 1:10 bên cạnh mức 1:5 đã có. Ở đây không cần né nhánh chưng cất như thí nghiệm trước, bởi teacher giống hệt nhau ở cả ba mức nên không mang lợi thế riêng cho mức nào.
 
-Việc kiểm chứng này cần thiết vì văn liệu không đứng về phía lựa chọn của luận văn. Khảo sát hệ thống của Buda và cộng sự trên các mạng tích chập kết luận rằng **lấy mẫu tăng** chiếm ưu thế ở gần như mọi kịch bản họ thử [2], trong khi luận văn đi hướng ngược lại vì chi phí tính toán. Cũng chính chi phí ấy loại nốt nhánh thứ tư đáng lẽ nên có, là nhánh tắt hẳn bộ lấy mẫu: bỏ phép lấy mẫu giảm sẽ đưa kích thước mỗi epoch từ 5.790 lên 248.161 ảnh, gấp 42,9 lần. Cần ghi rõ rằng nhánh này bị loại *vì chi phí* chứ không phải *đã thử và thất bại*, bởi chỉ trường hợp thứ hai mới là bằng chứng chống lại việc bỏ bộ lấy mẫu.
+Việc kiểm chứng này cần thiết vì văn liệu không đứng về phía lựa chọn của luận văn. Khảo sát hệ thống của Buda và cộng sự trên các mạng tích chập kết luận rằng **lấy mẫu tăng** chiếm ưu thế ở gần như mọi kịch bản họ thử [3], trong khi luận văn đi hướng ngược lại vì chi phí tính toán. Cũng chính chi phí ấy loại nốt nhánh thứ tư đáng lẽ nên có, là nhánh tắt hẳn bộ lấy mẫu: bỏ phép lấy mẫu giảm sẽ đưa kích thước mỗi epoch từ 5.790 lên 248.161 ảnh, gấp 42,9 lần. Cần ghi rõ rằng nhánh này bị loại *vì chi phí* chứ không phải *đã thử và thất bại*, bởi chỉ trường hợp thứ hai mới là bằng chứng chống lại việc bỏ bộ lấy mẫu.
 
 ## 3.9 Các độ đo đánh giá
 
@@ -1570,6 +1656,8 @@ Khi huấn luyện kết thúc, checkpoint tốt nhất được nạp lại và
 | Xếp hạng | AUC-ROC | ↑ | Tham khảo; bão hoà ở bài toán này |
 | Ngưỡng | Sensitivity, Specificity, F1 | ↑ | Ở ngưỡng Youden's J |
 | Vận hành | Sens@90%Spec, Sens@95%Spec | ↑ | Số triển khai trung thực nhất |
+| Vận hành | Sens@80%Spec | ↑ | Đặt cạnh độ nhạy của bác sĩ ở cùng độ đặc hiệu (Mục 3.12); chỉ có ở các lượt chạy trên bộ chia dựng lại |
+| Ngưỡng ứng dụng | Sensitivity, Specificity tại ngưỡng đóng băng | ↑ | Trụ III của bộ tiêu chí (Mục 3.11.4 và 3.12) |
 | Đếm thô | TP, TN | ↑ | Cho phép quy ra số ca bệnh |
 | Đếm thô | FP, FN | ↓ | Báo động nhầm và ca bỏ sót |
 | Bối cảnh | prevalence | — | Đường cơ sở ngẫu nhiên của AUPRC |
@@ -1577,6 +1665,8 @@ Khi huấn luyện kết thúc, checkpoint tốt nhất được nạp lại và
 Quy ước ↑/↓ này được dùng lại ở mọi bảng kết quả của Chương 4. Ngoài các độ đo chất lượng ở trên, chương ấy còn báo cáo các đại lượng triển khai — số tham số, FLOPs, dung lượng tệp, độ trễ, bộ nhớ đỉnh, sai lệch của cổng kiểm tra tương đương — và tất cả đều theo chiều ↓, còn tỉ lệ nén thì theo chiều ↑.
 
 Các nhóm này trả lời những câu hỏi khác nhau nên không thay thế được cho nhau. Nhóm xếp hạng cho biết mô hình có sắp đúng thứ tự rủi ro giữa các ca hay không, và câu trả lời ấy độc lập với mọi ngưỡng. Nhóm ngưỡng cùng nhóm vận hành cho biết điều gì xảy ra khi buộc phải ra một quyết định nhị phân, ở hai cách chọn ngưỡng khác nhau. Nhóm đếm thô cho phép quy mọi tỉ lệ trở lại thành số ca bệnh cụ thể, điều mà một chỉ số chuẩn hoá không làm được.
+
+Trên bộ chia dựng lại, độ nhạy và độ đặc hiệu dùng cho phán quyết luôn được tính tại ngưỡng ứng dụng chọn trên tập validation; ngưỡng Youden chọn trên chính tập test chỉ dùng để mô tả, vì nó lạc quan.
 
 Kết quả năm fold được tổng hợp thành trung bình kèm độ lệch chuẩn, có ghi cả giá trị nhỏ nhất, lớn nhất và giá trị từng fold. Mọi khẳng định trong luận văn đều trích trung bình qua năm fold; không khẳng định nào dựa trên một fold đơn lẻ.
 
@@ -1586,13 +1676,17 @@ Kết quả năm fold được tổng hợp thành trung bình kèm độ lệch
 
 Năm fold ở đây không phải năm mẫu độc lập rút từ phân phối của tập test. Chúng là năm mô hình khác nhau cùng được chấm trên một tập 62.040 hàng. Độ lệch chuẩn giữa các fold vì thế đo mức bất đồng giữa các mô hình chứ không đo sai số lấy mẫu của tập test — mà chính đại lượng thứ hai mới là thứ kiểm định t giả định. Thêm vào đó, với $n = 5$ thì lực thống kê gần như không còn.
 
-Phương pháp thay thế là bootstrap [10], vốn ước lượng độ bất định bằng cách lấy mẫu lại chính dữ liệu đã quan sát nên không cần giả định gì về dạng phân phối. Mỗi lần lặp trong tổng số $B = 2000$ lần rút một bộ chỉ số hàng có hoàn lại từ 62.040 hàng của tập test, chấm mọi fold của cả hai nhánh so sánh trên đúng bộ chỉ số ấy, lấy trung bình qua năm fold cho từng nhánh rồi lấy hiệu $\Delta_b$ giữa chúng. Khoảng tin cậy 95% là phân vị 2,5% và 97,5% của phân phối $\{\Delta_b\}$ thu được.
+Phương pháp thay thế là bootstrap [13], vốn ước lượng độ bất định bằng cách lấy mẫu lại chính dữ liệu đã quan sát nên không cần giả định gì về dạng phân phối. Mỗi lần lặp trong tổng số $B = 2000$ lần rút một bộ chỉ số hàng có hoàn lại từ 62.040 hàng của tập test, chấm mọi fold của cả hai nhánh so sánh trên đúng bộ chỉ số ấy, lấy trung bình qua năm fold cho từng nhánh rồi lấy hiệu $\Delta_b$ giữa chúng. Khoảng tin cậy 95% là phân vị 2,5% và 97,5% của phân phối $\{\Delta_b\}$ thu được.
 
 Quy trình này có hai chỗ dễ làm sai, và cả hai đều từng suýt xảy ra trong luận văn. Chỗ thứ nhất là phạm vi rút mẫu: nếu nối kết quả của năm fold thành một bảng lớn rồi bootstrap trên đó, mỗi hàng test bị nhân bản năm lần và khoảng tin cậy hẹp lại một cách giả tạo, xấp xỉ $\sqrt{5}$ lần. Cách đúng là rút một bộ chỉ số duy nhất cho mỗi lần lặp, chấm mọi fold trên bộ ấy, rồi mới lấy trung bình.
 
 Chỗ còn lại là việc ghép cặp. Hai nhánh so sánh phải dùng chung bộ chỉ số ở mỗi lần lặp, bởi khoảng tin cậy không ghép cặp vứt bỏ tương quan giữa hai mô hình vốn được chấm trên cùng một dữ liệu, và do đó phóng đại độ bất định. Mục 4.10.2 ghi lại một trường hợp cạm bẫy này thực sự bật ra: hai khoảng tin cậy tính riêng cho từng nhánh chồng lấn nhau, nhưng khoảng tin cậy của hiệu số có ghép cặp lại loại trừ 0 dứt khoát — nghĩa là kết luận "hai mô hình tương đương" rút ra từ chỗ hai khoảng chồng nhau sẽ là kết luận sai.
 
 Còn một chi tiết nhỏ nhưng đủ sức làm lệch kết quả. Một lần rút có thể trúng phải tập chỉ chứa một lớp, và khi ấy các độ đo xếp hạng không xác định. Nhiều cài đặt phổ biến của pAUC và của độ nhạy tại độ đặc hiệu cố định trả về 0 trong tình huống đó thay vì báo không xác định; giá trị 0 giả ấy sẽ được tính vào phân phối bootstrap và kéo lệch cả khoảng tin cậy. Luận văn loại hẳn những lần rút như vậy khỏi phân phối thay vì chấm cho chúng điểm 0.
+
+Trên bộ chia dựng lại, cùng quy trình được áp dụng cho tập test 59.093 hàng, kèm ba mở rộng. Thứ nhất, khi so trong một nhóm con — ảnh PAD-UFES-20 hay ảnh ISIC, từng nhóm tông da — việc lấy mẫu lại được thực hiện bên trong chính nhóm đó. Thứ hai, chênh lệch giữa hai nhóm tông da của cùng một mô hình không ghép cặp được vì hai nhóm không chung ảnh nào; khoảng tin cậy của chênh lệch ấy được tính trực tiếp trên hiệu số qua các lần lặp. Thứ ba, phép so student với teacher trong điều kiện hiệu quả nén là một phép kiểm không kém hơn (Mục 2.5.5), đọc trên cận dưới của cùng khoảng tin cậy ghép cặp. Mỗi khoảng tin cậy là 95% riêng lẻ, chưa hiệu chỉnh cho số phép so sánh.
+
+Độ vững của chính phép đo được kiểm theo hai cách. Huấn luyện lại một fold với cùng seed đã làm AUPRC lệch 0,0053, vì chế độ tất định của cuDNN vẫn không tái lập được từng bit; từ đó luận văn quy ước chênh lệch AUPRC dưới khoảng 0,005 giữa hai mô hình đơn lẻ không được đọc là tín hiệu. Giả định các ảnh độc lập, mà khoảng Wilson ở Mục 2.5.5 cần, được kiểm gần đúng trên ứng viên phát hành và hai chỉ số không phụ thuộc ngưỡng — AUC và độ nhạy tại độ đặc hiệu 80% — bằng cách lấy mẫu lại theo bệnh nhân thay vì theo ảnh: khoảng tin cậy trên ảnh PAD-UFES-20 gần như không đổi, còn khoảng tin cậy AUC trên ảnh ISIC rộng thêm khoảng 17%, nên các khoảng tin cậy trên ảnh ISIC có thể hẹp hơn thực tế; AUPRC, pAUC và các hiệu số ghép cặp chưa được kiểm theo cách này.
 
 ## 3.11 Đưa mô hình lên thiết bị
 
@@ -1606,9 +1700,11 @@ Chặng cuối đưa mô hình ra khỏi máy chủ và đặt lên một chiế
 
 Kiểm định chéo sinh ra năm mô hình trong khi thứ cài được lên điện thoại chỉ là một tệp trọng số, nên đến bước này buộc phải chọn ra một fold, và cách chọn tự nhiên nhất — lấy fold điểm cao nhất — lại là cách làm hỏng chính con số triển khai. Năm fold chênh nhau một phần vì được huấn luyện trên năm tập con khác nhau, nhưng một phần khác chỉ vì tập test có vỏn vẹn 241 ca dương (Mục 3.3), ít đến mức vài ca đổi thứ hạng đã đủ làm AUPRC xê dịch; phần chênh lệch ấy là nhiễu, mà giá trị lớn nhất trong năm số đo nhiễu thì bao giờ cũng nằm cao hơn giá trị trung tâm thật. Nặng hơn nữa, lấy fold cao điểm nhất tức là dùng chính điểm trên tập test để quyết định công bố mô hình nào, khiến con số thu được thôi trả lời "mô hình tổng quát hoá tốt đến đâu" mà chuyển sang trả lời "trong năm lần thử trên đúng tập test này, lần may nhất được bao nhiêu". Thiên lệch đó không phải chuyện lý thuyết mà đo được: trên mười hai cặp chưng cất, fold tốt nhất vượt trung bình năm fold **+0,0263 AUPRC**, thấp nhất +0,0122 và cao nhất +0,0421, trong khi toàn bộ hiệu quả của chưng cất trong miền chỉ là **+0,0235** (Mục 4.3) — nghĩa là riêng thao tác chọn fold đẹp nhất đã tạo ra mức tăng lớn hơn chính hiệu ứng cần đo, và người đọc không còn cách nào phân biệt "chưng cất có tác dụng" với "gặp may ở một fold". Vì thế fold đem export là fold **trung vị**, tức fold gần trung bình năm fold nhất xét đồng thời trên AUPRC và pAUC — xét mỗi một chỉ số thì một fold có thể trung vị ở trục này mà nằm ở rìa trục kia — và luận văn chấp nhận nhường lại khoảng 0,026 AUPRC so với fold may nhất để đổi lấy một con số triển khai mà người đọc tin được, đúng theo nguyên tắc đã giữ ở mọi chỗ khác: không con số nào được chọn ra bằng chính tập test dùng để chấm nó.
 
+Trên bộ chia dựng lại, quy tắc chọn fold được siết thêm một bước: fold phát hành là fold có AUPRC trên **tập validation** trung vị trong năm fold, nên không con số nào của tập test tham gia vào việc chọn. Với mô hình phát hành, năm giá trị là 0,6296, 0,6616, 0,7018, 0,7688 và 0,7691, và fold trung vị là fold 4.
+
 ### 3.11.2 Chuyển đổi và kiểm tra tương đương
 
-Cả mười sáu biến thể — bốn kiến trúc student, mỗi kiến trúc có ba bản chưng cất từ ba teacher cộng một bản đối chứng — đều được chuyển sang định dạng ExecuTorch [40] ở độ chính xác FP32, không lượng tử hoá, và lượt chuyển đổi đầu tiên luôn nhắm vào thư viện toán tử tăng tốc dành cho CPU di động vì nó nhanh hơn hẳn bộ toán tử tham chiếu. Nhưng một lượt export chạy xong mà không báo lỗi thì chưa chứng minh được gì, nên mỗi mô hình còn phải đi qua một **cổng kiểm tra tương đương**: chạy cả bản đã chuyển đổi lẫn bản gốc trên cùng một trăm mẫu cố định rồi so sai lệch lớn nhất giữa hai chuỗi logit với ngưỡng $10^{-3}$; mô hình nào trượt sẽ được chuyển đổi lại bằng bộ toán tử tham chiếu, đúng đắn nhưng chậm hơn nhiều, rồi kiểm lại từ đầu.
+Cả mười sáu biến thể — bốn kiến trúc student, mỗi kiến trúc có ba bản chưng cất từ ba teacher cộng một bản đối chứng — đều được chuyển sang định dạng ExecuTorch [45] ở độ chính xác FP32, không lượng tử hoá, và lượt chuyển đổi đầu tiên luôn nhắm vào thư viện toán tử tăng tốc dành cho CPU di động vì nó nhanh hơn hẳn bộ toán tử tham chiếu. Nhưng một lượt export chạy xong mà không báo lỗi thì chưa chứng minh được gì, nên mỗi mô hình còn phải đi qua một **cổng kiểm tra tương đương**: chạy cả bản đã chuyển đổi lẫn bản gốc trên cùng một trăm mẫu cố định rồi so sai lệch lớn nhất giữa hai chuỗi logit với ngưỡng $10^{-3}$; mô hình nào trượt sẽ được chuyển đổi lại bằng bộ toán tử tham chiếu, đúng đắn nhưng chậm hơn nhiều, rồi kiểm lại từ đầu.
 
 Cổng ấy không phải một thủ tục hình thức, vì nó đã bắt được một trường hợp thật: kiến trúc EfficientFormerV2-S2 chuyển đổi thành công mà không một cảnh báo nào, nhưng trên cùng một ảnh, bản đã chuyển đổi cho logit khoảng $-2{,}2 \times 10^{10}$ trong khi bản gốc cho $-3{,}15$, tức vượt ngưỡng của cổng tới mười ba bậc độ lớn. Nếu chỉ căn cứ vào việc export không báo lỗi thì một mô hình hỏng hoàn toàn đã được đem đi đo tốc độ và đưa thẳng vào bảng kết quả. Bài học ấy áp cho toàn bộ đường triển khai: bước dịch đồ thị tính toán sang bộ toán tử của một nền tảng là phép biến đổi do trình biên dịch bên thứ ba thực hiện, và nó **có thể sai trong im lặng**, nên tính đúng đắn trên thiết bị phải được đo chứ không được giả định.
 
@@ -1623,6 +1719,53 @@ Phép đo được thực hiện trên một Google Pixel 6a, chip Tensor G1 v�
 Điều kiện đo được cố định trước và xác minh lại trên từng dòng dữ liệu: máy không cắm sạc, bật chế độ máy bay, độ sáng giữ nguyên, và mỗi mô hình chạy ba mươi vòng khởi động trước hai trăm vòng được tính. Thứ tự mười sáu mô hình xáo trộn theo một hạt giống cố định để vị trí trong phiên không trở thành một biến ẩn, và toàn bộ phép đo lặp lại ở cả một luồng lẫn bốn luồng.
 
 Ràng buộc chặt nhất là mười sáu mô hình phải nằm trong **cùng một phiên**, vì máy nóng dần theo thời gian nên hai phiên khác nhau cho hai nền nhiệt khác nhau và các hàng ghép từ chúng không so được với nhau. Ràng buộc này được áp dụng theo nghĩa đen: khi một lượt đo bị phát hiện có cắm sạc từ dòng thứ mười lăm trở đi, cả ba mươi hai dòng của lượt ấy bị huỷ để chạy lại từ đầu thay vì chỉ vá những dòng hỏng.
+
+### 3.11.4 Ngưỡng quyết định và chế độ hiển thị của ứng dụng
+
+Mô hình chỉ là một phần của sản phẩm; phần còn lại là ứng dụng Android chạy nó. Ứng dụng được viết bằng Kotlin, chạy **hoàn toàn ngoại tuyến** — quyền truy cập mạng bị gỡ khỏi bản kê khai của ứng dụng — và chỉ hiển thị **kết luận nhị phân**: "nên đi khám" hoặc "không thấy dấu hiệu đáng ngờ". Ứng dụng không hiển thị con số phần trăm, vì xác suất thô của mô hình bị lệch lên một cách có hệ thống do bộ lấy mẫu đã đổi tỉ lệ hiện mắc lúc huấn luyện (Mục 3.6.3). Trước khi ảnh tới mô hình, ứng dụng kiểm tra chất lượng ảnh: ảnh không giải mã được hoặc quá nhỏ bị chặn, còn ảnh mờ, gần như đồng màu, thiếu tương phản, quá tối hoặc quá sáng, hay lệch tâm khi chụp bằng camera thì chỉ bị cảnh báo, và người dùng vẫn có thể yêu cầu phân tích. Cơ chế từ chối ảnh không phải tổn thương da — cổng ngoài phân phối — hiện mới ở mức thiết kế. Ứng dụng vẫn đang được phát triển; các phép đo trên điện thoại ở Mục 4.11 dùng ảnh đã tiền xử lý sẵn, chưa đi qua pipeline camera của ứng dụng.
+
+Quyết định của ứng dụng là so xác suất với một **ngưỡng cố định**. Ngưỡng này không lấy từ chỉ số Youden toàn cục của Mục 2.5.4, vì ngưỡng ấy được chọn trên một tập kiểm định mà phần lớn là ảnh ISIC và tỏ ra vô dụng trên ảnh chụp bằng điện thoại: với mô hình phát hành, ngưỡng Youden toàn cục 0,2272 gắn cờ 207 trên 208 ảnh lành tính PAD-UFES-20 của tập test. Thay vào đó, ngưỡng được chọn trên **các ảnh PAD-UFES-20 của tập validation** sao cho độ nhạy đạt 90%, rồi **đóng băng**; với fold phát hành, ngưỡng là 0,5705. Ngưỡng được sinh tự động bằng script từ dự đoán đã lưu trên tập validation chứ không nhập tay. Quy tắc chọn ngưỡng này được giữ lại sau khi đã thấy kết quả trên tập test, nên nó mang tính post-hoc đối với tập test hiện có. Mọi đánh giá ở trụ III của Mục 3.12 đều đo tại chính ngưỡng này.
+
+## 3.12 Bộ tiêu chí đánh giá "chạy tốt trên thiết bị biên"
+
+Các độ đo ở Mục 3.9 trả lời câu hỏi mô hình xếp hạng tốt đến đâu, và các khoảng tin cậy ở Mục 3.10 trả lời câu hỏi một chênh lệch có thật hay không. Chưa câu nào trả lời câu hỏi mà hai câu hỏi nghiên cứu trung tâm đặt ra: mô hình **đã dùng được trên thiết bị biên chưa**. Một student tốt hơn hẳn nhánh đối chứng của nó vẫn có thể bỏ sót phần lớn ca ác tính trên ảnh chụp bằng điện thoại. Luận văn vì vậy định nghĩa "chạy tốt trên thiết bị biên" qua **ba trụ**, đi từ điều kiện kỹ thuật tới giá trị đối với người dùng (Bảng 3.14).
+
+**Bảng 3.14**. Ba trụ của tiêu chí "chạy tốt trên thiết bị biên"
+
+| Trụ | Câu hỏi đặt ra | Đại lượng đo |
+|---|---|---|
+| I. Chạy được | Mô hình có đủ nhanh trên thiết bị thật không? | Độ trễ phân vị 95 sau 5 phút chạy liên tục, trên đúng tệp mô hình sẽ phát hành |
+| II. Giữ chất lượng | Thiết bị biên có cho cùng kết quả như máy chủ không? | Sai lệch logit, lỗi, tính tất định; tỉ lệ đổi quyết định khi ảnh đi qua pipeline camera thật của ứng dụng |
+| III. Đúng với người dùng | Tại ngưỡng của ứng dụng, mô hình có bắt được ca ác tính mà không báo nhầm quá nhiều không? | Độ nhạy và độ đặc hiệu, khoảng Wilson 95%, trên (a) ảnh chụp bằng điện thoại cùng nguồn — các ảnh PAD-UFES-20 của tập test — và (b) ảnh lâm sàng khác nguồn — Fitzpatrick17k-C, tính riêng từng nhóm tông da |
+
+Đi kèm ba trụ là một **điều kiện hiệu quả nén**: student không được kém teacher của chính nó quá một biên $\delta$ về AUPRC, xét riêng từng miền — ảnh PAD-UFES-20, Fitzpatrick17k và HAM10000 — theo phép kiểm không kém hơn ở Mục 2.5.5. Luận văn không đòi hỏi student vượt teacher, vì mục tiêu của chưng cất khi nén là giữ được hiệu năng của teacher trên một mô hình nhỏ hơn [20], và khi chênh lệch dung lượng giữa hai mô hình lớn thì teacher mạnh hơn chưa chắc dạy ra student tốt hơn [5, 36]. Điều kiện ban đầu là "vượt teacher"; nó được đổi thành "không kém teacher quá $\delta$" ngày 03/10/2026, sau khi đã thấy kết quả, tức là post-hoc.
+
+Bảng 3.15 nêu mốc của từng độ đo. Mô hình chỉ được coi là đạt khi thoả mọi mốc trong bảng.
+
+**Bảng 3.15**. Các độ đo, mốc và trạng thái của mốc
+
+| Hạng mục | Mốc | Trạng thái của mốc |
+|---|---|---|
+| Trụ I — độ trễ phân vị 95 | ≤ 80 ms | Đề xuất |
+| Trụ II — tương đương thiết bị ↔ máy chủ | Sai lệch tuyệt đối lớn nhất của logit < 10⁻³ và chênh lệch tuyệt đối AUPRC < 0,005 | Đề xuất |
+| Trụ II — ổn định khi chạy trên thiết bị | Tỉ lệ lỗi < 0,1% số ảnh và chạy lại cho kết quả trùng bit | Đề xuất |
+| Trụ II — tỉ lệ đổi quyết định qua pipeline camera | < 0,5% | Đề xuất |
+| Trụ III (a) và (b), phần (b) xét từng nhóm tông da | Cận dưới độ nhạy ≥ 0,80 và cận dưới độ đặc hiệu ≥ 0,60 | Chốt tạm 04/10/2026 |
+| Hiệu quả nén — biên không kém hơn | $\delta$ = 5% AUPRC của chính teacher, từng miền | Chốt tạm 04/10/2026 |
+
+Các mốc chưa cùng một trạng thái. Mốc của trụ III và biên $\delta$ được chốt tạm ngày 04/10/2026, sau khi đã thấy kết quả của mô hình ứng viên, nên phán quyết dựa trên chúng chỉ mang tính **khám phá**; các mốc của trụ I và trụ II vẫn ở dạng đề xuất. Bộ tiêu chí cũng đã thay đổi trong quá trình thực hiện: độ nhạy tại độ đặc hiệu 80% trên HAM10000 được chuyển từ cổng thành chỉ báo cáo ngày 02/10/2026, trên ảnh PAD-UFES-20 ngày 03/10/2026, đều sau khi đã thấy kết quả. Mốc $10^{-3}$ trùng ngưỡng của cổng kiểm tra tương đương ở Mục 3.11.2, còn mốc 0,005 AUPRC lấy từ mức dao động khi huấn luyện lại một fold (Mục 3.10).
+
+**Đọc một ô đo.** Với các đại lượng có khoảng tin cậy, mốc được xét trên cả khoảng chứ không trên điểm ước lượng: một ô **đạt** khi cận dưới không thấp hơn mốc, **không đạt** khi cận trên đã thấp hơn mốc, và **chưa chứng minh** khi khoảng tin cậy cắt qua mốc, bất kể điểm ước lượng nằm phía nào. Phép kiểm không kém hơn được đọc theo cùng cách, với $-\delta$ ở vị trí của mốc. Trụ I và trụ II được chấm theo số đo, không có khoảng tin cậy. Phán quyết tổng là **không đạt** ngay khi một hạng mục bắt buộc không đạt so với một mốc đã chốt, kể cả khi các mốc khác còn ở dạng đề xuất.
+
+Hình 3.8 cho thấy cùng một mô hình được chấm ra sao trên ba tầng dữ liệu, và tầng nào phục vụ trụ nào. Các con số trong hình là của bộ chia dữ liệu dựng lại (Mục 4.11.1).
+
+![Hình 3.8 — Ba tầng đánh giá dữ liệu và các phép đo trên thiết bị biên](../report_phase_1/figures/eval_tiers_v2.png)
+
+**Hình 3.8.** Ba tầng đánh giá dữ liệu và các phép đo trên thiết bị biên, dùng cho bộ tiêu chí ba trụ. Tệp nguồn: `report_phase_1/figures/eval_tiers_v2.svg` (bản báo cáo) và `report_phase_1/figures/eval_tiers_v2_slide.svg` (bản 16:9).
+
+**Các độ đo báo cáo kèm.** Một số độ đo được báo cáo đầy đủ nhưng không quyết định phán quyết. pAUC@TPR≥80% và AUC được báo cáo để đối chiếu với văn liệu: trong phân tích của ban tổ chức cuộc thi ISIC 2024, một biến thể chỉ dùng ảnh đạt AUC 0,922 và pAUC 0,142 trên tập test của cuộc thi [28]. Độ nhạy tại độ đặc hiệu 80% được đặt cạnh độ chính xác của bác sĩ trong tổng quan Cochrane: trên các đánh giá dựa trên ảnh, ở độ đặc hiệu cố định 80%, độ nhạy chẩn đoán u hắc tố là 81% với soi da và 47% với quan sát bằng mắt thường [10]; vì tổng quan này chỉ xét u hắc tố, phép đặt cạnh chỉ mang tính tham chiếu. Hiệu quả của chưng cất so với nhánh không chưng cất cũng được báo cáo riêng, vì điều kiện hiệu quả nén chỉ nói việc thu gọn không làm mất quá $\delta$, không nói chưng cất có tác dụng. Riêng điểm vận hành ở độ đặc hiệu 80% được chọn để khớp với tổng quan Cochrane sau khi đã thấy kết quả tại độ đặc hiệu 90%, nên luận văn nêu kèm độ nhạy tại độ đặc hiệu 90% của mô hình phát hành: 0,6074 trên ảnh PAD-UFES-20 và 0,3415 trên Fitzpatrick17k (trung bình 5 fold).
+
+**Chọn ứng viên theo quy tắc đăng ký trước.** Để bộ tiêu chí chỉ chấp nhận hoặc loại một ứng viên, chứ không biến thành công cụ chọn mô hình trên tập test, mọi lựa chọn trước nó được làm bằng tập validation. Vòng chọn ứng viên thứ hai (Mục 4.11.3) có quy tắc được ghi và commit trước khi huấn luyện: chọn cặp có AUPRC trung bình năm fold trên các ảnh PAD-UFES-20 của tập validation cao nhất; nếu chênh lệch nhỏ hơn 0,005 — mức dao động khi huấn luyện lại — thì giữ cặp đứng trước trong danh sách đã đăng ký; checkpoint là checkpoint AUPRC; fold là fold trung vị theo AUPRC trên toàn bộ tập validation; và không dùng tập test, HAM10000 hay Fitzpatrick17k cho bất kỳ lựa chọn nào trong số đó.
 
 ---
 
@@ -2109,14 +2252,184 @@ Luận văn khuyến nghị cặp **`MaxViT-Base → FastViT-SA12`**, vì nó l�
 
 Khuyến nghị đảo lại trong hai trường hợp. Nếu ràng buộc thiết bị là cứng, chẳng hạn máy yếu hơn Pixel 6a hoặc yêu cầu phân tích thời gian thực, thì chọn cặp `ConvNeXtV2-Base → MobileNetV4` và nói rõ cái giá là suy giảm khi dịch chuyển miền, rõ nhất ở nhóm da tối. Và nếu ảnh đầu vào chắc chắn cùng miền với dữ liệu huấn luyện thì hai cặp tương đương về chất lượng, khi ấy cặp MobileNetV4 vừa nhanh hơn 2,9 lần vừa ổn định hơn giữa các fold nên không còn lý do gì để chọn cặp kia.
 
-Khuyến nghị này có một mặt trái đã thấy trong Bảng 4.18: cặp MobileNetV4 ổn định hơn giữa các fold khi ra ngoài miền, và ở fold tệ nhất trên HAM10000 nó còn cao hơn.
+Khuyến nghị này có một mặt trái đã thấy trong Bảng 4.18: cặp MobileNetV4 ổn định hơn giữa các fold khi ra ngoài miền, và ở fold tệ nhất trên HAM10000 nó còn cao hơn. Trên bộ chia dữ liệu dựng lại, mô hình phát hành được chọn lại theo một quy tắc đăng ký trước (Mục 4.11.3).
+
+## 4.11 Kết quả trên bộ chia dữ liệu dựng lại và phán quyết theo bộ tiêu chí ba trụ
+
+Các mục từ 4.1 tới 4.10 trả lời sáu câu hỏi kiểm chứng trên ma trận 3 teacher × 4 student. Mục này trả lời trực tiếp hai câu hỏi trung tâm trên mô hình sẽ được phát hành. Toàn bộ số liệu của mục được đo trên một bộ chia dữ liệu theo bệnh nhân được dựng lại ngày 22/09/2026, nên chúng không được đặt cạnh các con số của Mục 4.1–4.10 để so trực tiếp.
+
+### 4.11.1 Thiết lập thực nghiệm
+
+Bộ chia dựng lại gồm **372.242 ảnh** của **2.410 bệnh nhân** với **1.448 ca ác tính** (0,389%). Tập test có **59.093 ảnh** (265 ca ác tính, 399 bệnh nhân), trong đó có 397 ảnh PAD-UFES-20 với 189 ca ác tính; như ở Mục 3.3, cùng một tập test được dùng cho mọi fold và mọi mô hình. 656 ảnh DDI chỉ được nối thêm vào phần huấn luyện (Mục 3.2.11).
+
+Các thí nghiệm của mục này dùng cặp EfficientNetV2-M → MobileNetV4-Conv-Medium, vì đây là cặp chạy nhanh nhất ở cả hai vai khi đo thông lượng suy luận trên GPU trong cùng điều kiện: teacher 678 ảnh/giây, student 3.255 ảnh/giây. MobileNetV4-Conv-Medium cũng là kiến trúc nhanh nhất trên Pixel 6a (Bảng 4.17). Mỗi can thiệp được huấn luyện thành một nhánh riêng, đủ năm fold, rồi so ghép cặp với nhánh chỉ khác đúng can thiệp đó (Bảng 4.20).
+
+**Bảng 4.20**. Các nhánh huấn luyện trên bộ chia dựng lại
+
+| Nhánh | Khác nhánh đối chứng của nó ở | Nhánh đối chứng |
+|---|---|---|
+| Đối chứng | — (cấu hình tăng cường của Mục 3.2.10, bộ lấy mẫu rút đều của Mục 3.6.2) | — |
+| Tăng cường nhắm miền | Cấu hình tăng cường nhắm hai trục cùng lúc: trường nhìn (co giãn tới ±50%) và ánh sáng–cân bằng trắng | Đối chứng |
+| DDI | Thêm 656 ảnh DDI vào phần huấn luyện | Đối chứng |
+| Lấy mẫu theo nguồn | Bộ lấy mẫu phân tầng theo nguồn (Mục 3.6.4) và checkpoint AUPRC cho student (Mục 3.7) | DDI |
+| Vòng chọn thứ hai | P1 đổi teacher sang ConvNeXtV2-Base, P2 đổi student sang RepViT-M1.0; công thức giống hệt nhánh lấy mẫu theo nguồn | — |
+
+### 4.11.2 Ba can thiệp dữ liệu cho câu hỏi thứ hai
+
+Bảng 4.21 đặt ba can thiệp cạnh nhau, đo trên student chưng cất — mô hình sẽ được đem đi triển khai.
+
+**Bảng 4.21**. Hiệu quả của ba can thiệp dữ liệu trên student chưng cất (ΔAUPRC = nhánh can thiệp − nhánh đối chứng, trung bình 5 fold, khoảng tin cậy ghép cặp 95%; dấu * = khoảng tin cậy loại trừ 0; — = không có phép so ghép cặp ở ô này)
+
+| Can thiệp | Ảnh PAD-UFES-20 | Ảnh ISIC | HAM10000 ↑ | Fitzpatrick17k ↑ |
+|---|---|---|---|---|
+| Tăng cường nhắm miền | — | — | −0,0195 [−0,0307; −0,0092] * | −0,0436 [−0,0538; −0,0332] * |
+| Bổ sung DDI | +0,0254 [−0,0010; +0,0495] | không ô nào có ý nghĩa | **+0,0863 [+0,0737; +0,0979]** * | **+0,0400 [+0,0332; +0,0467]** * |
+| Lấy mẫu theo nguồn (trên nền đã có DDI) | **+0,0563 [+0,0391; +0,0748]** * | −0,0043 [−0,0196; +0,0117] | +0,0140 [+0,0049; +0,0233] * | +0,0328 [+0,0262; +0,0391] * |
+
+**Tăng cường nhắm miền thất bại.** Cấu hình này làm student chưng cất kém đi có ý nghĩa ở cả năm ô đánh giá ngoài miền — HAM10000 và bốn biến thể của Fitzpatrick17k — nên nó đã bị gỡ khỏi mã nguồn. Vì cấu hình đổi cùng lúc hai trục, kết quả âm không quy được cho riêng trục nào, và không phải phép thử cho giả thuyết chỉnh màu ảnh huấn luyện.
+
+**Bổ sung DDI có ích ở mọi ô ngoài miền.** Student chưng cất tốt lên có ý nghĩa trên AUPRC ở mọi ô ngoài miền, ở cả ba nhóm tông da của Fitzpatrick17k — tối +0,0473 [+0,0276; +0,0672], trung bình +0,0381 [+0,0266; +0,0486], sáng +0,0399 [+0,0306; +0,0492] — và trên toàn tập test trong miền (+0,0246 [+0,0060; +0,0425]). Trên HAM10000, cải thiện xuất hiện ở cả bốn độ đo, chẳng hạn ΔAUC +0,0412 [+0,0367; +0,0459]. Với teacher và student đối chứng thì hiệu ứng lẫn lộn tuỳ độ đo. Trên toàn bộ các ô đã so — sáu tập đánh giá, bốn độ đo, ba mô hình, cả toàn tập lẫn từng nhóm — có 19 ô kém đi có ý nghĩa khi bổ sung DDI: 14 ô thuộc teacher, phần lớn trên pAUC@TPR≥80%; 4 ô thuộc student đối chứng; và 1 ô thuộc student chưng cất, trên pAUC@TPR≥80% ở một biến thể cắt khung của Fitzpatrick17k, nhóm tông trung bình. Không ô nào trong số đó là AUPRC. Kết quả này đo trên một cặp mô hình, và vì DDI đổi cùng lúc tông da, kiểu ảnh và số ca dương (Mục 3.2.11), nó không cho biết phần cải thiện nào đến từ yếu tố nào.
+
+**Lấy mẫu theo nguồn đạt tiêu chí đã đăng ký trước.** Tiêu chí là ΔAUPRC trên ảnh PAD-UFES-20 loại trừ 0 về phía dương và phần ảnh ISIC không kém đi có ý nghĩa ở cả bốn độ đo; cả hai vế đều thoả. "Không kém đi có ý nghĩa" không đồng nghĩa với "không đổi": khoảng tin cậy trên ảnh ISIC vẫn cho phép ΔAUPRC tới −0,0196. Ngoài miền, cải thiện có ý nghĩa trên cả HAM10000 và Fitzpatrick17k. Bộ lấy mẫu này không vô hại với mọi mô hình: ở student đối chứng không chưng cất, nó làm AUPRC trên phần ảnh ISIC kém đi có ý nghĩa, −0,0301 [−0,0638; −0,0052], và AUC trên HAM10000 kém đi, −0,0477 [−0,0580; −0,0376]; tương tác giữa chưng cất và bộ lấy mẫu chưa được kiểm. Các phép so trong hàng này đo trên checkpoint chọn theo pAUC ở cả hai phía.
+
+Trong các thử nghiệm đã làm, bổ sung ảnh thật đa dạng có ích còn tăng cường ảnh nhắm miền thì không. Đây là kết quả trên một bộ dữ liệu bổ sung, một cấu hình tăng cường và một cặp mô hình, chưa đủ để khái quát.
+
+### 4.11.3 Chọn mô hình phát hành theo quy tắc đăng ký trước
+
+Nhánh lấy mẫu theo nguồn cho ứng viên đầu tiên, ký hiệu P0. Vòng chọn thứ hai thêm hai cặp, mỗi cặp đổi đúng một vai: P1 đổi teacher sang ConvNeXtV2-Base, P2 đổi student sang RepViT-M1.0; công thức huấn luyện giống hệt P0. Quy tắc chọn được ghi và commit trước khi huấn luyện (Mục 3.12), và chỉ đọc tập validation (Bảng 4.22).
+
+**Bảng 4.22**. Chọn ứng viên theo AUPRC trên các ảnh PAD-UFES-20 của tập validation (trung bình 5 fold)
+
+| Ứng viên | Cặp teacher → student | AUPRC validation, ảnh PAD-UFES-20 ↑ |
+|---|---|--:|
+| P0 | EfficientNetV2-M → MobileNetV4-Conv-Medium | 0,8831 |
+| P1 | ConvNeXtV2-Base → MobileNetV4-Conv-Medium | 0,8840 |
+| P2 | EfficientNetV2-M → RepViT-M1.0 | 0,8536 |
+
+P1 hơn P0 0,0009, dưới biên hoà 0,005, nên quy tắc giữ P0 — cặp đứng trước trong danh sách. Fold phát hành là fold 4 (Mục 3.11.1). Theo quy tắc đã đăng ký, chỉ ứng viên được chọn nhận phán quyết; P1 và P2 chỉ được chấm để báo cáo.
+
+Ba điều phải khai kèm vòng chọn này. Đây là vòng chọn thứ hai, nên mọi tập kiểm đã được nhìn qua ứng viên thứ nhất. Hai cặp P1, P2 được chọn có tham khảo kết quả HAM10000 và Fitzpatrick17k của ma trận ban đầu. Và trước bước chọn, một dòng chỉ số test trong miền của P1 ở fold 4 đã bị nhìn thấy; vì quy tắc chọn chỉ đọc tập validation, dòng ấy không đi vào phép chọn.
+
+### 4.11.4 Hiệu quả của chưng cất và so sánh với teacher
+
+Bảng 4.23 trả lời câu hỏi chưng cất có giúp student hay không, trên cả ba ứng viên.
+
+**Bảng 4.23**. Hiệu quả chưng cất: student chưng cất − cùng student không chưng cất (ΔAUPRC, trung bình 5 fold, khoảng tin cậy ghép cặp 95%; dấu * = loại trừ 0)
+
+| Ứng viên | Ảnh PAD-UFES-20 | Fitzpatrick17k | HAM10000 |
+|---|---|---|---|
+| P0 | −0,0008 [−0,0199; +0,0187] | +0,0395 [+0,0310; +0,0478] * | +0,1115 [+0,0985; +0,1257] * |
+| P1 | +0,0026 [−0,0169; +0,0231] | +0,0397 [+0,0322; +0,0466] * | +0,0559 [+0,0445; +0,0678] * |
+| P2 | +0,0349 [+0,0051; +0,0650] * | +0,0403 [+0,0313; +0,0492] * | +0,1296 [+0,1112; +0,1468] * |
+
+Chưng cất cải thiện có ý nghĩa ở cả ba ứng viên trên cả hai bộ ngoài miền — cùng hướng với kết luận của ma trận ban đầu ở Mục 4.7. Trên ảnh PAD-UFES-20 thì chỉ P2 cải thiện có ý nghĩa; với P0, có hay không có chưng cất là không phân biệt được trên phần ảnh này, trong khi trên phần ảnh ISIC, P0 vẫn cải thiện có ý nghĩa với ΔAUPRC +0,0282 [+0,0039; +0,0598].
+
+Bảng 4.24 là điều kiện hiệu quả nén: student so với chính teacher đã dạy nó.
+
+**Bảng 4.24**. Student − teacher của chính nó (ΔAUPRC, trung bình 5 fold, khoảng tin cậy ghép cặp 95%), biên $\delta$ = 5% AUPRC của teacher và nhãn theo phép kiểm không kém hơn (mốc chốt tạm)
+
+| Ứng viên | Miền | AUPRC teacher | $\delta$ | Δ (student − teacher) | Nhãn |
+|---|---|--:|--:|---|---|
+| P0 | PAD-UFES-20 | 0,7966 | 0,0398 | +0,0619 [+0,0396; +0,0852] | Đạt (tạm) |
+| P0 | Fitzpatrick17k | 0,6954 | 0,0348 | +0,0068 [−0,0008; +0,0146] | Đạt (tạm) |
+| P0 | HAM10000 | 0,4938 | 0,0247 | +0,0059 [−0,0068; +0,0189] | Đạt (tạm) |
+| P1 | PAD-UFES-20 | 0,8514 | 0,0426 | +0,0105 [−0,0090; +0,0320] | Đạt (tạm) |
+| P1 | Fitzpatrick17k | 0,7078 | 0,0354 | −0,0054 [−0,0123; +0,0017] | Đạt (tạm) |
+| P1 | HAM10000 | 0,4505 | 0,0225 | −0,0064 [−0,0161; +0,0044] | Đạt (tạm) |
+| P2 | PAD-UFES-20 | 0,7966 | 0,0398 | +0,0084 [−0,0207; +0,0390] | Đạt (tạm) |
+| P2 | Fitzpatrick17k | 0,6954 | 0,0348 | −0,0270 [−0,0362; −0,0173] | Chưa chứng minh |
+| P2 | HAM10000 | 0,4938 | 0,0247 | −0,0277 [−0,0434; −0,0109] | Chưa chứng minh |
+
+P0 đạt (tạm) điều kiện không kém teacher quá $\delta$ ở cả ba miền. Hai điều làm phép so này nhẹ hơn vẻ ngoài của nó. Thứ nhất, biên $\delta$ được chốt sau khi đã thấy số của P0, và mọi $\delta$ lớn hơn 0,0068 đều cho P0 qua. Thứ hai, teacher được huấn luyện không có bộ lấy mẫu theo nguồn và chỉ có checkpoint chọn theo pAUC, trong khi student có cả hai; teacher vì thế yếu hơn trên ảnh PAD-UFES-20, nên phép kiểm dễ đạt hơn thực tế. Khi so cùng công thức — student chưng cất không dùng bộ lấy mẫu theo nguồn, checkpoint chính — hiệu số student − teacher trên ảnh PAD-UFES-20 chỉ còn +0,0032 [−0,0169; +0,0251], không phân biệt được với 0. Các điểm ước lượng cho thấy phần hơn teacher của P0 trên ảnh PAD-UFES-20 nhiều khả năng đến từ bộ lấy mẫu (+0,0563) và cách chọn checkpoint (+0,0023) chứ không từ chưng cất (+0,0032); ba điểm ước lượng này cộng lại khớp với +0,0619 trong phạm vi làm tròn, còn các khoảng tin cậy thì không cộng được. P2, với student RepViT-M1.0, kém teacher có ý nghĩa trên cả Fitzpatrick17k và HAM10000.
+
+### 4.11.5 Khả năng xếp hạng theo từng miền ảnh
+
+Bảng 4.25 báo cáo các độ đo không phụ thuộc ngưỡng theo từng miền, đặt cạnh các mốc tham chiếu ở Mục 3.12. Các độ đo này không quyết định phán quyết.
+
+**Bảng 4.25**. Khả năng xếp hạng theo miền ảnh (trung bình 5 fold, khoảng tin cậy 95%; chỉ báo cáo)
+
+| Ứng viên | ISIC — AUC ↑ | ISIC — pAUC@TPR≥80% ↑ | PAD-UFES-20 — Sens@80%Spec ↑ | Fitzpatrick17k — Sens@80%Spec ↑ | HAM10000 — Sens@80%Spec ↑ |
+|---|---|---|---|---|---|
+| P0 | 0,9437 [0,9227; 0,9616] | 0,1580 [0,1418; 0,1730] | 0,8180 [0,7406; 0,8786] | 0,4946 [0,4699; 0,5178] | 0,7259 [0,7018; 0,7508] |
+| P1 | 0,9404 [0,9161; 0,9599] | 0,1542 [0,1346; 0,1707] | 0,8571 [0,7811; 0,9101] | 0,4792 [0,4546; 0,5068] | 0,6395 [0,6121; 0,6652] |
+| P2 | 0,9412 [0,9181; 0,9603] | 0,1553 [0,1388; 0,1710] | 0,7111 [0,6129; 0,7905] | 0,4325 [0,4037; 0,4581] | 0,6758 [0,6480; 0,7007] |
+| *Tham chiếu* | *0,922* | *0,142* | *bác sĩ: 0,81 với soi da · 0,47 bằng mắt thường* | *0,47* | *0,81* |
+
+Trên ảnh ISIC, khả năng xếp hạng của P0 nằm quanh mức tham chiếu, nhưng cận dưới của khoảng tin cậy xấp xỉ mốc tới mức nhãn của ô này đổi theo seed của bootstrap: chạy lại với sáu seed, ô này chỉ đạt ở một seed; và khi lấy mẫu lại theo bệnh nhân, cận dưới AUC xuống 0,9204, dưới mốc 0,922. Mốc tham chiếu lại được đo trên tập test của cuộc thi chứ không trên phần ảnh ISIC của bộ chia dựng lại, nên phép đặt cạnh chỉ mang tính định vị. Hàm pAUC của luận văn đã được đối chiếu với hàm chấm chính thức của ISIC 2024 trong 19 phép đối chiếu trên 17 tập dự đoán khác nhau của P0, chênh lệch lớn nhất là 2,8·10⁻¹⁷. Trên ảnh PAD-UFES-20, độ nhạy tại độ đặc hiệu 80% của P0 ở quanh mức 0,81 của bác sĩ đọc ảnh soi da trong tổng quan Cochrane — dù ảnh PAD-UFES-20 là ảnh chụp thường chứ không phải ảnh soi da, và mốc ấy chỉ xét u hắc tố trong khi nhãn ác tính của luận văn gồm cả BCC và SCC; trên Fitzpatrick17k, nó chỉ ngang mức 0,47 của bác sĩ quan sát ảnh bằng mắt thường.
+
+### 4.11.6 Phán quyết theo bộ tiêu chí ba trụ
+
+Bảng 4.26 chấm P0 — fold 4, checkpoint AUPRC — theo bộ tiêu chí ở Mục 3.12. Trụ I, II, III đo trên fold phát hành; điều kiện hiệu quả nén dùng khoảng tin cậy trên trung bình năm fold.
+
+**Bảng 4.26**. Phán quyết cho mô hình phát hành P0 theo bộ tiêu chí ba trụ
+
+| Trụ | Tiêu chí | Mốc | Kết quả [khoảng tin cậy 95%] | Nhãn |
+|---|---|---|---|---|
+| I | Độ trễ phân vị 95 trên đúng tệp phát hành | ≤ 80 ms (đề xuất) | Chưa đo | Chưa đo |
+| II | Sai lệch logit lớn nhất · chênh lệch AUPRC, thiết bị ↔ máy chủ | < 10⁻³ · < 0,005 (đề xuất) | 5,245·10⁻⁶ · 0,0000 | Đạt so với mốc đề xuất |
+| II | Tỉ lệ lỗi · chạy lại trùng bit | < 0,1% · trùng bit (đề xuất) | 0/70.883 · 500/500 ảnh trùng bit | Đạt so với mốc đề xuất |
+| II | Tỉ lệ đổi quyết định qua pipeline camera của ứng dụng | < 0,5% (đề xuất) | Chưa đo | Chưa đo |
+| III-a | Độ nhạy · độ đặc hiệu trên ảnh PAD-UFES-20, tại ngưỡng 0,5705 | cận dưới ≥ 0,80 · ≥ 0,60 (tạm) | 165/189 = 0,873 [0,818; 0,913] · 152/208 = 0,731 [0,667; 0,786] | **Đạt (tạm)** |
+| III-b | Độ nhạy trên Fitzpatrick17k-C, từng nhóm tông da | cận dưới ≥ 0,80 mỗi nhóm (tạm) | sáng 0,603 [0,571; 0,634] · trung bình 0,503 [0,461; 0,544] · tối 0,508 [0,423; 0,592] | **Không đạt (tạm)** |
+| III-b | Độ đặc hiệu trên Fitzpatrick17k-C, từng nhóm tông da | cận dưới ≥ 0,60 mỗi nhóm (tạm) | sáng 0,742 [0,711; 0,770] · trung bình 0,813 [0,777; 0,845] · tối 0,824 [0,748; 0,881] | Đạt (tạm) |
+| Hiệu quả nén | Student − teacher, ΔAUPRC từng miền | cận dưới > −$\delta$ (tạm) | Bảng 4.24 | Đạt (tạm) |
+| **Tổng** | | | | **KHÔNG ĐẠT YÊU CẦU (tạm, khám phá)** |
+
+Phán quyết tổng là **không đạt**, vì trụ III-b là hạng mục bắt buộc, mốc độ nhạy đã được chốt tạm, và **cả khoảng tin cậy** của độ nhạy ở cả ba nhóm tông da đều nằm dưới 0,80 — cận trên tốt nhất, 0,634 ở nhóm sáng, còn cách mốc khoảng 0,17. Trụ I và tỉ lệ đổi quyết định chưa được đo, nhưng dù hai hạng mục ấy đạt thì kết luận cũng không đổi. Phán quyết mang tính khám phá vì mọi mốc, quy tắc chọn ngưỡng và việc chấm trụ III-b trên Fitzpatrick17k-C đều được chốt sau khi đã thấy kết quả của P0.
+
+Bảng 4.27 đặt P0 cạnh hai ứng viên chỉ được chấm để báo cáo. Bảng này được tính **sau** khi đã chọn P0 nên không được dùng để đổi ứng viên.
+
+**Bảng 4.27**. Độ nhạy và độ đặc hiệu tại ngưỡng ứng dụng của từng ứng viên (fold 4, khoảng Wilson 95%; Fitzpatrick17k-C theo nhóm tông da sáng · trung bình · tối)
+
+| Ứng viên | Ngưỡng | PAD-UFES-20 — độ nhạy | PAD-UFES-20 — độ đặc hiệu | Fitzpatrick17k-C — độ nhạy | Fitzpatrick17k-C — độ đặc hiệu |
+|---|--:|---|---|---|---|
+| P0 | 0,5705 | 0,873 [0,818; 0,913] | 0,731 [0,667; 0,786] | 0,603 · 0,503 · 0,508 | 0,742 · 0,813 · 0,824 |
+| P1 | 0,5517 | 0,894 [0,842; 0,930] | 0,707 [0,642; 0,764] | 0,706 · 0,646 · 0,723 | 0,655 · 0,720 · 0,624 |
+| P2 | 0,5922 | 0,862 [0,806; 0,904] | 0,673 [0,607; 0,733] | 0,696 · 0,530 · 0,546 | 0,609 · 0,714 · 0,768 |
+
+Cả ba ứng viên đều đạt (tạm) trên ảnh PAD-UFES-20 và đều không đạt (tạm) trên Fitzpatrick17k-C: không nhóm tông da nào của ứng viên nào có cận dưới độ nhạy từ 0,80 trở lên. Đổi teacher hay đổi student vì vậy không đóng được khoảng hụt.
+
+Tại ngưỡng ứng dụng, P0 gắn cờ 56 trên 208 ảnh lành tính PAD-UFES-20 của tập test. Trên phần ảnh ISIC, nó chỉ bắt 5 trong 76 ca ác tính — ảnh ISIC không phải loại ảnh mà ứng dụng nhận, nhưng con số này cho thấy ngưỡng chọn trên ảnh điện thoại không chuyển được sang một miền ảnh khác.
+
+### 4.11.7 Thiết bị biên so với máy chủ
+
+Câu hỏi của trụ II là chuyển mô hình sang điện thoại có làm thay đổi chất lượng hay không. Phép so dùng cùng checkpoint P0 ở fold 4 trên cùng 70.883 ảnh — 59.093 ảnh test trong miền, 7.470 ảnh HAM10000 và 4.320 ảnh Fitzpatrick17k — với máy chủ chạy PyTorch và Pixel 6a chạy ExecuTorch bốn luồng (Bảng 4.28).
+
+**Bảng 4.28**. Máy chủ so với Pixel 6a — mô hình P0, fold 4 (các độ đo không phụ thuộc ngưỡng)
+
+| Tập | AUPRC ↑ | AUC ↑ | pAUC@TPR≥80% ↑ | Chênh thiết bị − máy chủ |
+|---|--:|--:|--:|--:|
+| Trong miền (ISIC 2024 + PAD-UFES-20) | 0,6588 | 0,9828 | 0,1837 | 0,0000 |
+| HAM10000 | 0,5793 | 0,8807 | 0,1276 | 0,0000 |
+| Fitzpatrick17k | 0,7246 | 0,7315 | 0,0617 | 0,0000 |
+
+Ở mức logit, sai lệch lớn nhất giữa điện thoại và máy chủ trên 70.883 ảnh là 5,245·10⁻⁶, không ảnh nào vượt ngưỡng 10⁻³; không ảnh nào gây lỗi; chạy lại 500 ảnh cho kết quả trùng bit; và chạy bốn luồng so với một luồng trên 100 ảnh của cổng kiểm tra cũng trùng bit. Hàng "Trong miền" là số gộp ISIC với PAD-UFES-20, chỉ dùng để so điện thoại với máy chủ: AUC 0,98 ở đây không phản ánh độ mạnh của mô hình, số theo từng miền ở Bảng 4.25; và vì tỉ lệ ca ác tính của mỗi tập khác nhau, AUPRC giữa các hàng không so với nhau được.
+
+Trên ảnh đã tiền xử lý, việc chuyển sang điện thoại không làm thay đổi chất lượng; trụ II vẫn chưa có kết luận chung vì tỉ lệ đổi quyết định qua pipeline camera chưa được đo. Khoảng cách lớn thật sự nằm giữa các loại ảnh — cùng một mô hình bắt 87% ca ác tính trên ảnh PAD-UFES-20 nhưng chỉ 50–60% trên Fitzpatrick17k-C — chứ không nằm giữa máy chủ và điện thoại. Về tốc độ, độ trễ theo kiến trúc MobileNetV4-Conv-Medium là 39,5 ms mỗi ảnh sau năm phút chạy liên tục (Bảng 4.17, đo trên một tệp khác cùng kiến trúc), dưới mốc đề xuất 80 ms; nhưng độ trễ phân vị 95 trên đúng tệp của P0 chưa được đo, nên trụ I chưa có kết luận. Phép đo trên điện thoại cũng dùng ảnh đã tiền xử lý sẵn ở 224×224; khâu thu nhỏ ảnh của ứng dụng — theo đặc tả, mặc định dùng nội suy song tuyến tính, trong khi dữ liệu huấn luyện được thu nhỏ bằng nhân Lanczos (Mục 3.2.8) — vẫn là một nguồn sai khác chưa được đo.
+
+### 4.11.8 Phân tích khoảng hụt ở trụ III-b
+
+Ba phân tích dưới đây tìm nguyên nhân của khoảng hụt độ nhạy trên Fitzpatrick17k. Cả ba đều dùng chính tập Fitzpatrick17k, nên mọi hướng xử lý chọn dựa trên chúng đều phải khai là post-hoc.
+
+**Khoảng hụt không đến từ việc chọn ngưỡng.** Kể cả khi chọn ngưỡng tốt nhất riêng cho từng nhóm tông da trên chính tập test — một cách chọn lạc quan — thì ở độ đặc hiệu từ 0,60 trở lên, độ nhạy của P0 ở fold 4 cũng chỉ đạt 0,743, 0,691 và 0,731 cho ba nhóm sáng, trung bình và tối trên Fitzpatrick17k-C. Với nhóm trung bình, cả khoảng tin cậy [0,648; 0,739] nằm dưới 0,80; với nhóm tối, khoảng tin cậy kéo tới 0,820 nên chưa khẳng định được.
+
+**Chênh lệch giữa các nhóm tông da.** Tại ngưỡng ứng dụng, trên biến thể chính của Fitzpatrick17k, độ nhạy của nhóm sáng cao hơn nhóm trung bình +0,084 [+0,039; +0,127] và cao hơn nhóm tối +0,080 [+0,004; +0,154]; với độ đặc hiệu thì không cặp nhóm nào chênh có ý nghĩa. Về khả năng xếp hạng, AUC của nhóm sáng cao hơn nhóm trung bình +0,0409 [+0,0119; +0,0708]. Hai chênh lệch tại ngưỡng ứng dụng này chỉ đo trên fold 4: cộng cả năm fold, mỗi fold với ngưỡng riêng của nó, độ nhạy của nhóm tối (0,699) xấp xỉ nhóm sáng (0,712), nên luận văn không kết luận da tối kém hơn; nhóm tối cũng có ít mẫu — 208 ca ác tính ở biến thể chính, 130 ở Fitzpatrick17k-C.
+
+**Theo chẩn đoán.** Độ nhạy tại ngưỡng ứng dụng thấp nhất ở ba chẩn đoán: mycosis fungoides (0,299), sarcoma Kaposi (0,323) và dày sừng ánh sáng (0,360). Với dày sừng ánh sáng, đây là lệch nhãn thật giữa các bộ dữ liệu: Fitzpatrick17k xếp nó vào nhóm ác tính, còn PAD-UFES-20 — một nguồn huấn luyện — xếp nó vào nhóm lành tính (Bảng 3.3). Với mycosis fungoides và sarcoma Kaposi, nhãn trong dữ liệu huấn luyện là ác tính, nhưng toàn bộ dữ liệu huấn luyện chỉ có 38 ảnh của hai chẩn đoán này, cùng đến từ DDI. Bỏ riêng dày sừng ánh sáng khỏi nhóm ác tính, độ nhạy chỉ tăng lên 0,624, 0,521 và 0,516; bỏ cả ba chẩn đoán thì lên 0,660, 0,585 và 0,582 — vẫn dưới 0,80. Nhãn và độ phủ chẩn đoán vì vậy chỉ giải thích được một phần khoảng hụt; phần còn lại phù hợp với giả thuyết lệch miền ảnh, nhưng giả thuyết ấy chưa được kiểm bằng một phép thử riêng.
+
+---
+
 # Chương 5. KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN
 
-Luận văn đặt câu hỏi liệu chưng cất tri thức có mang lại cải thiện đáng kể và nhất quán cho các mô hình gọn nhẹ thuộc nhiều paradigm thiết kế khác nhau trong bài toán phát hiện ung thư da, và chất lượng của teacher ảnh hưởng ra sao. Để trả lời, luận văn đã xây dựng và hoàn tất một thực nghiệm đối chứng quy mô **140 lượt huấn luyện**, trải **12 cặp teacher–student** thuộc bốn paradigm kiến trúc, đánh giá trên **ba tầng độc lập**, và khép vòng bằng triển khai thật trên thiết bị.
+Luận văn đặt ra hai câu hỏi trung tâm: làm thế nào để thu gọn và triển khai mô hình học sâu phân loại tổn thương da lên thiết bị biên, và làm cách nào duy trì hiệu năng chẩn đoán ổn định trên ảnh chụp từ camera thực tế. Để trả lời, luận văn đã hoàn tất một thực nghiệm đối chứng quy mô **140 lượt huấn luyện**, trải **12 cặp teacher–student** thuộc bốn paradigm kiến trúc và đánh giá trên **ba tầng độc lập**; trên bộ chia dữ liệu dựng lại, luận văn thử thêm ba can thiệp dữ liệu, chọn một mô hình phát hành theo quy tắc đăng ký trước, đưa nó lên điện thoại thật và chấm nó theo bộ tiêu chí ba trụ.
 
 ## 5.1 Trả lời câu hỏi nghiên cứu trung tâm
 
-Thông qua toàn bộ thực nghiệm ở Chương 4, có thể khẳng định **chưng cất tri thức áp dụng được cho bài toán này**: nó cải thiện các mô hình gọn nhẹ thuộc cả bốn paradigm được thử, và không cặp nào bị làm tệ đi có ý nghĩa thống kê trong miền huấn luyện. Mức cải thiện tuy vậy không đồng đều, khác nhau giữa các miền ảnh cũng như giữa các student. Sáu câu hỏi đặt ra ở Mục 1.6 được trả lời lần lượt dưới đây, mỗi câu kèm mức chắc chắn mà bằng chứng cho phép.
+**Câu hỏi 1 — thu gọn và triển khai.** Chưng cất tri thức thu gọn được mô hình mà không mất quá nhiều hiệu năng so với teacher, và đường triển khai đã được khép bằng bằng chứng số học. Trên ma trận ban đầu, chưng cất cải thiện student thuộc cả bốn paradigm theo hướng nhất quán, rõ nhất khi ra ngoài miền (Q3 dưới đây). Trên bộ chia dựng lại, mô hình phát hành — MobileNetV4-Conv-Medium chưng cất từ EfficientNetV2-M — không kém teacher quá biên $\delta$ ở cả ba miền (nhãn tạm), dù phép so này còn dễ đạt hơn thực tế vì teacher chưa được huấn luyện cùng công thức (Mục 4.11.4). Trên Pixel 6a, mô hình cho logit trùng máy chủ tới sai lệch lớn nhất 5,2·10⁻⁶ trên 70.883 ảnh, không lỗi và tất định (Mục 4.11.7). Phần chưa trả lời xong là tốc độ của chính tệp phát hành: độ trễ theo kiến trúc khoảng 40 ms mỗi ảnh khi máy đã nóng nằm dưới mốc đề xuất 80 ms, nhưng độ trễ phân vị 95 trên đúng tệp ấy chưa được đo.
+
+**Câu hỏi 2 — giữ hiệu năng trên ảnh camera thực tế.** Câu hỏi này chưa có câu trả lời trọn vẹn. Trên ảnh chụp bằng điện thoại cùng nguồn với dữ liệu huấn luyện, mô hình đạt (tạm) cả hai mốc tại ngưỡng của ứng dụng; trên ảnh lâm sàng khác nguồn, nó bỏ sót khoảng 40–50% ca ác tính ở cả ba nhóm tông da, và phán quyết theo bộ tiêu chí là **KHÔNG ĐẠT YÊU CẦU (tạm, khám phá)** (Mục 4.11.6). Khoảng hụt ấy không đến từ việc chọn ngưỡng, và đổi teacher hay đổi student ở vòng chọn thứ hai cũng không đóng được nó (Mục 4.11.6 và 4.11.8). Trong những gì đã thử, đòn bẩy có ích là dữ liệu: bổ sung 656 ảnh DDI và lấy mẫu phân tầng theo nguồn đều cải thiện có ý nghĩa ngoài miền, còn một cấu hình tăng cường ảnh nhắm vào khác biệt miền thì làm mô hình kém đi (Mục 4.11.2). Vì các mốc và quy tắc chọn ngưỡng được chốt sau khi đã xem kết quả, phán quyết này chỉ mang tính khám phá; một kết luận xác nhận cần một tập dữ liệu mới chưa từng được dùng (Mục 5.3).
+
+Phần còn lại của mục trả lời sáu câu hỏi kiểm chứng của ma trận ban đầu. Thông qua toàn bộ thực nghiệm ở Mục 4.1–4.10, có thể khẳng định **chưng cất tri thức áp dụng được cho bài toán này**: nó cải thiện các mô hình gọn nhẹ thuộc cả bốn paradigm được thử, và không cặp nào bị làm tệ đi có ý nghĩa thống kê trong miền huấn luyện. Mức cải thiện tuy vậy không đồng đều, khác nhau giữa các miền ảnh cũng như giữa các student. Sáu câu hỏi đặt ra ở Mục 1.6 được trả lời lần lượt dưới đây, mỗi câu kèm mức chắc chắn mà bằng chứng cho phép.
 
 **Q1 — Trộn PAD-UFES-20 vào tập huấn luyện có làm mô hình tốt hơn không?** Có, và ở cả hai tầng. Cả ba teacher đều hưởng lợi trên miền ảnh lâm sàng, với ΔAUPRC từ +0,092 tới +0,131, còn ở tầng student thì 3/4 kiến trúc có khoảng tin cậy loại trừ 0, mức tăng +0,105 tới +0,120. Quan trọng không kém là việc trộn thêm PAD **không làm hại miền ISIC**: ngược lại, 3/4 student còn cải thiện có ý nghĩa ngay trên miền ấy. Kết luận này rất chắc vì dựa trên khoảng tin cậy ghép cặp chứ không phải điểm ước lượng.
 
@@ -2124,9 +2437,9 @@ Thông qua toàn bộ thực nghiệm ở Chương 4, có thể khẳng định 
 
 **Q3 — Chưng cất có cải thiện student nhất quán qua các paradigm kiến trúc khác nhau không?** Có, xét về hướng. Trên toàn bộ 12 cặp, chưng cất cải thiện pAUC@TPR≥80%, độ nhạy và độ nhạy tại độ đặc hiệu cố định, và cả bốn paradigm student đều hưởng lợi, gồm CNN tách theo chiều sâu, CNN tái tham số hoá, lai attention–CNN và CNN mang thiết kế ViT. Quy theo phần khoảng cách còn lại tới trần, chưng cất xoá được trung bình 22,7% (Bảng 4.9). Nhưng biên độ đạt ý nghĩa thống kê lại nằm chủ yếu ở xuyên miền: trong miền chỉ 5/12 cặp có khoảng tin cậy loại trừ 0, còn trên HAM10000 là 11/12, với ΔAUPRC trung vị +0,0304 và cao nhất +0,0713 [+0,0598; +0,0819]. Nguyên nhân của chênh lệch ấy đã xác định được là cỡ mẫu, vì tập test trong miền chỉ có 241 ca dương so với 1.169 của HAM10000, chứ không phải hiệu ứng yếu đi. Một phát biểu như vậy chỉ đưa ra được khi có đủ mười hai cặp cùng một lúc, mỗi cặp kèm nhánh đối chứng của chính nó.
 
-**Q4 — Student sau chưng cất có vượt được teacher không?** Không vượt trên mọi độ đo, nhưng cũng không thua kém đáng kể ở nơi bài toán quan tâm. Student vượt teacher trên pAUC@TPR≥80% ở 11/12 cặp và trên độ nhạy, chưa vượt trên AUPRC, và thua rõ khi ra ngoài miền huấn luyện. Với cặp đem triển khai, con số cụ thể là pAUC **0,1851** so với **0,1830** của teacher, tức student cao hơn, còn AUPRC in-domain là **0,6510** so với **0,6566**, chênh 0,0056 và nhỏ hơn cả độ lệch chuẩn giữa năm fold của chính mỗi bên (±0,0129 và ±0,0211). Đổi lại phần thua ít ỏi ấy là một mô hình nhẹ hơn hẳn: FastViT-SA12 có **10,557 triệu tham số** và tệp FP32 nặng **40,41 MB**, so với 118,699 triệu tham số và 453,37 MB của MaxViT-Base, tức nhẹ hơn **11,2 lần** về cả tham số lẫn dung lượng và ít hơn **16,2 lần** FLOPs. Chính chưng cất tạo ra khoảng cách đó: cùng kiến trúc FastViT-SA12 nhưng huấn luyện không chưng cất chỉ đạt AUPRC 0,6082, nên xét điểm ước lượng thì chưng cất đã lấp được khoảng **88%** quãng đường từ bản đối chứng lên tới teacher. Đây đúng là vai trò mà chưng cất được kỳ vọng, và cũng là thứ khiến một mô hình cỡ 40 MB trở thành lựa chọn triển khai hợp lý thay vì một mô hình 453 MB. Khoảng cách còn lại nằm ở ngoài miền, và luận văn không giấu điều đó: Mục 5.2 xếp nó vào nhóm hạn chế, còn Mục 5.3 đặt cổng phát hiện ảnh ngoài phân phối thành điều kiện trước khi đưa vào dùng thật.
+**Q4 — Student sau chưng cất có vượt được teacher không?** Không vượt trên mọi độ đo, nhưng cũng không thua kém đáng kể ở nơi bài toán quan tâm. Student vượt teacher trên pAUC@TPR≥80% ở 11/12 cặp và trên độ nhạy, chưa vượt trên AUPRC, và thua rõ khi ra ngoài miền huấn luyện. Với cặp được khuyến nghị ở Mục 4.10, con số cụ thể là pAUC **0,1851** so với **0,1830** của teacher, tức student cao hơn, còn AUPRC in-domain là **0,6510** so với **0,6566**, chênh 0,0056 và nhỏ hơn cả độ lệch chuẩn giữa năm fold của chính mỗi bên (±0,0129 và ±0,0211). Đổi lại phần thua ít ỏi ấy là một mô hình nhẹ hơn hẳn: FastViT-SA12 có **10,557 triệu tham số** và tệp FP32 nặng **40,41 MB**, so với 118,699 triệu tham số và 453,37 MB của MaxViT-Base, tức nhẹ hơn **11,2 lần** về cả tham số lẫn dung lượng và ít hơn **16,2 lần** FLOPs. Chính chưng cất tạo ra khoảng cách đó: cùng kiến trúc FastViT-SA12 nhưng huấn luyện không chưng cất chỉ đạt AUPRC 0,6082, nên xét điểm ước lượng thì chưng cất đã lấp được khoảng **88%** quãng đường từ bản đối chứng lên tới teacher. Đây đúng là vai trò mà chưng cất được kỳ vọng, và cũng là thứ khiến một mô hình cỡ 40 MB trở thành lựa chọn triển khai hợp lý thay vì một mô hình 453 MB. Khoảng cách còn lại nằm ở ngoài miền, và luận văn không giấu điều đó: Mục 5.2 xếp nó vào nhóm hạn chế, còn Mục 5.3 đặt cổng phát hiện ảnh ngoài phân phối thành điều kiện trước khi đưa vào dùng thật.
 
-**Q5 — Nếu chỉ được triển khai một mô hình duy nhất thì chọn gì?** Cặp `MaxViT-Base → FastViT-SA12` cho kịch bản sàng lọc thực tế, vì nó thắng ứng viên còn lại ở cả 8 độ đo xuyên miền với khoảng tin cậy loại trừ 0. Nếu ràng buộc thiết bị là cứng thì chọn `ConvNeXtV2-Base → MobileNetV4-Conv-Medium`, nhanh hơn 2,9 lần và tương đương trong miền, đổi lại là suy giảm khi dịch chuyển miền. Đây là kết luận chắc chắn nhất trong sáu câu, vì nó dựa trên khoảng tin cậy ghép cặp giữa đúng hai ứng viên chứ không phải so hai khoảng riêng lẻ.
+**Q5 — Nếu chỉ được triển khai một mô hình duy nhất thì chọn gì?** Cặp `MaxViT-Base → FastViT-SA12` cho kịch bản sàng lọc thực tế, vì nó thắng ứng viên còn lại ở cả 8 độ đo xuyên miền với khoảng tin cậy loại trừ 0. Nếu ràng buộc thiết bị là cứng thì chọn `ConvNeXtV2-Base → MobileNetV4-Conv-Medium`, nhanh hơn 2,9 lần và tương đương trong miền, đổi lại là suy giảm khi dịch chuyển miền. Đây là kết luận chắc chắn nhất trong sáu câu, vì nó dựa trên khoảng tin cậy ghép cặp giữa đúng hai ứng viên chứ không phải so hai khoảng riêng lẻ. Trên bộ chia dựng lại, mô hình phát hành lại là cặp `EfficientNetV2-M → MobileNetV4-Conv-Medium` (Mục 4.11.3). Hai kết luận được đo trên hai thiết lập khác nhau: khuyến nghị ở trên dựa trên ma trận ban đầu, còn trên bộ chia dựng lại các can thiệp dữ liệu được thử trên cặp chạy nhanh nhất ở cả hai vai (Mục 4.11.1), và cặp `MaxViT-Base → FastViT-SA12` chưa được huấn luyện lại trên bộ chia ấy.
 
 **Q6 — Tỉ lệ undersampling 1:5 có phải lựa chọn đúng không?** Có, và đã chứng minh chứ không phải giả định. Tỉ lệ 1:5 thắng 1:10 có ý nghĩa với ΔAUPRC +0,0570 [+0,0343; +0,0781], nhưng **không phân biệt được với 1:3**. Chi tiết thứ hai đáng nhớ hơn chi tiết thứ nhất: nếu chỉ nhìn điểm ước lượng thì 1:3 trông như nhỉnh hơn, và chỉ khoảng tin cậy mới cho thấy không có cơ sở để đổi.
 
@@ -2134,7 +2447,7 @@ Ngoài sáu câu hỏi ấy, luận văn thu được hai kết quả không n�
 
 ## 5.2 Hạn chế của nghiên cứu
 
-Mục này nêu thẳng ba hạn chế lớn nhất. Việc nêu chúng ở đây là có chủ đích: mỗi hạn chế đều có thể được người đọc phát hiện từ chính số liệu của luận văn, nên nêu trước là cách trung thực và cũng là cách bảo vệ tốt nhất.
+Mục này nêu thẳng bảy hạn chế lớn nhất — ba hạn chế đầu thuộc ma trận ban đầu, bốn hạn chế sau thuộc phần kết quả trên bộ chia dựng lại — rồi khoanh lại phạm vi của kết luận. Việc nêu chúng ở đây là có chủ đích: mỗi hạn chế đều có thể được người đọc phát hiện từ chính số liệu của luận văn, nên nêu trước là cách trung thực và cũng là cách bảo vệ tốt nhất.
 
 **Dữ liệu ca ác tính quá ít, và nhiều kết quả in-domain bị ràng buộc bởi chính điều đó.** Tập test trong miền có 62.040 ảnh nhưng chỉ **241 ca dương**, tỉ lệ 0,39%, và 74,7% số ca dương ấy đến từ vỏn vẹn 377 ảnh lâm sàng PAD (Mục 3.2.3). Ba kết quả của luận văn mang dấu vết trực tiếp của hạn chế này. Thứ nhất, chỉ **5/12** cặp có khoảng tin cậy của ΔAUPRC loại trừ 0 khi đo trong miền, trong khi cùng phương pháp trên HAM10000 với 1.169 ca dương cho **11/12**; nguyên nhân là cỡ mẫu chứ không phải chưng cất yếu, nhưng hệ quả thì vẫn là bằng chứng in-domain mỏng, và đó là lý do luận văn đặt luận điểm chính lên tầng xuyên miền. Thứ hai, con số AUPRC toàn tập là một **thống kê hỗn hợp** chứ không phải hiệu năng trên ISIC 2024: muốn một con số đại diện cho ISIC thì phải lấy con số riêng của miền ấy, 0,045–0,069 (Mục 4.4). Thứ ba, với 241 ca dương thì vài ca đổi thứ hạng đã đủ làm AUPRC xê dịch, nên fold tốt nhất vượt trung bình năm fold tới **+0,0263 AUPRC**, lớn hơn cả toàn bộ hiệu quả chưng cất trong miền là +0,0235 — chính vì vậy fold đem triển khai phải là fold trung vị chứ không phải fold cao điểm nhất (Mục 3.11.1).
 
@@ -2142,21 +2455,35 @@ Mục này nêu thẳng ba hạn chế lớn nhất. Việc nêu chúng ở đâ
 
 **Dịch chuyển miền gây khó khăn cho cả teacher lẫn student, nên chưng cất không phải chỗ khắc phục.** Khi ra ngoài miền huấn luyện, mức suy giảm không phân biệt mô hình lớn với mô hình nhỏ. Trên HAM10000, ba teacher tụt độ nhạy tại độ đặc hiệu 90% từ khoảng 0,95 xuống **0,481–0,498**, nằm gọn trong dải **0,324–0,510** của mười sáu student, và mô hình đạt cao nhất trên bộ này lại là một student chứ không phải teacher (Bảng A.3). Trên Fitzpatrick17k thì cả mười chín lượt chạy đều rơi về độ đặc hiệu **0,009–0,067** ở ngưỡng đóng băng, tức gắn cờ gần như mọi ảnh, và không lượt nào dùng được. Hệ quả khi đọc luận văn: khoảng cách còn lại ngoài miền **không** phải cái giá của việc nén mô hình, mà là giới hạn của chính dữ liệu huấn luyện. Tăng dung lượng mô hình không nâng được điểm vận hành ấy, nên hướng xử lý phải là mở rộng miền dữ liệu huấn luyện hoặc thêm cơ chế thích nghi miền, chứ không phải đổi teacher hay bỏ chưng cất đi.
 
-**Phạm vi của kết luận.** Mọi số liệu trong luận văn đến từ việc chấm mô hình trên dữ liệu đã thu sẵn, chứ không từ việc thử mô hình với bệnh nhân thật. Vì vậy cần tách hai loại kết luận. **Về mặt kỹ thuật, luận văn kết luận được dứt khoát**: mô hình chạy được trên một chiếc điện thoại thật, vượt cổng kiểm tra tương đương số học 16/16 ở cả máy chủ lẫn trên chính máy, và cho kết quả trong 113,9 ms mỗi ảnh với 208–257 MiB bộ nhớ. **Về mặt lâm sàng, luận văn chỉ kết luận trong phạm vi dữ liệu đã dùng**: nó nói được mô hình phân biệt tốt đến đâu trên các bộ dữ liệu ấy, còn việc mô hình có đủ tốt để dùng cho bệnh nhân hay không là câu hỏi của một nghiên cứu tiến cứu, vốn đã được đặt ngoài phạm vi ngay từ Mục 1.7.
+**Phán quyết theo bộ tiêu chí ba trụ mới mang tính khám phá.** Các mốc của trụ III và biên $\delta$ được chốt sau khi đã thấy kết quả của mô hình ứng viên; quy tắc chọn ngưỡng của ứng dụng và việc chấm trụ III-b trên Fitzpatrick17k-C cũng được quyết sau khi đã xem tập test; vòng chọn ứng viên thứ hai diễn ra trên chính những tập kiểm đã được nhìn qua ứng viên thứ nhất; và các tập test đã được mở nhiều lần — nhật ký ghi ít nhất 18 lần trên bộ chia dựng lại, tính tới ngày 04/10/2026. Một kết luận xác nhận cần một tập dữ liệu mới, chưa ai chạm tới, và chỉ chạy một lần.
+
+**Một số phép đo của bộ tiêu chí chưa được thực hiện.** Độ trễ phân vị 95 trên đúng tệp mô hình phát hành và tỉ lệ đổi quyết định khi ảnh đi qua pipeline camera thật của ứng dụng chưa được đo. Phép đo trên điện thoại hiện dùng ảnh đã tiền xử lý sẵn ở 224×224, nên khâu thu nhỏ ảnh của ứng dụng vẫn là một nguồn sai khác có thể có; và mọi phép đo trên thiết bị mới làm trên một chiếc Pixel 6a.
+
+**Phép so student với teacher chưa cùng công thức.** Teacher được huấn luyện không có bộ lấy mẫu theo nguồn và chỉ có checkpoint chọn theo pAUC, trong khi student có cả hai; teacher vì thế yếu hơn trên ảnh PAD-UFES-20, và điều kiện hiệu quả nén dễ đạt hơn thực tế. Khi so cùng công thức, student chưng cất và teacher không phân biệt được trên ảnh PAD-UFES-20 (Mục 4.11.4).
+
+**Giả định độc lập của khoảng tin cậy Wilson.** Khoảng Wilson coi các ảnh là độc lập. Giả định này mới được kiểm gần đúng trên hai chỉ số không phụ thuộc ngưỡng (Mục 3.10); với Fitzpatrick17k, vốn không có mã bệnh nhân, vi phạm chỉ được giảm bớt bằng cách loại ảnh gần trùng.
+
+**Phạm vi của kết luận.** Mọi số liệu trong luận văn đến từ việc chấm mô hình trên dữ liệu đã thu sẵn, chứ không từ việc thử mô hình với bệnh nhân thật. Vì vậy cần tách hai loại kết luận. **Về mặt kỹ thuật, luận văn kết luận được dứt khoát**: mô hình chạy được trên một chiếc điện thoại thật, vượt cổng kiểm tra tương đương số học 16/16 ở cả máy chủ lẫn trên chính máy, và cặp được khuyến nghị ở Mục 4.10 cho kết quả trong 113,9 ms mỗi ảnh với 208–257 MiB bộ nhớ; còn mô hình phát hành ở Mục 4.11 cho logit trùng máy chủ trên 70.883 ảnh. **Về mặt lâm sàng, luận văn chỉ kết luận trong phạm vi dữ liệu đã dùng**: nó nói được mô hình phân biệt tốt đến đâu trên các bộ dữ liệu ấy, còn việc mô hình có đủ tốt để dùng cho bệnh nhân hay không là câu hỏi của một nghiên cứu tiến cứu, vốn đã được đặt ngoài phạm vi ngay từ Mục 1.7.
 
 ## 5.3 Hướng phát triển
 
-Năm hướng dưới đây đi ra từ những giới hạn đã đo được ở Chương 4 và từ những gì còn thiếu để một ứng dụng thật dùng được.
+Tám hướng dưới đây đi ra từ những giới hạn đã đo được ở Chương 4 và từ những gì còn thiếu để một ứng dụng thật dùng được.
 
-**Mở rộng và làm phong phú nguồn dữ liệu.** Điểm cần nói rõ là đòn bẩy không nằm ở tăng cường mạnh hơn: Mục 3.2.10 đã loại MixUp, CutMix và CutOut vì lý do riêng của bài toán, và Mục 4.2 cho thấy cấu hình tăng cường mạnh không cần dùng tới vì mô hình không quá khớp. Chỗ thiếu là **số ca ác tính thật** và **độ rộng của miền ảnh**. Bằng chứng cho hướng này đã có sẵn trong luận văn: Q1 cho thấy trộn thêm PAD-UFES-20 giúp cả ba teacher và 3/4 student, với ΔAUPRC từ +0,092 tới +0,131 trên miền ảnh lâm sàng, mà PAD chỉ góp 377 ảnh. Bổ sung thêm nguồn ảnh lâm sàng chụp bằng điện thoại vì thế là bước tiếp theo trực tiếp nhất. Một nhánh khác đáng thử là sinh ảnh tổng hợp cho riêng lớp ác tính, nhưng phải kèm phép kiểm rằng ảnh sinh ra không kéo lệch phân phối, vì với tỉ lệ 0,39% thì một lượng nhỏ ảnh sai cũng đủ làm hỏng lớp thiểu số.
+**Mở rộng và làm phong phú nguồn dữ liệu.** Điểm cần nói rõ là đòn bẩy không nằm ở tăng cường mạnh hơn: Mục 3.2.10 đã loại MixUp, CutMix và CutOut vì lý do riêng của bài toán, và Mục 4.2 cho thấy cấu hình tăng cường mạnh không cần dùng tới vì mô hình không quá khớp. Chỗ thiếu là **số ca ác tính thật** và **độ rộng của miền ảnh**. Bằng chứng cho hướng này đã có sẵn trong luận văn: Q1 cho thấy trộn thêm PAD-UFES-20 giúp cả ba teacher và 3/4 student, với ΔAUPRC từ +0,092 tới +0,131 trên miền ảnh lâm sàng, mà PAD chỉ góp 377 ảnh. Bổ sung thêm nguồn ảnh lâm sàng chụp bằng điện thoại vì thế là bước tiếp theo trực tiếp nhất. Kết quả trên bộ chia dựng lại củng cố hướng này: bổ sung 656 ảnh DDI nâng AUPRC của student chưng cất có ý nghĩa trên HAM10000 và Fitzpatrick17k, ở cả ba nhóm tông da, trong khi một cấu hình tăng cường ảnh nhắm vào khác biệt miền làm mô hình kém đi (Mục 4.11.2). Phân tích theo chẩn đoán còn chỉ ra hai chỗ cụ thể cần xử lý: nhãn của dày sừng ánh sáng không thống nhất giữa các bộ dữ liệu, và một số bệnh ác tính như mycosis fungoides hay sarcoma Kaposi chỉ có vài chục ảnh trong dữ liệu huấn luyện (Mục 4.11.8). Một nhánh khác đáng thử là sinh ảnh tổng hợp cho riêng lớp ác tính, nhưng phải kèm phép kiểm rằng ảnh sinh ra không kéo lệch phân phối, vì với tỉ lệ 0,39% thì một lượng nhỏ ảnh sai cũng đủ làm hỏng lớp thiểu số.
 
-**Tối ưu hoá năng lực xử lý của mô hình trên thiết bị di động.** Mục 4.9 cho thấy bộ nhớ không phải là ràng buộc, và với hai kiến trúc còn lại trên frontier thì thời gian trả kết quả cũng đã ở mức dùng được, nên phần còn thiếu là độ chính xác thu về trên đúng lượng tính toán mà máy đã bỏ ra. Hướng này vì thế không phải là làm mô hình nhỏ thêm nữa, mà là để mô hình khai thác được nhiều hơn từ phần năng lực tính toán sẵn có của thiết bị. Một phần việc thuộc về tầng thực thi: trong đợt đo có một kiến trúc buộc phải chạy trên bộ toán tử tham chiếu vì backend tăng tốc hạ đồ thị của nó sai (Mục 4.9.1), và bộ toán tử ấy không chia việc ra nhiều luồng, nên số đo của nó nói về độ phủ của backend nhiều hơn là về bản thân kiến trúc; đưa được những kiến trúc như vậy trở lại backend tăng tốc là điều kiện để so sánh chúng công bằng trên thiết bị. Một phần việc khác thuộc về cách ứng dụng dùng mô hình, bởi điều tiết nhiệt làm các mô hình chạy trên backend tăng tốc chậm đi 45–49% sau năm phút chạy liên tục, nên việc các lượt suy luận được phân bố ra sao theo thời gian cũng thuộc về bài toán tốc độ chứ không chỉ riêng bản thân mô hình. Mốc cần vượt vẫn là khoảng cách AUPRC còn lại so với teacher, 0,6510 so với 0,6566 trong miền và lớn hơn hẳn khi ra ngoài miền.
+**Tập xác nhận mới và chốt chính thức các mốc.** Vì phán quyết hiện tại chỉ mang tính khám phá, bước kế tiếp là một tập dữ liệu mới chưa từng được dùng, chấm đúng một lần. Với quy tắc "cận dưới Wilson không thấp hơn mốc" và lực thống kê tính chính xác theo tổng nhị thức, tập ấy cần khoảng 287 ca ác tính và 130 ca lành tính để xác suất cả hai chỉ số cùng vượt mốc đạt 0,80, với giả định độ nhạy thật 0,87 và độ đặc hiệu thật 0,73 — bằng điểm ước lượng của mô hình phát hành trên ảnh PAD-UFES-20. Hướng khả dĩ là hợp tác với bệnh viện để thu ảnh có nhãn sinh thiết. Song song, các mốc của bộ tiêu chí cần được chốt chính thức cùng người hướng dẫn, lập luận từ bài toán sàng lọc chứ không từ số đo hiện có.
+
+**Huấn luyện lại teacher cùng công thức với student.** Teacher hiện chưa dùng bộ lấy mẫu theo nguồn và chưa có checkpoint chọn theo AUPRC (Mục 4.11.4). Huấn luyện lại teacher cùng công thức sẽ làm phép so student với teacher công bằng, và cho biết một teacher mạnh hơn trên ảnh điện thoại có giúp chưng cất hữu ích hơn trên chính loại ảnh ấy hay không.
+
+**Hoàn tất các phép đo phía thiết bị.** Hai hạng mục của bộ tiêu chí còn chưa đo là độ trễ phân vị 95 trên đúng tệp mô hình phát hành và tỉ lệ đổi quyết định khi ảnh đi qua pipeline camera thật của ứng dụng. Mốc độ trễ cũng cần được kiểm trên ít nhất một thiết bị cấp thấp hơn Pixel 6a, vì một ứng dụng sàng lọc cộng đồng sẽ chạy trên đủ loại máy.
+
+**Tối ưu hoá năng lực xử lý của mô hình trên thiết bị di động.** Mục 4.9 cho thấy bộ nhớ không phải là ràng buộc, và với hai kiến trúc còn lại trên frontier thì thời gian trả kết quả cũng đã ở mức dùng được, nên phần còn thiếu là độ chính xác thu về trên đúng lượng tính toán mà máy đã bỏ ra. Hướng này vì thế không phải là làm mô hình nhỏ thêm nữa, mà là để mô hình khai thác được nhiều hơn từ phần năng lực tính toán sẵn có của thiết bị. Một phần việc thuộc về tầng thực thi: trong đợt đo có một kiến trúc buộc phải chạy trên bộ toán tử tham chiếu vì backend tăng tốc hạ đồ thị của nó sai (Mục 4.9.1), và bộ toán tử ấy không chia việc ra nhiều luồng, nên số đo của nó nói về độ phủ của backend nhiều hơn là về bản thân kiến trúc; đưa được những kiến trúc như vậy trở lại backend tăng tốc là điều kiện để so sánh chúng công bằng trên thiết bị. Một phần việc khác thuộc về cách ứng dụng dùng mô hình, bởi điều tiết nhiệt làm các mô hình chạy trên backend tăng tốc chậm đi 45–49% sau năm phút chạy liên tục, nên việc các lượt suy luận được phân bố ra sao theo thời gian cũng thuộc về bài toán tốc độ chứ không chỉ riêng bản thân mô hình. Mốc cần vượt vẫn là khoảng cách AUPRC còn lại so với teacher — với cặp FastViT-SA12 trên ma trận ban đầu là 0,6510 so với 0,6566 trong miền, và lớn hơn hẳn khi ra ngoài miền.
 
 **Cổng phát hiện ảnh ngoài phân phối.** Đây là điều kiện bắt buộc trước khi đưa mô hình vào dùng thật, và lý do đã nêu ở Mục 5.2: mô hình suy giảm nghiêm trọng khi rời miền huấn luyện, trong khi HAM10000 và Fitzpatrick17k vẫn là ảnh tổn thương da nên chưa đại diện cho những đầu vào thực sự bất thường mà một ứng dụng cộng đồng sẽ gặp. Cơ chế cần có là nhận ra đầu vào lạ và từ chối đưa ra kết luận, thay vì trả về một xác suất vô nghĩa.
 
 **Tích hợp tầng đề xuất và hướng dẫn cho người dùng.** Thứ mà mô hình trong luận văn trả về chỉ là một con số nguy cơ cho một tấm ảnh, và bản thân con số ấy không nói cho người dùng biết phải làm gì tiếp. Một tầng đặt trên đầu ra ấy là phần việc còn thiếu để kết quả trở nên dùng được: diễn giải vì sao mô hình cho điểm cao, theo dõi cùng một tổn thương qua nhiều lần chụp cách nhau theo thời gian thay vì chấm từng ảnh rời rạc, và dẫn người dùng tới bước tiếp theo tương ứng với mức nguy cơ. Ràng buộc của hướng này lấy từ chính Mục 5.2: luận văn chỉ kết luận được trong phạm vi dữ liệu đã dùng, nên hướng dẫn đưa ra phải ở dạng khuyến nghị đi khám chứ không được trình bày như một chẩn đoán, và tầng này chỉ có nghĩa khi đặt sau cổng phát hiện ảnh ngoài phân phối vừa nêu.
 
-**Mở rộng ứng dụng sang nền tảng iOS.** Toàn bộ phần triển khai của luận văn dừng lại ở một thiết bị Android duy nhất, chiếc Pixel 6a ở Mục 3.11.3. Định dạng đã chọn không bó buộc vào một hệ điều hành và ExecuTorch cũng có nhánh chạy cho iOS [40], nên phần phải làm lại không phải là mô hình mà là hai bước kiểm chứng, và cả hai đều phải làm lại trên chính thiết bị đích. Cổng kiểm tra tương đương phải chạy lại vì Mục 3.11.2 đã cho thấy một lượt chuyển đổi có thể kết thúc không một cảnh báo nào trong khi mô hình đã hỏng, và điều quyết định ở đó là thư viện toán tử nhận đồ thị chứ không phải kiến trúc. Phép đo độ trễ cũng phải làm lại vì Mục 4.9 cho thấy con số đo được gắn với trạng thái nhiệt của đúng chiếc máy đang đo, nên không mang sang máy khác được.
+**Mở rộng ứng dụng sang nền tảng iOS.** Toàn bộ phần triển khai của luận văn dừng lại ở một thiết bị Android duy nhất, chiếc Pixel 6a ở Mục 3.11.3. Định dạng đã chọn không bó buộc vào một hệ điều hành và ExecuTorch cũng có nhánh chạy cho iOS [45], nên phần phải làm lại không phải là mô hình mà là hai bước kiểm chứng, và cả hai đều phải làm lại trên chính thiết bị đích. Cổng kiểm tra tương đương phải chạy lại vì Mục 3.11.2 đã cho thấy một lượt chuyển đổi có thể kết thúc không một cảnh báo nào trong khi mô hình đã hỏng, và điều quyết định ở đó là thư viện toán tử nhận đồ thị chứ không phải kiến trúc. Phép đo độ trễ cũng phải làm lại vì Mục 4.9 cho thấy con số đo được gắn với trạng thái nhiệt của đúng chiếc máy đang đo, nên không mang sang máy khác được.
 
 ---
 
@@ -2176,115 +2503,125 @@ Năm hướng dưới đây đi ra từ những giới hạn đã đo được �
 
 **Tiếng Anh**
 
-[1] Aboulmira A., et al. (2025), "Hybrid Model with Wavelet Decomposition and EfficientNet for Accurate Skin Cancer Classification", *Journal of Cancer* Vol.16 (2), pp.506-520.
+[1] Abhishek K., Jain A., Hamarneh G. (2025), "Investigating the Quality of DermaMNIST and Fitzpatrick17k Dermatological Image Datasets", *Scientific Data* Vol.12 (1), pp.196.
 
-[2] Buda M., Maki A., Mazurowski M. A. (2018), "A systematic study of the class imbalance problem in convolutional neural networks", *Neural Networks* Vol.106, pp.249-259.
+[2] Aboulmira A., et al. (2025), "Hybrid Model with Wavelet Decomposition and EfficientNet for Accurate Skin Cancer Classification", *Journal of Cancer* Vol.16 (2), pp.506-520.
 
-[3] Buslaev A., et al. (2020), "Albumentations: Fast and Flexible Image Augmentations", *Information* Vol.11 (2), pp.125.
+[3] Buda M., Maki A., Mazurowski M. A. (2018), "A systematic study of the class imbalance problem in convolutional neural networks", *Neural Networks* Vol.106, pp.249-259.
 
-[4] Cho J. H., Hariharan B. (2019), "On the Efficacy of Knowledge Distillation", *ICCV 2019*, pp.4794-4802.
+[4] Buslaev A., et al. (2020), "Albumentations: Fast and Flexible Image Augmentations", *Information* Vol.11 (2), pp.125.
 
-[5] De Pinto G., et al. (2024), "Global trends in cutaneous malignant melanoma incidence and mortality", *Melanoma Research* Vol.34 (3), pp.265-275.
+[5] Cho J. H., Hariharan B. (2019), "On the Efficacy of Knowledge Distillation", *ICCV 2019*, pp.4794-4802.
 
-[6] Dietterich T. G. (1998), "Approximate Statistical Tests for Comparing Supervised Classification Learning Algorithms", *Neural Computation* Vol.10 (7), pp.1895-1923.
+[6] Daneshjou R., et al. (2022), "Disparities in dermatology AI performance on a diverse, curated clinical image set", *Science Advances* Vol.8 (32), eabq6147.
 
-[7] Ding Y., et al. (2023), "HI-MViT: A lightweight model for explainable skin disease classification based on modified MobileViT", *Digital Health* Vol.9, pp.20552076231207197.
+[7] De Pinto G., et al. (2024), "Global trends in cutaneous malignant melanoma incidence and mortality", *Melanoma Research* Vol.34 (3), pp.265-275.
 
-[8] Dosovitskiy A., et al. (2021), "An Image is Worth 16×16 Words: Transformers for Image Recognition at Scale", *ICLR 2021*.
+[8] Dietterich T. G. (1998), "Approximate Statistical Tests for Comparing Supervised Classification Learning Algorithms", *Neural Computation* Vol.10 (7), pp.1895-1923.
 
-[9] Duchon C. E. (1979), "Lanczos Filtering in One and Two Dimensions", *Journal of Applied Meteorology* Vol.18 (8), pp.1016-1022.
+[9] Ding Y., et al. (2023), "HI-MViT: A lightweight model for explainable skin disease classification based on modified MobileViT", *Digital Health* Vol.9, pp.20552076231207197.
 
-[10] Efron B., Tibshirani R. J. (1993), *An Introduction to the Bootstrap*, Chapman & Hall/CRC, New York.
+[10] Dinnes J., et al. (2018), "Dermoscopy, with and without visual inspection, for diagnosing melanoma in adults", *Cochrane Database of Systematic Reviews* Vol.12 (12), CD011902.
 
-[11] Esteva A., et al. (2017), "Dermatologist-level classification of skin cancer with deep neural networks", *Nature* Vol.542 (7639), pp.115-118.
+[11] Dosovitskiy A., et al. (2021), "An Image is Worth 16×16 Words: Transformers for Image Recognition at Scale", *ICLR 2021*.
 
-[12] Goodfellow I., Bengio Y., Courville A. (2016), *Deep Learning*, MIT Press, Cambridge, MA. (Tầng đầu ra sigmoid/softmax: §6.2.2; tràn số và mất số: §4.1.)
+[12] Duchon C. E. (1979), "Lanczos Filtering in One and Two Dimensions", *Journal of Applied Meteorology* Vol.18 (8), pp.1016-1022.
 
-[13] Gou J., Yu B., Maybank S. J., Tao D. (2021), "Knowledge Distillation: A Survey", *International Journal of Computer Vision* Vol.129 (6), pp.1789-1819.
+[13] Efron B., Tibshirani R. J. (1993), *An Introduction to the Bootstrap*, Chapman & Hall, New York.
 
-[14] Goyal P., Dollár P., Girshick R., et al. (2017), "Accurate, Large Minibatch SGD: Training ImageNet in 1 Hour", *arXiv:1706.02677*. (Warmup tuyến tính ở các epoch đầu.)
+[14] Esteva A., et al. (2017), "Dermatologist-level classification of skin cancer with deep neural networks", *Nature* Vol.542 (7639), pp.115-118.
 
-[15] Groh M., et al. (2021), "Evaluating Deep Neural Networks Trained on Clinical Images in Dermatology with the Fitzpatrick 17k Dataset", *CVPR 2021 Workshops*, pp.1820-1828.
+[15] Goodfellow I., Bengio Y., Courville A. (2016), *Deep Learning*, MIT Press, Cambridge, MA. (Tầng đầu ra sigmoid/softmax: §6.2.2; tràn số và mất số: §4.1.)
 
-[16] Ha Q., Liu B., Liu F. (2020), "Identifying Melanoma Images using EfficientNet Ensemble: Winning Solution to the SIIM-ISIC Melanoma Classification Challenge", *arXiv:2010.05351*.
+[16] Gou J., Yu B., Maybank S. J., Tao D. (2021), "Knowledge Distillation: A Survey", *International Journal of Computer Vision* Vol.129 (6), pp.1789-1819.
 
-[17] Hinton G., Vinyals O., Dean J. (2015), "Distilling the Knowledge in a Neural Network", *arXiv:1503.02531*.
+[17] Goyal P., Dollár P., Girshick R., et al. (2017), "Accurate, Large Minibatch SGD: Training ImageNet in 1 Hour", *arXiv:1706.02677*. (Warmup tuyến tính ở các epoch đầu.)
 
-[18] Howard A., et al. (2019), "Searching for MobileNetV3", *ICCV 2019*, pp.1314-1324.
+[18] Groh M., et al. (2021), "Evaluating Deep Neural Networks Trained on Clinical Images in Dermatology with the Fitzpatrick 17k Dataset", *CVPR 2021 Workshops*, pp.1820-1828.
 
-[19] IEEE (2019), *IEEE Standard for Floating-Point Arithmetic*, IEEE Std 754-2019.
+[19] Ha Q., Liu B., Liu F. (2020), "Identifying Melanoma Images using EfficientNet Ensemble: Winning Solution to the SIIM-ISIC Melanoma Classification Challenge", *arXiv:2010.05351*.
 
-[20] International Skin Imaging Collaboration (2024), *ISIC 2024 - Skin Cancer Detection with 3D-TBP*, cuộc thi Kaggle và bộ dữ liệu SLICE-3D, DOI: 10.34970/2024-slice-3d, https://www.kaggle.com/competitions/isic-2024-challenge
+[20] Hinton G., Vinyals O., Dean J. (2015), "Distilling the Knowledge in a Neural Network", *arXiv:1503.02531*.
 
-[21] Islam N., Hasib K. M., Joti F. A., Karim A., Azam S. (2024), "Leveraging Knowledge Distillation for Lightweight Skin Cancer Classification: Balancing Accuracy and Computational Efficiency", *arXiv:2406.17051*.
+[21] Howard A., et al. (2019), "Searching for MobileNetV3", *ICCV 2019*, pp.1314-1324.
 
-[22] ITU-R (2011), *Recommendation BT.601-7: Studio Encoding Parameters of Digital Television for Standard 4:3 and Wide-Screen 16:9 Aspect Ratios*.
+[22] IEEE (2019), *IEEE Standard for Floating-Point Arithmetic*, IEEE Std 754-2019.
 
-[23] Kittler H., et al. (2002), "Diagnostic accuracy of dermoscopy", *The Lancet Oncology* Vol.3 (3), pp.159-165.
+[23] International Skin Imaging Collaboration (2024), *ISIC 2024 - Skin Cancer Detection with 3D-TBP*, cuộc thi Kaggle và bộ dữ liệu SLICE-3D, DOI: 10.34970/2024-slice-3d, https://www.kaggle.com/competitions/isic-2024-challenge
 
-[24] Li Y., et al. (2023), "Rethinking Vision Transformers for MobileNet Size and Speed", *ICCV 2023*. (EfficientFormerV2.)
+[24] Islam N., Hasib K. M., Joti F. A., Karim A., Azam S. (2024), "Leveraging Knowledge Distillation for Lightweight Skin Cancer Classification: Balancing Accuracy and Computational Efficiency", *arXiv:2406.17051*.
 
-[25] Lin T. Y., Goyal P., Girshick R., He K., Dollár P. (2017), "Focal Loss for Dense Object Detection", *ICCV 2017*, pp.2980-2988.
+[25] ITU-R (2011), *Recommendation BT.601-7: Studio Encoding Parameters of Digital Television for Standard 4:3 and Wide-Screen 16:9 Aspect Ratios*.
 
-[26] Loshchilov I., Hutter F. (2017), "SGDR: Stochastic Gradient Descent with Warm Restarts", *ICLR 2017*. (Lịch trình cosine annealing.)
+[26] Kittler H., et al. (2002), "Diagnostic accuracy of dermoscopy", *The Lancet Oncology* Vol.3 (3), pp.159-165.
 
-[27] Loshchilov I., Hutter F. (2019), "Decoupled Weight Decay Regularization", *ICLR 2019*. (Bộ tối ưu AdamW.)
+[27] Kurtansky N. R., et al. (2024), "The SLICE-3D dataset: 400,000 skin lesion image crops extracted from 3D TBP for skin cancer detection", *Scientific Data* Vol.11 (1), pp.884.
 
-[28] McClish D. K. (1989), "Analyzing a Portion of the ROC Curve", *Medical Decision Making* Vol.9 (3), pp.190-195.
+[28] Kurtansky N. R., et al. (2025), "Automated triage of cancer-suspicious skin lesions with 3D total-body photography", *npj Digital Medicine* Vol.8 (1), pp.708.
 
-[29] Mehboob S., Bukhari M., Shah Y. A., Khan S., Sharif M. (2025), "Enhanced Skin Cancer Classification with MobileNetV3 and Morphological Preprocessing: A Deep Learning-Based Extension", *International Journal of Innovations in Science & Technology* Vol.7 (7), pp.1-12.
+[29] Li Y., et al. (2023), "Rethinking Vision Transformers for MobileNet Size and Speed", *ICCV 2023*. (EfficientFormerV2.)
 
-[30] Mehta S., Rastegari M. (2022), "MobileViT: Light-weight, General-purpose, and Mobile-friendly Vision Transformer", *ICLR 2022*.
+[30] Lin T. Y., Goyal P., Girshick R., He K., Dollár P. (2017), "Focal Loss for Dense Object Detection", *ICCV 2017*, pp.2980-2988.
 
-[31] Mirzadeh S. I., Farajtabar M., Li A., Levine N., Matsukawa A., Ghasemzadeh H. (2020), "Improved Knowledge Distillation via Teacher Assistant", *AAAI 2020*, pp.5191-5198.
+[31] Loshchilov I., Hutter F. (2017), "SGDR: Stochastic Gradient Descent with Warm Restarts", *ICLR 2017*. (Lịch trình cosine annealing.)
 
-[32] Ozdemir B., Pacal I. (2025), "A robust deep learning framework for multiclass skin cancer classification", *Scientific Reports* Vol.15 (1), pp.4938.
+[32] Loshchilov I., Hutter F. (2019), "Decoupled Weight Decay Regularization", *ICLR 2019*. (Bộ tối ưu AdamW.)
 
-[33] Pacheco A. G. C., Lima G. R., Salomão A. S., et al. (2020), "PAD-UFES-20: A skin lesion dataset composed of patient data and clinical images collected from smartphones", *Data in Brief* Vol.32, pp.106221.
+[33] McClish D. K. (1989), "Analyzing a Portion of the ROC Curve", *Medical Decision Making* Vol.9 (3), pp.190-195.
 
-[34] Park W., Kim D., Lu Y., Cho M. (2019), "Relational Knowledge Distillation", *CVPR 2019*, pp.3967-3976.
+[34] Mehboob S., Bukhari M., Shah Y. A., Khan S., Sharif M. (2025), "Enhanced Skin Cancer Classification with MobileNetV3 and Morphological Preprocessing: A Deep Learning-Based Extension", *International Journal of Innovations in Science & Technology* Vol.7 (7), pp.1-12.
 
-[35] Pascanu R., Mikolov T., Bengio Y. (2013), "On the difficulty of training recurrent neural networks", *ICML 2013*, PMLR 28 (3), pp.1310-1318. (Cắt gradient theo chuẩn.)
+[35] Mehta S., Rastegari M. (2022), "MobileViT: Light-weight, General-purpose, and Mobile-friendly Vision Transformer", *ICLR 2022*.
 
-[36] Paszke A., Gross S., Massa F., et al. (2019), "PyTorch: An Imperative Style, High-Performance Deep Learning Library", *NeurIPS 2019*, pp.8024-8035.
+[36] Mirzadeh S. I., Farajtabar M., Li A., Levine N., Matsukawa A., Ghasemzadeh H. (2020), "Improved Knowledge Distillation via Teacher Assistant", *AAAI 2020*, pp.5191-5198.
 
-[37] Pavel M. A., Asad R., Michael G. K. O., et al. (2025), "Multi-stage knowledge distillation with layer fusion-based deep learning approach for skin cancer classification", *Scientific Reports* Vol.15 (1), pp.39792.
+[37] Ozdemir B., Pacal I. (2025), "A robust deep learning framework for multiclass skin cancer classification", *Scientific Reports* Vol.15 (1), pp.4938.
 
-[38] Prechelt L. (1998), "Early Stopping — But When?", *Neural Networks: Tricks of the Trade*, LNCS vol.1524, Springer, pp.55-69.
+[38] Pacheco A. G. C., Lima G. R., Salomão A. S., et al. (2020), "PAD-UFES-20: A skin lesion dataset composed of patient data and clinical images collected from smartphones", *Data in Brief* Vol.32, pp.106221.
 
-[39] Price W. N., Cohen I. G. (2019), "Privacy in the age of medical big data", *Nature Medicine* Vol.25 (1), pp.37-43.
+[39] Park W., Kim D., Lu Y., Cho M. (2019), "Relational Knowledge Distillation", *CVPR 2019*, pp.3967-3976.
 
-[40] PyTorch Team (2024), *ExecuTorch: On-device AI inference runtime*, tài liệu chính thức của PyTorch Foundation, https://docs.pytorch.org/executorch/stable/ (truy cập 09/2026)
+[40] Pascanu R., Mikolov T., Bengio Y. (2013), "On the difficulty of training recurrent neural networks", *ICML 2013*, PMLR 28 (3), pp.1310-1318. (Cắt gradient theo chuẩn.)
 
-[41] Qin D., et al. (2024), "MobileNetV4: Universal Models for the Mobile Ecosystem", *ECCV 2024*, pp.78-96.
+[41] Paszke A., Gross S., Massa F., et al. (2019), "PyTorch: An Imperative Style, High-Performance Deep Learning Library", *NeurIPS 2019*, pp.8024-8035.
 
-[42] Saha S., Hemal M. M., Eidmum M. Z. A., Mridha M. F. (2025), "Knowledge distillation approach for skin cancer classification on lightweight deep learning model", *Healthcare Technology Letters* Vol.12 (1), e12120.
+[42] Pavel M. A., Asad R., Michael G. K. O., et al. (2025), "Multi-stage knowledge distillation with layer fusion-based deep learning approach for skin cancer classification", *Scientific Reports* Vol.15 (1), pp.39792.
 
-[43] Saito T., Rehmsmeier M. (2015), "The Precision-Recall Plot Is More Informative than the ROC Plot When Evaluating Binary Classifiers on Imbalanced Datasets", *PLoS ONE* Vol.10 (3), e0118432.
+[43] Prechelt L. (1998), "Early Stopping — But When?", *Neural Networks: Tricks of the Trade*, LNCS vol.1524, Springer, pp.55-69.
 
-[44] Siegel R. L., Miller K. D., Jemal A. (2020), "Cancer statistics, 2020", *CA: A Cancer Journal for Clinicians* Vol.70 (1), pp.7-30.
+[44] Price W. N., Cohen I. G. (2019), "Privacy in the age of medical big data", *Nature Medicine* Vol.25 (1), pp.37-43.
 
-[45] Tan M., Le Q. V. (2019), "EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks", *ICML 2019*, PMLR 97, pp.6105-6114.
+[45] PyTorch Team (2024), *ExecuTorch Documentation*, tài liệu chính thức của PyTorch Foundation, https://docs.pytorch.org/executorch/stable/ (truy cập 09/2026)
 
-[46] Tschandl P., Rosendahl C., Kittler H. (2018), "The HAM10000 dataset: A large collection of multi-source dermatoscopic images of common pigmented skin lesions", *Scientific Data* Vol.5, pp.180161.
+[46] Qin D., et al. (2024), "MobileNetV4: Universal Models for the Mobile Ecosystem", *ECCV 2024*, pp.78-96.
 
-[47] Tu Z., et al. (2022), "MaxViT: Multi-Axis Vision Transformer", *ECCV 2022*, pp.459-479.
+[47] Saha S., Hemal M. M., Eidmum M. Z. A., Mridha M. F. (2025), "Knowledge distillation approach for skin cancer classification on lightweight deep learning model", *Healthcare Technology Letters* Vol.12 (1), e12120.
 
-[48] Vasu P. K. A., et al. (2023), "FastViT: A Fast Hybrid Vision Transformer using Structural Reparameterization", *ICCV 2023*, pp.5785-5795.
+[48] Saito T., Rehmsmeier M. (2015), "The Precision-Recall Plot Is More Informative than the ROC Plot When Evaluating Binary Classifiers on Imbalanced Datasets", *PLoS ONE* Vol.10 (3), e0118432.
 
-[49] Venkatachalam C., Venkatachalam S., Balakrishnan A. (2025), "Enhanced skin cancer classification using modified EfficientNetV2L with adaptive early stopping mechanism", *Scientific Reports* Vol.15 (1), pp.38304.
+[49] Tan M., Le Q. V. (2019), "EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks", *ICML 2019*, PMLR 97, pp.6105-6114.
 
-[50] Wang A., et al. (2024), "RepViT: Revisiting Mobile CNN From ViT Perspective", *CVPR 2024*, pp.15909-15920.
+[50] Tschandl P., Rosendahl C., Kittler H. (2018), "The HAM10000 dataset, a large collection of multi-source dermatoscopic images of common pigmented skin lesions", *Scientific Data* Vol.5, pp.180161.
 
-[51] Wang M., Gao X., Zhang L. (2025), "Recent global patterns in skin cancer incidence, mortality, and prevalence", *Chinese Medical Journal* Vol.138 (2), pp.185-192.
+[51] Tu Z., et al. (2022), "MaxViT: Multi-Axis Vision Transformer", *ECCV 2022*, pp.459-479.
 
-[52] Wightman R. (2019), *PyTorch Image Models (timm)*, kho mã GitHub, https://doi.org/10.5281/zenodo.4414861
+[52] Vasu P. K. A., et al. (2023), "FastViT: A Fast Hybrid Vision Transformer using Structural Reparameterization", *ICCV 2023*, pp.5785-5795.
 
-[53] Winata A., Andryani N. A. C., Gunawan A. A. S., Gaol F. L., Matsuo T. (2025), "MTAKD: multi-teacher agreement knowledge distillation for edge AI skin disease diagnosis", *Scientific Reports* Vol.15 (1), pp.44314.
+[53] Venkatachalam C., Venkatachalam S., Balakrishnan A. (2025), "Enhanced skin cancer classification using modified EfficientNetV2L with adaptive early stopping mechanism", *Scientific Reports* Vol.15 (1), pp.38304.
 
-[54] Woo S., et al. (2023), "ConvNeXt V2: Co-designing and Scaling ConvNets with Masked Autoencoders", *CVPR 2023*, pp.16133-16142.
+[54] Wang A., et al. (2024), "RepViT: Revisiting Mobile CNN From ViT Perspective", *CVPR 2024*, pp.15909-15920.
 
-[55] Youden W. J. (1950), "Index for rating diagnostic tests", *Cancer* Vol.3 (1), pp.32-35.
+[55] Wang M., Gao X., Zhang L. (2025), "Recent global patterns in skin cancer incidence, mortality, and prevalence", *Chinese Medical Journal* Vol.138 (2), pp.185-192.
+
+[56] Wightman R. (2019), *PyTorch Image Models (timm)*, kho mã GitHub, https://doi.org/10.5281/zenodo.4414861
+
+[57] Wilson E. B. (1927), "Probable Inference, the Law of Succession, and Statistical Inference", *Journal of the American Statistical Association* Vol.22 (158), pp.209-212.
+
+[58] Winata A., Andryani N. A. C., Gunawan A. A. S., Gaol F. L., Matsuo T. (2025), "MTAKD: multi-teacher agreement knowledge distillation for edge AI skin disease diagnosis", *Scientific Reports* Vol.15 (1), pp.44314.
+
+[59] Woo S., et al. (2023), "ConvNeXt V2: Co-designing and Scaling ConvNets with Masked Autoencoders", *CVPR 2023*, pp.16133-16142.
+
+[60] Youden W. J. (1950), "Index for rating diagnostic tests", *Cancer* Vol.3 (1), pp.32-35.
 
 # PHỤ LỤC A — Bảng đầy đủ 19 run in-domain
 
