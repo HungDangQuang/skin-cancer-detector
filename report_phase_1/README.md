@@ -26,7 +26,6 @@ Tổng hợp kết quả Phase 1 để chuẩn bị **proposal + slide**. Tất 
 ```
 report_phase_1/
 ├── README.md                         ← file này (tóm tắt + điều hướng)
-├── DE_CUONG.md                       ← đề cương luận văn (bản đầy đủ)
 ├── SLIDE_CONTENT.md                  ← nội dung 24 slide bảo vệ đề cương
 ├── SPEAKER_NOTES.md                  ← kịch bản thuyết trình theo từng slide
 ├── RESULTS_ANALYSIS.md               ← bảng kết quả + cách đọc/phân tích khi bảo vệ
