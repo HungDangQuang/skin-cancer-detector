@@ -27,7 +27,7 @@ Scope: `run/*.sh`, `run/common.sh`, and `run/README.md`.
 
 - [ ] **Run-dir isolation.** An ablation or variant must never write into an
   existing run-dir. Students isolate with `run_suffix=`; **teachers must use
-  `output_dir=`** — `scripts/train_teacher.py:39` hard-wires
+  `output_dir=`** — `scripts/train_teacher.py:40` hard-wires
   `<output_dir>/teacher/<name>/fold_N` and does **not** read `run_suffix`, so a
   teacher variant without an `output_dir` override silently overwrites the main
   teacher run.

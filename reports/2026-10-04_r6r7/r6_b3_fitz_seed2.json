@@ -1,0 +1,39 @@
+{
+  "results_dir": ".tmp/ci_gates/fitzpatrick17k_headline",
+  "n_boot": 2000,
+  "seed": 2,
+  "alpha": 0.05,
+  "n_test_rows": 4320,
+  "fold_convention": "shared row indices across folds; statistic = mean over folds (folds are models on the SAME test rows, so predictions are never pooled)",
+  "metrics": [
+    "sens_at_80spec"
+  ],
+  "per_run": {
+    "x_student": {
+      "n_folds": 5,
+      "sens_at_80spec": {
+        "point": 0.49462962962962964,
+        "lo": 0.46896383398259034,
+        "hi": 0.5193413181634678,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    },
+    "x_teacher": {
+      "n_folds": 5,
+      "sens_at_80spec": {
+        "point": 0.4689814814814815,
+        "lo": 0.4462673742440166,
+        "hi": 0.496455418846283,
+        "n_valid": 2000,
+        "n_dropped": 0
+      }
+    }
+  },
+  "kd_deltas": {},
+  "ablation_deltas": {},
+  "ablation_deltas_by_subgroup": {},
+  "explicit_pairs": {},
+  "explicit_pairs_by_subgroup": {},
+  "fairness_gaps": {}
+}

@@ -10,7 +10,7 @@ Adds a new model architecture to the registry so it can be used as teacher or st
 ## When to use
 
 - "Add ResNet50 as another student"
-- "Support a new MobileViT variant"
+- "Support a new RepViT / FastViT variant"
 - "Wire up <some timm backbone> for KD"
 
 ## Invariants every model must obey
@@ -26,14 +26,14 @@ These are enforced by `BaseModel` (`src/models/base_model.py`) and the rest of t
 
 ### Step 1 — New model class
 
-Create `src/models/<arch>.py` mirroring the existing pattern. Look at `src/models/efficientnet.py` for the simplest reference (~25 lines).
+**First check whether you need a class at all.** Every timm model in the project (all teachers and students) is served by the one generic wrapper `TimmBackboneModel` (`src/models/timm_backbone.py`) — a new timm backbone usually only needs a registry entry (Step 2) + a config (Step 3). Write a new class only when the arch needs custom logic (the precedent is `PanDermModel` in `src/models/panderm.py`, which subclasses `TimmBackboneModel` to load out-of-timm weights). If you do, mirror this shape:
 
 ```python
 import timm
 import torch
 
 from .base_model import BaseModel
-from .heads import build_head
+from .heads import build_head, infer_backbone_out_dim
 
 
 class MyArchModel(BaseModel):
@@ -46,7 +46,7 @@ class MyArchModel(BaseModel):
         dropout       = cfg.model.head.get("dropout", 0.2)
 
         self.backbone = timm.create_model(backbone_name, pretrained=pretrained, num_classes=0)
-        in_features = self.backbone.num_features
+        in_features = infer_backbone_out_dim(self.backbone)  # never backbone.num_features
         self.head = build_head(in_features, dropout=dropout)
 
         if cfg.model.get("freeze_backbone", False):

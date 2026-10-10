@@ -1,6 +1,6 @@
 ---
 name: acceptance-gates
-description: Hợp đồng DUY NHẤT để phán "model đã ĐẠT YÊU CẦU chưa" (đủ tốt để chạy trên điện thoại) — các cổng A/B/C có mốc số, quy tắc đạt theo cận dưới CI 95%, bộ từ vựng phán quyết bắt buộc, và danh sách suy luận bị cấm đã từng gây kết luận sai trong dự án này. Mọi skill/agent đánh giá phải đi qua file này trước khi viết "đạt", "đủ tốt", "dùng được", "sẵn sàng triển khai/ship".
+description: Hợp đồng DUY NHẤT để phán "model đã ĐẠT YÊU CẦU chưa" (đủ tốt để chạy trên điện thoại) — khung 3 trụ (I chạy được · II giữ chất lượng · III đúng với người dùng tại ngưỡng app) + C2, mốc hiện hành, quy tắc gán nhãn theo cả khoảng CI 95%, bộ từ vựng phán quyết bắt buộc, và danh sách suy luận bị cấm đã từng gây kết luận sai trong dự án này. Mọi skill/agent đánh giá phải đi qua file này trước khi viết "đạt", "đủ tốt", "dùng được", "sẵn sàng triển khai/ship". Lý do + ngày + nhãn post-hoc của từng mốc nằm ở acceptance-gates-history.md.
 ---
 
 # Cổng chấp nhận — khi nào được nói "model đạt yêu cầu"
@@ -25,52 +25,51 @@ baseline của nó vẫn có thể gần đoán mò trên ảnh điện thoại.
 `docs/TASK_ITEM2_3_source_sampler_ship_ckpt.md`) viết "item 2 đạt tiêu chí" / "Nếu item 2 KHÔNG đạt" cho **endpoint so sánh đã đăng ký
 trước** — đó là câu (2). Khi trích sang câu (3), viết "endpoint item 2 đạt", không viết "model đạt".
 
-## 1. Trạng thái các mốc
+## 1. Trạng thái các mốc (hiện hành — cập nhật 04/10/2026)
 
-**⚠️ Trạng thái (cập nhật 01/10/2026, tối): B2, B4 (mục tiêu 0,81) và metric C2 (ΔAUPRC) ĐÃ CHỐT — post-hoc;
-mọi mốc khác vẫn ĐỀ XUẤT.** Cổng mang mốc đề xuất được báo cáo "so với mốc đề xuất" kèm cờ
-`CHƯA CÓ TIÊU CHÍ CHỐT` (§3 bước 3). Phán quyết tổng theo §3 bước 4: một cổng bắt buộc `KHÔNG ĐẠT` với mốc
-đã chốt ⇒ `KHÔNG ĐẠT YÊU CẦU` dù các mốc khác còn đề xuất; nếu không có cổng như vậy ⇒ `CHƯA CÓ TIÊU CHÍ CHỐT`.
-Không bao giờ viết "model đạt yêu cầu" khi còn mốc đề xuất.
+Bảng này là **trạng thái**, không phải lịch sử: mỗi hạng mục một dòng, giá trị đang áp dụng. Lý do, lời tác giả,
+văn liệu và chi tiết post-hoc của từng lần chốt/đổi: [`acceptance-gates-history.md`](acceptance-gates-history.md).
+Tài liệu viết trước 05/10/2026 trích "`acceptance-gates.md` §1" để lấy **lý do / văn liệu** (vd đổi C2 ngày 03/10:
+Hinton, Furlanello, Mirzadeh, Cho & Hariharan) — phần đó nay ở history §A, nguyên văn.
 
-**02/10/2026 (tác giả): B4 chuyển từ "bắt buộc" sang "BÁO CÁO" — post-hoc** (quyết định sau khi đã thấy B4
-`KHÔNG ĐẠT` của ứng viên ship; lý do: app nhận ảnh camera, HAM10000 là dermoscopy, train không có ảnh
-dermoscopy nào). B4 vẫn được đo, ghi nhãn và báo cáo như cũ, chỉ không còn quyết định chọn model. Các mốc
-đề xuất còn lại giữ nguyên (tác giả: "giữ các mốc đề xuất thử xem"), kể cả tập miền PAD · Fitz · HAM của C2.
-Phán quyết hiện hành: `reports/2026-10-02_acceptance_verdict_srcsamp.md` — **CHƯA CÓ TIÊU CHÍ CHỐT**
-(trước 02/10: KHÔNG ĐẠT YÊU CẦU vì B4).
+- Phán quyết tổng theo §3 bước 4: một cổng bắt buộc `KHÔNG ĐẠT` với mốc đã chốt ⇒ `KHÔNG ĐẠT YÊU CẦU` dù các mốc
+  khác còn đề xuất; nếu không có cổng như vậy mà còn mốc đề xuất ⇒ `CHƯA CÓ TIÊU CHÍ CHỐT`. Không bao giờ viết
+  "model đạt yêu cầu" khi còn mốc đề xuất.
+- Mốc **CHỐT TẠM** được dùng **như ĐÃ CHỐT** để gán nhãn (§3), kèm chữ "(tạm)" trong mọi báo cáo; nếu tác giả đổi,
+  ghi ngày đổi và khai post-hoc.
+- Mốc chốt sau khi đã nhìn thấy kết quả của chính model đang chấm phải được khai là *post-hoc*. Khi tác giả
+  chốt/đổi: sửa dòng tương ứng dưới đây **và** thêm một mục có ngày vào `acceptance-gates-history.md` §A.
 
-Khi tác giả chốt: sửa cột "Mốc", ghi ngày chốt vào bảng dưới, đổi trạng thái thành `ĐÃ CHỐT`.
-Mốc chốt sau khi đã nhìn thấy kết quả của chính model đang chấm phải được khai là *post-hoc*.
+| Hạng mục | Mốc / giá trị hiện hành | Trạng thái | Ngày | Post-hoc? |
+|---|---|---|---|---|
+| Luật gộp | **Khung 3 trụ §2.1** (thay luật gộp sáu tiêu chí cũ — lịch sử) | ĐÃ CHỐT | 03/10/2026 | có |
+| I-1 độ trễ p95 (§2.1) | ≤ 80 ms | ĐỀ XUẤT | — | — |
+| II-1 (= A3) · II-2 (= A4) | như A3 · A4 (§2 A) | ĐỀ XUẤT | — | — |
+| II-3 đổi quyết định qua pipeline app | < 0,5% (chốt kèm cỡ mẫu) | ĐỀ XUẤT | — | — |
+| III-a: S_min · Sp_min | 0,80 · 0,60 | **CHỐT TẠM** | 04/10/2026 | có với P0; tiên nghiệm với vòng 2 **trừ** một dòng metric test P1 fold 4 đã bị thấy trước (`docs/PREREG_CANDIDATE2_2026-10-02.md` §10) |
+| III-b: S_min · Sp_min **mỗi nhóm tông** | 0,80 · 0,60 (giữ 0,80; mốc bác sĩ 0,47 chỉ thêm vào báo cáo) | **CHỐT TẠM** | 04/10/2026 | như III-a |
+| III-b: tập chấm | **Fitzpatrick17k-C** (3.086 / 4.320 ảnh headline; `reports/2026-10-04_review_v2_checks/fitz17kC_headline_image_ids.txt`) — chỉ III-b; C2, B3, C4b vẫn trên headline | ĐÃ CHỐT | 04/10/2026 | có |
+| C2: metric · tập miền · vai | ΔAUPRC (student − teacher) · PAD · Fitz · HAM · **bắt buộc** | ĐÃ CHỐT | 01/10 (metric) · 03/10 (miền, vai) | có |
+| C2: cách hiểu | **không kém** teacher quá δ (`lo > −δ`) | ĐÃ CHỐT | 03/10/2026 | có |
+| C2: δ | **CHỐT TẠM:** δ = 0,05 × AUPRC của **chính teacher trong arm**, từng miền — PAD = **các hàng PAD của test in-domain** (không phải AUPRC gộp), Fitz và HAM = **biến thể headline**; điểm ước lượng = trung bình 5 fold, checkpoint chính `predictions.csv`; **không làm tròn** khi so (vd PAD 0,7966 × 0,05 = 0,03983); đổi định nghĩa từ δ tuyệt đối sang tương đối. Teacher `efficientnetv2_m`: PAD 0,040 · Fitz 0,035 · HAM 0,025. Không có nguồn văn liệu (quy ước); tính trên phần AUPRC vượt mức đoán bừa thì 5% này tương đương lớn hơn. Post-hoc với P0 (mọi δ > 0,0068 làm P0 qua) | **CHỐT TẠM** | 04/10/2026 | có với P0 |
+| B2 (PAD sens@spec80) | mục tiêu 0,81 · sàn 0,47 — **tham chiếu/báo cáo**, không còn là cổng | ĐÃ CHỐT | 01/10 (mốc) · 03/10 (vai) | có |
+| B4 (HAM10000) | mục tiêu 0,81 — vai **BÁO CÁO** | ĐÃ CHỐT | 01/10 (mốc) · 02/10 (vai) | có |
+| B1, B3 → báo cáo · C4a → gộp vào III-b | — | ĐÃ CHỐT | 03/10/2026 | có |
+| δ của C4b | 0,02 AUC (không có nguồn) | CHỜ QUYẾT (C4b chỉ báo cáo) | — | — |
+| Điểm vận hành app | hàng **PAD** của val, độ nhạy 90% (`pad_sens90`) | tác giả xác nhận giữ | 03/10/2026 | có (xem "Báo cáo bắt buộc") |
 
-| Hạng mục | Trạng thái | Ngày chốt | Người chốt |
-|---|---|---|---|
-| **Sáu tiêu chí chọn model** (§2.0) | **ĐÃ CHỐT** — đây là danh sách *cái gì* phải đạt (tiêu chí 6 chỉ báo cáo từ 02/10/2026) | 01/10/2026 | tác giả |
-| Mốc số của từng cổng (§2 A/B/C) | ĐỀ XUẤT — tác giả **đã ghi nhận** 01/10/2026, **post-hoc** (sau khi đã thấy mọi kết quả B/C của ứng viên ship, `reports/ci_gates_srcsamp_*.md`); các dòng CHỜ QUYẾT bên dưới vẫn mở; B2, B4, metric C2 đã chốt ở các dòng kế tiếp | 01/10/2026 (ghi nhận) | tác giả |
-| B2: mốc quyết định = **mục tiêu ≥ 0,81** (sàn 0,47 chỉ báo cáo) | **ĐÃ CHỐT — post-hoc** | 01/10/2026 (tối) | tác giả |
-| B4 (HAM10000): mốc quyết định = **mục tiêu ≥ 0,81** | **ĐÃ CHỐT — post-hoc** | 01/10/2026 (tối) | tác giả |
-| B4: **vai = BÁO CÁO** (không còn bắt buộc; mốc 0,81 giữ để ghi nhãn) | **ĐÃ CHỐT — post-hoc** | 02/10/2026 | tác giả |
-| C2 "vượt teacher": cách hiểu (đề xuất: vượt trội có ý nghĩa, `lo > 0`), metric (đề xuất ΔAUPRC), tập miền (đề xuất PAD · Fitz · HAM; ISIC bỏ vì đề xuất xoay quanh ảnh kiểu điện thoại và xuyên miền) | **metric = ΔAUPRC: ĐÃ CHỐT — post-hoc** (01/10/2026 tối, tác giả); cách hiểu `lo > 0` và tập miền PAD·Fitz·HAM: vẫn là đề xuất, đang được dùng | 01/10/2026 tối (metric) | tác giả |
-| C4a "tốt trên mọi tông da": mỗi nhóm đạt sàn 0,47 hay mức cao hơn | CHỜ QUYẾT | — | — |
-| δ của C4b (đề xuất 0,02 AUC — không có nguồn) | CHỜ QUYẾT | — | — |
+**Phán quyết hiện hành** của ứng viên ship P0 (khám phá, post-hoc): **`KHÔNG ĐẠT YÊU CẦU (tạm)`** — III-b trượt —
+`reports/2026-10-04_acceptance_verdict_P0_3pillar.md`. Các phán quyết cũ (khung cũ) và vì sao đổi: history §A.
 
 ## 2. Các cổng
 
-### 2.0 Sáu tiêu chí chọn model (tác giả chốt 01/10/2026) → cổng tương ứng
+### 2.0 Quy tắc chọn ứng viên và quy tắc đạt (vẫn áp dụng)
 
-Một model chỉ được chọn (ship / gọi là "đạt yêu cầu") khi đạt mọi tiêu chí có cột "Bắt buộc" ✅ — **năm tiêu chí 1–5**; tiêu chí 6 (B4) chỉ báo cáo từ 02/10/2026 (§1):
-
-| # | Tiêu chí của tác giả (nguyên ý) | Cổng | Bắt buộc |
-|---|---|---|---|
-| 1 | Vượt qua phần evaluation — các chỉ số đề xuất | B1 · B2 · B3 | ✅ |
-| 2 | Vượt qua teacher | **C2** (student **tốt hơn** teacher có ý nghĩa — không phải "không kém") | ✅ |
-| 3 | Tốc độ chấp nhận được trên mobile | A1 | ✅ |
-| 4 | Khả năng hoạt động trên mobile được đảm bảo | A3 · **A4** (+ A2 báo cáo) | ✅ |
-| 5 | Hoạt động tốt trên các tông da khác nhau | **C4a** (mỗi nhóm tông đạt sàn) · C4b (chênh lệch — báo cáo) | ✅ C4a |
-| 6 | Chỉ số evaluation chấp nhận được trên HAM10000 | **B4** | **báo cáo** (từ 02/10/2026, post-hoc — §1) |
-
-C1 (KD > baseline) **không** nằm trong sáu tiêu chí chọn model: nó là bằng chứng *giải pháp KD có hiệu
-quả* cho luận văn (câu hỏi (2) ở §0), vẫn phải báo cáo nhưng không quyết định chọn model.
+Sáu tiêu chí chọn model của tác giả (chốt 01/10/2026) và luật gộp theo chúng là **lịch sử** từ 03/10/2026 —
+bảng ánh xạ tiêu chí → cổng ở `acceptance-gates-history.md` §C. C1 (KD > baseline) chưa bao giờ là tiêu chí
+chọn model: nó là bằng chứng *giải pháp KD có hiệu quả* cho luận văn (câu hỏi (2) ở §0), vẫn phải báo cáo.
+Hai quy tắc dưới đây vẫn áp dụng nguyên văn cho khung 3 trụ (chỉ đổi "tiêu chí bắt buộc" thành "cổng bắt buộc
+theo luật gộp §2.1").
 
 **Chọn ≠ phát triển — cách dùng sáu tiêu chí cho hợp lệ.** Mọi cổng B và C (kể cả C2, C4a) chấm trên
 **tập kiểm**: test in-domain (B1, B2, phần PAD của C2), HAM10000 (B4, C2) và Fitzpatrick17k (B3, C2, C4).
@@ -81,7 +80,7 @@ cụ chọn. Quy trình hợp lệ:
 
 1. Mọi lựa chọn (arm, checkpoint, fold) làm bằng **val** hoặc endpoint đã đăng ký trước → ra **một**
    ứng viên.
-2. Các tiêu chí bắt buộc (1–5; tiêu chí 6 chỉ báo cáo từ 02/10/2026) **chấp nhận hoặc loại** ứng viên đó, một lần.
+2. Các cổng bắt buộc (luật gộp §2.1) **chấp nhận hoặc loại** ứng viên đó, một lần.
 3. Nếu bị loại: kết luận của luận văn là "ứng viên định trước KHÔNG ĐẠT YÊU CẦU ở cổng X". Muốn thử
    ứng viên kế tiếp thì phải khai *post-hoc* — các tập kiểm đã được nhìn hai lần, và cần một tập kiểm
    khác để xác nhận (§4 #18). Có thể định trước một **danh sách ứng viên theo thứ tự** để giảm vấn đề
@@ -93,6 +92,47 @@ không gộp fold) với mốc — luật gán nhãn đầy đủ ở §3, **kh�
 Cổng B/C chấm trên **CI 5 fold** của arm, **cùng họ checkpoint với bản ship** (ship = `best_model_auprc.pth`
 ⇒ dùng `predictions_auprc.csv`; kết quả trên checkpoint pAUC không tự áp sang — brief item 2/3 §3);
 cổng A chấm trên **đúng fold/checkpoint sẽ ship**. Mọi metric ở B/C là metric **không phụ thuộc ngưỡng**.
+
+### 2.1 Khung 3 trụ — luật hiện hành từ 03/10/2026
+
+| Cổng | Đo gì | Mốc | Chấm trên | Nguồn mốc |
+|---|---|---|---|---|
+| **I-1** (= A1, thêm p95) | Độ trễ **p95** sau 5 phút chạy liên tục, Pixel 6a, trên `.pte` ship | ≤ 80 ms (ĐỀ XUẤT) | fold ship | ngân sách nội bộ (`docs/ANDROID_APP_SPEC.md:237`); review §3 trụ I |
+| **II-1** (= A3) | Điện thoại ↔ máy chủ | như A3 | fold ship | như A3 |
+| **II-2** (= A4) | Không lỗi, tất định trên máy | như A4 | fold ship | như A4 |
+| **II-3** (L3) | Tỉ lệ đổi quyết định tại ngưỡng app khi ảnh đi qua pipeline thật của app (decode → resize → normalize) so với pipeline Python | < 0,5% (ĐỀ XUẤT) | fold ship | review §3 trụ II |
+| **III-a** | Ảnh điện thoại cùng nguồn (PAD, test in-domain): **độ nhạy và độ đặc hiệu tại ngưỡng app đóng băng** (quy tắc `pad_sens90` trên val của fold ship) | cận dưới độ nhạy ≥ **0,80** **và** cận dưới độ đặc hiệu ≥ **0,60** (chốt tạm 04/10) | fold ship | use case sàng lọc (lập luận: `acceptance-gates-history.md` §B dòng S_min, chốt tạm 04/10) |
+| **III-b** | Ảnh lâm sàng **khác nguồn** (Fitzpatrick17k headline, **tập con Fitzpatrick17k-C** từ 04/10), **từng** nhóm tông da (sáng · trung bình · tối), cùng ngưỡng app | cận dưới độ nhạy **mỗi nhóm** ≥ **0,80** và cận dưới độ đặc hiệu mỗi nhóm ≥ **0,60** (chốt tạm 04/10) | fold ship | như III-a — "ổn định trên ảnh camera thực tế" |
+| **C2** | Student không kém teacher quá δ | §2 C | CI 5 fold (như cũ) | §1 |
+
+- **CI cho III-a/III-b:** ngưỡng cố định ⇒ chỉ còn sai số nhị thức; dùng **Wilson 95%** trên fold ship, **giả định
+  các ảnh độc lập**. Giả định này mới được kiểm gần đúng cho PAD trên hai metric không phụ thuộc ngưỡng (gom theo bệnh
+  nhân gần như không đổi CI, `reports/2026-10-03_thesis_review_checks/` §1). Với Fitzpatrick không có mã bệnh nhân;
+  phần vi phạm đã biết là **ảnh gần trùng** (bản gốc có ~2.297 cụm trùng theo Abhishek et al. 2025, repo chỉ bắt trùng
+  tuyệt đối — 3 ảnh) ⇒ từ 04/10 III-b chấm trên tập con Fitzpatrick17k-C để giảm vi phạm này; trùng chưa phát hiện thì
+  vẫn có thể còn, và trường hợp nhiều ảnh cùng một người nhưng không gần trùng thì **chưa kiểm được**.
+- **Mốc chưa có giá trị** (trước 04/10: S_min, Sp_min, δ): báo số đo + CI, nhãn ô = `CHƯA CHỨNG MINH` kèm cờ
+  `CHƯA CÓ TIÊU CHÍ CHỐT`. Từ 04/10 ba mốc này đã CHỐT TẠM nên luật này không còn áp cho chúng.
+- **I-1, II-1, II-2, II-3 chấm theo số đo, không CI** (như A1/A3/A4 ở §3). II-3 phải chốt kèm cỡ mẫu: với ~200 ảnh,
+  < 0,5% nghĩa là **không ảnh nào** đổi quyết định (1/200 = 0,5%).
+- **Tính III cho một run:** `reports/2026-10-03_thesis_review_checks/tone_at_app_threshold.py` (III-b) và
+  `reports/2026-10-02_threshold_options/threshold_options.sh` (III-a) — **đã tham số hoá 04/10/2026** (R13): script
+  shell nhận `RUN=`/`FITZ=`/`OUT=`, script Python nhận `FITZ_DIR SUMMARY_CSV SHIP_FOLD [KEEP_IDS]`; mặc định là P0 (chạy
+  lại ra y hệt kết quả cũ). **III-b từ 04/10:** truyền `KEEP_IDS = reports/2026-10-04_review_v2_checks/fitz17kC_headline_image_ids.txt`.
+  Luật nhãn: một phía "≥ m" của §3 bước 1. Bước "ô chỉ có 1 fold ⇒ hạ xuống CHƯA CHỨNG MINH" **không** áp cho
+  III (như cổng A — chấm trên đúng model sẽ ship).
+- **Luật gộp (từ 03/10/2026):** I-1 + II-1 + II-2 + II-3 + III-a + III-b + C2 đều phải `ĐẠT`.
+- **Báo cáo bắt buộc (không quyết định):** B1 (ISIC, so Kurtansky — tham chiếu), sens@spec80 trên PAD so với
+  Cochrane (0,81 / 0,76 / 0,47 — tham chiếu), B3, B4 (HAM — ngoài phạm vi ảnh camera, nhưng HAM vẫn trong tập
+  miền của C2), C1 (KD − baseline), C3, C4b (chênh lệch giữa các tông, CI ghép cặp), A2, hành vi tại ngưỡng app. **Từ 04/10
+  (review v2 D2, D4):** sens@spec80 **theo từng tông** trên Fitzpatrick (headline và Fitzpatrick17k-C, trung bình 5 fold, CI) so với mốc bác sĩ trên ảnh
+  lâm sàng 0,47 — chỉ để định vị, không phải cổng; và độ nhạy tốt nhất tại độ đặc hiệu ≥ 0,60 theo tông, fold ship, ngưỡng chọn trên chính test (lạc quan)
+  (khoảng cách tới điểm (0,80; 0,60) của III-b) — `reports/2026-10-04_review_v2_checks/`.
+- **Post-hoc:** khung, S_min/Sp_min, δ và tập chấm III-b (Fitzpatrick17k-C, 04/10) đều được chốt sau khi đã thấy kết quả của ứng viên hiện tại trên test PAD
+  và Fitzpatrick ⇒ với ứng viên đó, mọi nhãn chỉ là **khám phá**; nhãn đứng được cần tập xác nhận chưa ai mở
+  (`docs/PROGRESS.md` U8). Phán quyết hiện hành: dòng cuối §1 (trỏ báo cáo phán quyết, nơi có số đo); số khám phá của P0 lúc chốt khung: history §D.
+
+Các mục **A, B, C** dưới đây giữ định nghĩa metric và nguồn mốc; vai trò cổng/báo cáo theo §2.1.
 
 ### A. Chạy được trên điện thoại
 
@@ -131,18 +171,23 @@ chưa phủ bước đổi kích thước ảnh camera (L3, `docs/MOBILE_EVAL_PL
 | # | Câu hỏi | Mốc đề xuất |
 |---|---|---|
 | C1 | KD có giúp không? (`kd` − `baseline`, cùng student/splits/seed) — **bằng chứng luận văn, không phải tiêu chí chọn** | CI ghép cặp ΔAUPRC > 0 trên PAD **và** Fitzpatrick |
-| C2 | **Student vượt teacher** (tiêu chí 2) — student − teacher, **cùng splits, cùng arm** | CI ghép cặp **ΔAUPRC > 0** (cận dưới > 0) trên **từng** miền PAD · Fitzpatrick · HAM10000 (metric ΔAUPRC: **ĐÃ CHỐT, post-hoc**; cách hiểu `lo > 0` và tập miền: đề xuất) |
+| C2 | **Student không kém teacher quá δ** (tiêu chí 2) — student − teacher, **cùng splits, cùng arm** | CI ghép cặp ΔAUPRC có **cận dưới > −δ** trên **từng** miền PAD · Fitzpatrick · HAM10000 (metric ΔAUPRC, cách hiểu, tập miền PAD·Fitz·HAM và vai bắt buộc: **ĐÃ CHỐT, post-hoc**; δ = 5% AUPRC teacher: **chốt tạm 04/10**) |
 | C3 | Nén được bao nhiêu? | chỉ báo cáo tỉ lệ tham số / dung lượng / FLOPs (`reports/benchmark/*.json`) |
 | C4a | **Mỗi nhóm tông da** (sáng · trung bình · tối, Fitzpatrick17k) tự đạt sàn (tiêu chí 5) | độ nhạy @ đặc hiệu 80% của **từng** nhóm ≥ sàn B3 (0,47) |
 | C4b | Chênh lệch giữa các nhóm tông | **báo cáo** CI của mọi cặp chênh AUC; nhãn tương đương (±δ) chỉ để tham khảo — xem dưới |
 
-- C2 là phép kiểm **vượt trội**, chặt hơn hẳn "không kém": chỉ một miền có CI chứa 0 là `CHƯA CHỨNG MINH`.
+- C2 là phép kiểm **không kém** (từ 03/10/2026; trước đó là vượt trội `lo > 0`): mỗi miền `ĐẠT` khi cận dưới
+  của Δ(student − teacher) > −δ. C2 `ĐẠT` chỉ nói nén không làm mất quá δ — **không** nói KD có tác dụng (đó là C1).
+  (Trước 04/10, khi chưa có δ: nhãn ô = `CHƯA CHỨNG MINH` + cờ. Từ 04/10 δ đã chốt tạm — §1.)
+  Lưu ý chiều lệch: teacher hiện tại train **không** có sampler theo nguồn (student có) ⇒ teacher yếu hơn trên PAD
+  ⇒ phép kiểm không kém **dễ đạt hơn** thực tế; xem `reports/2026-10-04_r6r7/README.md` (R7: cùng công thức thì KD không phân biệt được với teacher trên PAD) và `docs/PROGRESS.md` S16. Tập miền có HAM (dermoscopy) dù B4
+  đã thành báo cáo vì cùng lý do — tác giả **giữ HAM** (03/10/2026). Ô HAM (cận dưới −0,0068) là ô quyết định δ
+  ở ứng viên hiện tại.
   Teacher phải là **chính teacher đã dạy student đó, trên cùng splits** (vd `x_kd__ddi` − `x_teacher__ddi`),
   không phải teacher của ma trận splits v1. Luật "cùng họ checkpoint với bản ship" chỉ áp cho **phía
   student** (`predictions_auprc.csv` nếu ship checkpoint AUPRC); phía teacher dùng `predictions.csv` của
   chính teacher — teacher không có bản `_auprc` và brief cấm train lại teacher.
-  "Vượt" = vượt trội có ý nghĩa (`lo > 0`) là **diễn giải** của bản này cho chữ "vượt qua teacher";
-  tác giả có thể chốt cách hiểu khác (§1). Lần đo đầu (01/10/2026, ứng viên ship `__srcsamp` checkpoint AUPRC vs
+  Lần đo đầu (01/10/2026, ứng viên ship `__srcsamp` checkpoint AUPRC vs
   `runs_newsplit_ddi/teacher/efficientnetv2_m`): `reports/ci_gates_srcsamp_*.md` (driver `.tmp/archived_root_drivers_20261002/.tmp_ci_gates.sh` (local, untracked)).
 - C4a là cổng một phía trên từng nhóm — đạt được nếu model đủ tốt ở cả ba nhóm, kể cả khi nhóm tối
   chỉ có n = 411 (CI rộng hơn, nên cần điểm ước lượng cao hơn sàn một khoảng).
@@ -152,8 +197,8 @@ chưa phủ bước đổi kích thước ảnh camera (L3, `docs/MOBILE_EVAL_PL
   mục 4). Ngoài ra chênh sáng − trung bình có ý nghĩa (khác 0) ở **cả 6 arm splits v2, kể cả teacher**.
   Vì vậy tiêu chí 5 được chấm bằng C4a; C4b báo cáo kèm nhãn tham khảo, và nếu C4b `KHÔNG ĐẠT`
   (cả CI nằm ngoài ±δ) thì phải nêu rõ là hạn chế. Đừng nới luật cho vừa.
-- **Luật gộp (theo sáu tiêu chí §2.0):** A1 + A3 + A4 + B1 + B2 + B3 + C2 + C4a đều phải `ĐẠT`.
-  C1, C3, C4b, A2 và (từ 02/10/2026) **B4** bắt buộc **báo cáo** nhưng không quyết định chọn.
+- **Luật gộp hiện hành: §2.1.** (Luật gộp cũ theo sáu tiêu chí, áp đến 02/10/2026: history §C.)
+  C1, C3, C4b, A2 và **B4** bắt buộc **báo cáo** nhưng không quyết định chọn.
 
 ### Báo cáo bắt buộc (không phải cổng, nhưng KHÔNG được bỏ)
 
@@ -164,9 +209,10 @@ lành. Các cổng B/C không phụ thuộc ngưỡng, nên con số này không
 **Ngưỡng phải theo miền ảnh app nhận** (đo 01/10/2026, `reports/2026-10-01_pad_threshold/`,
 `docs/ANDROID_APP_SPEC.md` §3.5a): ngưỡng Youden trên toàn bộ val bị ảnh ISIC áp đảo và gắn cờ ~mọi ảnh
 điện thoại lành (175/175 trên val PAD của fold 4). Điểm vận hành mặc định cho ảnh camera = chọn trên
-**hàng PAD của val** (hiện dùng độ nhạy 90% — **post-hoc**: chọn SAU khi đã xem 3 điểm vận hành trên test
-PAD của fold 4, mà mọi fold dùng chung các hàng test đó; chỉ Fitzpatrick là phép kiểm chưa bị đụng, ở đó độ nhạy
-0,692). Cùng tập val đã dùng để chọn checkpoint và fold; không có CI. Báo cáo hành vi app tại **điểm đó**, kèm
+**hàng PAD của val** (độ nhạy 90% — tác giả **xác nhận giữ** 03/10/2026; vẫn **post-hoc**: chọn SAU khi đã xem 3 điểm vận hành trên test
+PAD của fold 4, mà mọi fold dùng chung các hàng test đó; lúc chọn (01/10) Fitzpatrick là phép kiểm chưa bị đụng, ở
+đó độ nhạy cộng 5 fold 0,692 — từ đó số Fitzpatrick tại ngưỡng app đã được xem, nên với ứng viên hiện tại III-b là
+post-hoc). Cùng tập val đã dùng để chọn checkpoint và fold; không có CI. Báo cáo hành vi app tại **điểm đó**, kèm
 điểm toàn cục để đối chiếu.
 
 ## 3. Bộ từ vựng phán quyết — chỉ dùng các nhãn này
@@ -177,8 +223,9 @@ Gán nhãn theo **bốn bước, đúng thứ tự** — một cổng chỉ có 
 
 | Dạng ô | `ĐẠT` | `KHÔNG ĐẠT` | `CHƯA CHỨNG MINH` |
 |---|---|---|---|
-| Một phía "≥ m" (B1–B4, C4a) | `lo ≥ m` | `hi < m` | còn lại (CI cắt qua m) — kể cả khi điểm ước lượng đã ở phía sai của m |
-| Vượt trội "> 0" (C1, C2) | `lo > 0` | `hi ≤ 0` | còn lại |
+| Một phía "≥ m" (III-a, III-b; B1–B4, C4a khi báo cáo) | `lo ≥ m` | `hi < m` | còn lại (CI cắt qua m) — kể cả khi điểm ước lượng đã ở phía sai của m |
+| Vượt trội "> 0" (C1) | `lo > 0` | `hi ≤ 0` | còn lại |
+| Không kém "> −δ" (C2) | `lo > −δ` | `hi < −δ` | còn lại |
 | Hai phía "trong ±δ" (C4b, tham khảo) | `−δ ≤ lo` **và** `hi ≤ δ` | `lo > δ` **hoặc** `hi < −δ` | còn lại |
 | Không có CI (A1, A3, A4) | số đo thoả mốc | số đo trượt mốc | — |
 
@@ -186,7 +233,8 @@ Gán nhãn theo **bốn bước, đúng thứ tự** — một cổng chỉ có 
 hoặc CI tính trên họ checkpoint khác bản ship (phía student) ⇒ hạ xuống `CHƯA CHỨNG MINH`. Quy tắc
 "1 fold" **không** áp cho cổng A — cổng A vốn được chấm trên đúng một fold ship.
 
-**Bước 2 — gộp các ô thành nhãn của cổng** (B1 có 2 metric; C2 có 3 miền; C4a có 3 nhóm), ưu tiên
+**Bước 2 — gộp các ô thành nhãn của cổng** (III-a có 2 ô: độ nhạy, độ đặc hiệu; III-b có 3 nhóm tông; C2 có 3 miền;
+B1 có 2 metric khi báo cáo), ưu tiên
 từ trên xuống: có ô `KHÔNG ĐẠT` ⇒ cổng `KHÔNG ĐẠT` · có ô `CHƯA ĐO` ⇒ `CHƯA ĐO` · có ô
 `CHƯA CHỨNG MINH` ⇒ `CHƯA CHỨNG MINH` · mọi ô `ĐẠT` ⇒ `ĐẠT`.
 
@@ -195,7 +243,7 @@ từ trên xuống: có ô `KHÔNG ĐẠT` ⇒ cổng `KHÔNG ĐẠT` · có ô 
 
 **Bước 4 — phán quyết tổng**, trên các cổng bắt buộc (luật gộp §2), ưu tiên từ trên xuống:
 
-1. `KHÔNG ĐẠT YÊU CẦU` — có ít nhất một cổng bắt buộc `KHÔNG ĐẠT` **với mốc ĐÃ CHỐT**.
+1. `KHÔNG ĐẠT YÊU CẦU` — có ít nhất một cổng bắt buộc `KHÔNG ĐẠT` **với mốc ĐÃ CHỐT** (mốc CHỐT TẠM tính như ĐÃ CHỐT, nhãn ghi kèm "(tạm)").
 2. `CHƯA CÓ TIÊU CHÍ CHỐT` — còn cổng bắt buộc mang cờ ở bước 3.
 3. `CHƯA KẾT LUẬN ĐƯỢC` — còn cổng bắt buộc `CHƯA ĐO` / `CHƯA CHỨNG MINH`.
 4. `ĐẠT YÊU CẦU` — mọi cổng bắt buộc `ĐẠT` với mốc `ĐÃ CHỐT`.
@@ -226,21 +274,21 @@ Báo cáo luôn liệt kê từng cổng với nhãn của nó. Không dùng "Go
 | 13 | Đặt/đổi mốc sau khi xem kết quả rồi tuyên bố đạt | mốc hậu nghiệm | §1: khai post-hoc |
 | 14 | Thay sens@80spec bằng sens@90spec để kết luận "không đạt" | sens@90spec ≤ sens@80spec | ghi `CHƯA ĐO` |
 | 15 | "Teacher cũng sụt ⇒ nén không gây hại" mà không kiểm student − teacher | đúng hướng nhưng chưa phải C2 | chạy C2 |
-| 16 | "Student không kém teacher / ngang teacher ⇒ vượt teacher" | tiêu chí 2 đòi **vượt** (cận dưới Δ > 0), không phải "không kém" | C2 theo luật một phía m = 0 |
-| 17 | "Tổng thể công bằng / AUC Fitzpatrick đạt ⇒ hoạt động tốt trên mọi tông da" | số gộp che nhóm yếu | C4a trên **từng** nhóm tông |
-| 18 | So nhiều ứng viên trên HAM/Fitz, giữ cái đạt, rồi báo "đạt trên HAM/Fitz" | HAM/Fitz đã thành tập phát triển | chỉ chấm một ứng viên định trước; nếu không ⇒ khai post-hoc (§2.0) |
+| 16 | "Student không kém teacher (C2 đạt) ⇒ KD có tác dụng" | C2 chỉ nói nén không mất quá δ; teacher và baseline có thể cùng tốt | tác dụng KD = C1 (KD − baseline, ghép cặp) |
+| 17 | "Tổng thể công bằng / AUC Fitzpatrick đạt ⇒ hoạt động tốt trên mọi tông da" | số gộp che nhóm yếu | III-b (trước 03/10: C4a) trên **từng** nhóm tông |
+| 18 | So nhiều ứng viên trên HAM/Fitz, giữ cái đạt, rồi báo "đạt trên HAM/Fitz" | HAM/Fitz đã thành tập phát triển | chỉ chấm một ứng viên định trước; nếu không ⇒ khai post-hoc (§2.0, §2.1) |
 
 ## 5. Khối bắt buộc trong mọi báo cáo có phán quyết "đạt / chưa đạt"
 
 ```
 ### Cổng chấp nhận (theo .claude/skills/eval-results/reference/acceptance-gates.md)
 Model được chấm: <run-dir · fold · checkpoint · splits v1/v2>
-Trạng thái mốc: <ĐỀ XUẤT | ĐÃ CHỐT ngày …>
+Trạng thái mốc: <theo bảng §1 — từng cổng: ĐỀ XUẤT | CHỐT TẠM ngày … (nhãn kèm "(tạm)") | ĐÃ CHỐT ngày …>
 | Cổng | Metric | Mốc | Giá trị [CI 95%] | Nguồn (file:line) | Nhãn |
 |---|---|---|---|---|---|
-| A1 … C4 | … | … | … | … | ĐẠT / KHÔNG ĐẠT / CHƯA CHỨNG MINH / CHƯA ĐO / CHƯA CÓ TIÊU CHÍ CHỐT |
-Hành vi tại ngưỡng val (theo miền): <sens / spec / số ảnh lành bị gắn cờ>
-Sáu tiêu chí (§2.0): <tiêu chí 1–6 → nhãn của cổng tương ứng>
+| I-1 · II-1 · II-2 · II-3 · III-a · III-b · C2 (§2.1) | … | … | … | … | ĐẠT / KHÔNG ĐẠT / CHƯA CHỨNG MINH / CHƯA ĐO — kèm cờ `CHƯA CÓ TIÊU CHÍ CHỐT` nếu mốc còn ĐỀ XUẤT (§3 bước 3: cờ, không phải nhãn thứ năm) |
+Báo cáo (không quyết định): B1 · sens@spec80 PAD so Cochrane · B3 · B4 · C1 · C3 · C4b · A2
+Hành vi tại ngưỡng app (theo miền): <sens / spec / số ảnh lành bị gắn cờ>
 Ứng viên định trước? <có — checkpoint/fold chọn theo val | không — đã so nhiều ứng viên trên HAM/Fitz ⇒ post-hoc>
 Phán quyết tổng: <ĐẠT YÊU CẦU | KHÔNG ĐẠT YÊU CẦU | CHƯA KẾT LUẬN ĐƯỢC | CHƯA CÓ TIÊU CHÍ CHỐT>
 Lệnh còn thiếu để đo đủ: <…>
@@ -264,12 +312,12 @@ Lệnh còn thiếu để đo đủ: <…>
   bởi assistant; verifier không kiểm được (không có web).
 - ~~Mốc Cochrane 0,81/0,47~~ — **đã đối chiếu 01/10/2026** (tóm tắt CD011902.pub2) bởi assistant; verifier
   không kiểm được. Còn hở: chỉ melanoma, và 0,81 là mức đọc dermoscopy.
-- δ = 0,02: đề xuất, không có nguồn.
+- δ của C4b = 0,02: đề xuất, không có nguồn (δ của C2 đã chốt tạm 04/10 — §1).
 - §4 #12, #13, #14, #16, #17, #18 là **phòng ngừa** — chưa có tiền lệ được kiểm trong memory/repo;
   các dòng còn lại có tiền lệ (memory/transcript).
 - Ánh xạ tiêu chí → cổng là **diễn giải của bản này**: "chấp nhận được trên HAM" → mục tiêu 0,81 (B4)
-  **đã được tác giả chốt** 01/10/2026 tối (post-hoc); "vượt qua teacher" → vượt trội có ý nghĩa `lo > 0` (C2,
-  metric ΔAUPRC đã chốt, cách hiểu còn đề xuất) và "hoạt động tốt trên các tông da" → mỗi nhóm đạt sàn 0,47
-  (C4a) vẫn chờ tác giả chốt (§1).
+  **đã được tác giả chốt** 01/10/2026 tối (post-hoc); "giữ được hiệu năng teacher" → không kém quá δ (C2,
+  metric ΔAUPRC và cách hiểu đã chốt; δ chốt tạm 04/10 — đổi từ "vượt trội" ngày 03/10/2026, post-hoc) và "hoạt động tốt trên các tông da" → mỗi nhóm đạt sàn 0,47
+  (C4a) — **đã gộp vào III-b** từ 03/10/2026 (mốc S_min, §1).
 - Con số "~0,85" (sàn đoán nguồn ảnh trên test v2): tính tay trong lượt kiểm chéo, chưa có artifact.
 - "205/208 ảnh PAD lành bị gắn cờ": nguồn là brief item 2/3 (`:12`) và memory, số của **một** checkpoint.

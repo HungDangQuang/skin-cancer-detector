@@ -3,10 +3,12 @@ name: eval-results
 description: >
   Read the artifacts a run produced, judge them, and conclude whether the solution is
   effective — and, ONLY via reference/acceptance-gates.md, whether the model meets the
-  deployment requirement ("đạt yêu cầu chưa / đủ tốt chưa / dùng được trên điện thoại chưa"). Use when the user asks "is this checkpoint good", "did KD help", "compare the
-  students / teacher vs student", "rank my runs", "is this training run any good / how do I
-  improve it", "why did it fail / NaN / not learn", or shares a reports/results/*.json, a
-  training log, or an experiments/runs/ dir. It routes to the right detailed rubric in
+  deployment requirement ("đạt yêu cầu chưa / đủ tốt chưa / dùng được trên điện thoại chưa").
+  Use when the user asks "is this checkpoint good", "did KD help", "compare the students /
+  teacher vs student", "rank my runs", "which arm won", "is this training run any good / how do
+  I improve it", "why did it fail / NaN / not learn", or points at a run-dir
+  (experiments/runs*/), a fold's test_metrics.json, a reports/external*/ or bootstrap-CI report,
+  or a training log. It routes to the right detailed rubric in
   reference/ based on WHICH artifact you have. NOT for making a code change (use code-change)
   and NOT for writing the result up into a report (use update-report).
 ---
@@ -28,9 +30,11 @@ Three different questions, three different kinds of evidence — never answer on
 | (3) **Does the model MEET THE REQUIREMENT** (good enough on a phone)? | **every gate in `reference/acceptance-gates.md`**, on the model that will ship | only the labels in that file's §3 |
 
 - A "better than baseline" result is **never** evidence for (3).
-- While the gate thresholds are still `ĐỀ XUẤT` (not signed off by the author), the overall verdict
-  for (3) **must** be `CHƯA CÓ TIÊU CHÍ CHỐT` — report each gate against the proposed threshold, but
-  do not write "đạt yêu cầu".
+- The overall verdict for (3) follows the gates file **§3 step 4, in order**: a mandatory gate that
+  `KHÔNG ĐẠT` against a locked threshold (`CHỐT TẠM` counts as locked, label "(tạm)") ⇒ `KHÔNG ĐẠT YÊU
+  CẦU`, even if other thresholds are still `ĐỀ XUẤT`; otherwise any mandatory gate still on an `ĐỀ XUẤT`
+  threshold ⇒ `CHƯA CÓ TIÊU CHÍ CHỐT`. "Đạt yêu cầu" is never written while any mandatory threshold is
+  `ĐỀ XUẤT`. Read the current thresholds from the gates file's §1 table — not from memory or old reports.
 - The Good/Moderate/Poor tables in `analyze-evaluation.md` / `assess-training.md` are **health
   heuristics for question (1)/(2)**, not acceptance criteria. Never promote a model to "ready" from them.
 - Any report that gives a verdict on (3) must contain the `### Cổng chấp nhận` block (gates file §5).
@@ -40,7 +44,7 @@ Three different questions, three different kinds of evidence — never answer on
 | You have… | Question | Open |
 |---|---|---|
 | any question of the form "is it good enough / đạt chưa / can it ship / dùng được trên mobile chưa" | acceptance verdict | **`reference/acceptance-gates.md`** (then the rubric below for the numbers) |
-| one/few `reports/results/*.json` (eval JSON) | "is this checkpoint good?", one KD-vs-baseline, cross-student compare | `reference/analyze-evaluation.md` |
+| one/few run-dirs (`experiments/runs*/<run>/`), a fold's `test_metrics.json`, a `reports/external*/…` tree, a `reports/{bootstrap_ci,ci}_*.md`, or a `run/evaluate.sh` JSON | "is this checkpoint good?", one KD-vs-baseline, cross-student compare | `reference/analyze-evaluation.md` (its "Where results live" table says which tree is v1/v2) |
 | **all** of `experiments/runs/` | "did KD help across the board?", rank every teacher-student pair | `reference/compare-kd.md` |
 | a **successful** training log | score the run (good/moderate/poor) + how to improve the next one | `reference/assess-training.md` |
 | a **failed / misbehaving** run (crash, NaN, never learned) | triage the failure + recommend a fix | `reference/diagnose-training.md` |
@@ -50,7 +54,9 @@ Three different questions, three different kinds of evidence — never answer on
 - **Quote `test_metrics.json`, not val metrics**, for any verdict — val is biased by
   early-stopping. Cite the **aggregated mean ± std** (`aggregated.json/md`) over folds, not a
   single fold.
-- Headline metric at the measured **~0.39% prevalence** is **AUPRC** (clinical); **pAUC@TPR≥80**
+- Headline metric at the measured **~0.45% prevalence of the splits-v2 in-domain test** (265 / 59,093; the ~0.39% in `CLAUDE.md` is the whole population) is **AUPRC** (clinical); external
+  sets have their own prevalence (HAM/Fitzpatrick are far higher), so never compare AUPRC across
+  datasets (gates §4 #6); **pAUC@TPR≥80**
   is the ISIC-benchmark comparison metric; AUC-ROC is optimistic — don't lead with it.
 - A large **val − test** gap (esp. AUPRC/pAUC) is the overfitting signal.
 - Never invent numbers — read them from the JSON and cite `file:line`; say "missing" if an
@@ -62,14 +68,28 @@ Three different questions, three different kinds of evidence — never answer on
   patients** — its in-domain numbers are inflated and may not back an acceptance verdict.
   `experiments/runs_newsplit_*` use the patient-grouped v2. Never mix v1 and v2 in one comparison.
 - **One fold is not an arm.** A single (or retrained, e.g. `__mobile`) checkpoint is at most
-  `CHƯA CHỨNG MINH`; claims about an arm need the 5-fold CI.
+  `CHƯA CHỨNG MINH` for a claim about the **arm** (and for gates scored on the 5-fold CI, e.g. C2); claims
+  about an arm need the 5-fold CI. The exception is by design: gates I/II/III (§2.1) are scored on the
+  single **ship** fold/checkpoint, because that is the model the app runs.
 - **Win counts are not evidence** ("KD won 12/12"); quote the paired CI of the delta.
+- **Fitzpatrick17k: name the variant** (headline, crop50/70, with_non_neoplastic, or the Fitzpatrick17k-C subset).
+  III-b is scored on Fitzpatrick17k-C since 2026-10-04; C2, B3, C4b stay on headline (gates §1).
+
+## Before the answer reaches the user
+
+Any verdict here cites numbers and `file:line`, so it goes through the `CLAUDE.md` cross-check gate: two
+`review-verifier` instances in parallel (`REMIT=FACTS` + `REMIT=PATCH`, **kind B**, template in
+`.claude/skills/review-thesis/reference/cross-check.md`; the `thesis/REVIEW_LOG.md` and `report-template.md`
+parts of that file are for thesis reviews only), exactly one pass, then a `### Kiểm chéo` block in the answer.
+If both an `analyze-evaluation.md` report template and the gates file's §5 block apply, the §5 block is the
+verdict and the template is the evidence under it.
 
 ## reference/ index
 
 | File | Was skill | Use for |
 |---|---|---|
-| `reference/acceptance-gates.md` | — (new 2026-10-01) | **the only place that defines "meets the requirement"**: gates A/B/C, CI-based labelling rule (covers every case), verdict vocabulary, forbidden inferences |
+| `reference/acceptance-gates.md` | — (new 2026-10-01) | **the only place that defines "meets the requirement"**: current thresholds (§1 table), 3-pillar frame (§2.1) + C2, CI-based labelling rule (§3), verdict vocabulary, forbidden inferences (§4) |
+| `reference/acceptance-gates-history.md` | — (split out 2026-10-05) | dated log of every threshold decision — *why*, *when*, *post-hoc or not*. Read only for provenance / the thesis limitations section; never needed to label a model |
 | `reference/analyze-evaluation.md` | analyze-evaluation | verdict on one/few eval JSONs (single or comparison mode) |
 | `reference/compare-kd.md` | compare-kd | whole-matrix KD-vs-baseline via `scripts/compare_kd_results.py` |
 | `reference/assess-training.md` | assess-training | score a finished, successful training log |

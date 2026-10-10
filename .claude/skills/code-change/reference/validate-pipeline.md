@@ -119,7 +119,7 @@ grep -nE 'nvidia-smi' run/*.sh \
     || echo "  (clean — all calls gated or non-fatal)"
 
 echo "--- d) Teacher variant using run_suffix (train_teacher.py IGNORES it!) ---"
-# scripts/train_teacher.py:39 hard-wires <output_dir>/teacher/<name>/fold_N and
+# scripts/train_teacher.py:40 hard-wires <output_dir>/teacher/<name>/fold_N and
 # never reads run_suffix — a teacher ablation must isolate with output_dir=,
 # otherwise it silently OVERWRITES the main teacher run.
 BAD=$(grep -nE 'train_teacher\.py' -A6 run/*.sh 2>/dev/null | grep -E 'run_suffix')

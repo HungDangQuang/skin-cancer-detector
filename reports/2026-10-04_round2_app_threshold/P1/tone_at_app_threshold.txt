@@ -1,0 +1,8 @@
+fold 4 (model ship), ngưỡng 0.5517  — Wilson CI một fold
+  light  sens 850/1195=0.711 [0.685, 0.736]  spec 718/1115=0.644 [0.615, 0.672]
+  medium sens 507/757=0.670 [0.635, 0.702]  spec 557/842=0.662 [0.629, 0.693]
+  dark   sens 153/208=0.736 [0.672, 0.791]  spec 120/203=0.591 [0.522, 0.656]
+cộng số đếm 5 fold (mỗi fold ngưỡng pad_sens90 của nó)
+  light  sens 0.721  spec 0.571
+  medium sens 0.666  spec 0.573
+  dark   sens 0.712  spec 0.578

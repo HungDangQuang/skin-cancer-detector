@@ -91,6 +91,9 @@ So với checkpoint pAUC của cùng run — chỉ để minh bạch; `bootstrap
 checkpoint của cùng một run nên **không có CI ghép cặp, và báo cáo này không kết luận hai checkpoint khác hay bằng
 nhau**:
 
+> Cập nhật 03/10/2026: CI ghép cặp hai checkpoint đã chạy bằng cây symlink đổi tên file —
+> `reports/2026-10-03_item3_ckpt_paired.md`.
+
 | Tập test | Checkpoint pAUC (`best_model.pth`) | Checkpoint AUPRC (`best_model_auprc.pth`) |
 |---|---|---|
 | In-domain, AUPRC (mean ± std 5 fold) | 0,6575 ± 0,0193 | 0,6609 ± 0,0140 |

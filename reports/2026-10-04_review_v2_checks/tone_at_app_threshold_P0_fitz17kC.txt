@@ -1,0 +1,9 @@
+chỉ giữ 3086 image_id trong reports/2026-10-04_review_v2_checks/fitz17kC_headline_image_ids.txt
+fold 4 (model ship), ngưỡng 0.5705  — Wilson CI một fold
+  light  sens 563/934=0.603 [0.571, 0.634]  spec 611/824=0.742 [0.711, 0.770]
+  medium sens 281/559=0.503 [0.461, 0.544]  spec 418/514=0.813 [0.777, 0.845]
+  dark   sens 66/130=0.508 [0.423, 0.592]  spec 103/125=0.824 [0.748, 0.881]
+cộng số đếm 5 fold (mỗi fold ngưỡng pad_sens90 của nó)
+  light  sens 0.707  spec 0.590
+  medium sens 0.636  spec 0.628
+  dark   sens 0.683  spec 0.597

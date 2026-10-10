@@ -53,8 +53,15 @@ router — open the matching reference file and follow it.
    - Full change→commit→launch→proposal cycle → `reference/dev-cycle.md`.
 
 6. **Document.** End state = up-to-date docs, not a TODO to update them later: `CLAUDE.md`
-   gotchas, relevant `docs/*.md`, and memory (`MEMORY.md` + the matching file). To write up
-   the *results* of the run afterwards, use the **update-report** skill.
+   gotchas, relevant `docs/*.md`, memory (`MEMORY.md` + the matching file), and the task's row in
+   `docs/PROGRESS.md` (the single tracker). To write up the *results* of the run afterwards, use
+   the **update-report** skill.
+
+7. **Cross-check before handing over.** The final answer of a code change cites `file:line` and
+   is a patch, so it goes through the `CLAUDE.md` cross-check gate: two `review-verifier`
+   instances in parallel (`REMIT=FACTS` + `REMIT=PATCH`, **kind B**, template in
+   `.claude/skills/review-thesis/reference/cross-check.md`), exactly one pass. Name what is
+   deferred to the server (`bash run/validate.sh`, pytest, POC) rather than implying it passed.
 
 ## Hard rules (never violate)
 
@@ -67,6 +74,9 @@ router — open the matching reference file and follow it.
   `${VAR:-default}` and gate non-universal CLIs (`nvidia-smi`) behind `command -v`.
 - **Never overwrite an existing run-dir.** Ablations isolate with `run_suffix=` (students) or
   `output_dir=` (teachers — `scripts/train_teacher.py` does *not* read `run_suffix`).
+- **Launch hygiene on the shared box:** `TMPDIR="$(pwd)/.tmp"` per session (`/` has hit 100%),
+  pin `GPU=<id>` when two jobs run at once (`GPU=auto` can pick the same card twice), launch
+  under `tmux`/`nohup`, and only ever kill PIDs you started.
 
 See `reference/review-runner.md` and `docs/GOTCHAS.md` for the full rationale.
 

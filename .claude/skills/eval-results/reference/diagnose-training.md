@@ -48,13 +48,13 @@ nvidia-smi                          # is another process still holding the VRAM?
 
 | Symptom | Likely cause | Where to confirm |
 |---|---|---|
-| `val_pauc` stuck at 0 across all epochs | All predictions same class — head bias collapsed | Check `pauc_at_tpr` returns 0 because `mask.sum() < 2` in `src/evaluation/metrics.py:30`; print prob distribution |
+| `val_pauc` stuck at 0 across all epochs | All predictions same class — head bias collapsed | Check `pauc_at_tpr` returns 0 because `len(np.unique(y_true)) < 2` (one class) in `src/evaluation/metrics.py:33`, or because every score is identical; print prob distribution |
 | `train_loss` drops, `val_loss` flat/rising | Data leakage OR severe overfitting | Confirm `StratifiedGroupKFold` grouped by `patient_id` in `scripts/prepare_data.py`; check val set has malignant samples |
 | `loss=nan` on first iter | LR too high, or label dtype mismatch | Check `cfg.training.optimizer.lr_*` against `configs/training/distillation.yaml` defaults; ensure labels cast to float in the dataset |
 | KD `soft_loss` ≈ 0 from epoch 1 | Teacher logits collapsed (always negative or positive) | `python -c "import torch; ckpt = torch.load('teacher.pth'); print(ckpt['model_state_dict'].keys())"` then run inference on val |
 | `val_pauc` jumps wildly between epochs | Validation set too small (POC has only 36) | Expected for POC; only meaningful with full data |
 | `RuntimeError: mat1 and mat2 shapes cannot be multiplied (BxC1 and C2x1)` | timm `model.num_features` doesn't match `forward(x)` output for some backbones (MobileNetV3: reports 960, emits 1280) | Use `infer_backbone_out_dim()` in `src/models/heads.py` — runs a dummy forward to get the true dim |
-| `ValueError: x and y must have same first dimension, but have shapes (N,) and (0,)` (matplotlib) | Trainer's `history["val_pauc"]` (or similar key) never got appended in the fit loop | Confirm every key declared in `self.history = {...}` is `.append()`ed once per epoch in `fit()`; KDTrainer's pattern at `kd_trainer.py:104` is the reference |
+| `ValueError: x and y must have same first dimension, but have shapes (N,) and (0,)` (matplotlib) | Trainer's `history["val_pauc"]` (or similar key) never got appended in the fit loop | Confirm every key declared in `self.history = {...}` is `.append()`ed once per epoch in `fit()`; KDTrainer's pattern at `kd_trainer.py:168` is the reference |
 | `AttributeError: module 'numpy' has no attribute 'trapz'` | NumPy 2.0 removed `np.trapz` | Use `np.trapezoid` |
 | `KeyError: 'target'` in `generate_group_kfold_splits` | `cfg.data.label_col` is the *raw CSV* column name; the processed dataframe uses `"label"` | Pass `label_col="label"` to the splits function (see CLAUDE.md gotcha) |
 | `omegaconf.errors.ConfigKeyError: Missing key data` from a standalone script | Plain `OmegaConf.load("configs/config.yaml")` doesn't compose Hydra's `defaults:` list | Use `src/utils/config.py::load_config` (auto-detects Hydra root configs) or switch the script to `@hydra.main` |
@@ -84,7 +84,7 @@ print(f"Params loaded: {total_params:,}")
 
 ### Loss components for a KD run (read from log)
 ```bash
-grep -E "Epoch [0-9]+/[0-9]+" logs/<run>_runtime.log
+grep -E "Epoch [0-9]+/[0-9]+" logs/<name>_<timestamp>.log
 ```
 Expected pattern:
 ```
