@@ -1,0 +1,105 @@
+{
+  "rule": "docs/PREREG_CANDIDATE2_2026-10-02.md \u00a74 + \u00a77.1 (validation only)",
+  "created_utc": "2026-10-10T19:16:49+00:00",
+  "ckpt_tag": "_auprc",
+  "tie": 0.005,
+  "order": [
+    "P0",
+    "P3"
+  ],
+  "run_dirs": {
+    "P0": "experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_mobilenetv4_conv_medium__srcsamp",
+    "P3": "experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_cpubone_b1__srcsamp"
+  },
+  "pad_val_auprc_mean": {
+    "P0": 0.8830951956728053,
+    "P3": 0.8766288139324262
+  },
+  "pad_val_per_fold": {
+    "P0": [
+      {
+        "fold": 0,
+        "pad_rows": 403,
+        "pad_pos": 219,
+        "val_rows": 59722,
+        "pad_auprc": 0.9146282474536348
+      },
+      {
+        "fold": 1,
+        "pad_rows": 351,
+        "pad_pos": 168,
+        "val_rows": 67041,
+        "pad_auprc": 0.8592611482411142
+      },
+      {
+        "fold": 2,
+        "pad_rows": 359,
+        "pad_pos": 137,
+        "val_rows": 75117,
+        "pad_auprc": 0.832601779579058
+      },
+      {
+        "fold": 3,
+        "pad_rows": 395,
+        "pad_pos": 166,
+        "val_rows": 50847,
+        "pad_auprc": 0.9143925511514832
+      },
+      {
+        "fold": 4,
+        "pad_rows": 373,
+        "pad_pos": 198,
+        "val_rows": 60422,
+        "pad_auprc": 0.8945922519387356
+      }
+    ],
+    "P3": [
+      {
+        "fold": 0,
+        "pad_rows": 403,
+        "pad_pos": 219,
+        "val_rows": 59722,
+        "pad_auprc": 0.9135669172815581
+      },
+      {
+        "fold": 1,
+        "pad_rows": 351,
+        "pad_pos": 168,
+        "val_rows": 67041,
+        "pad_auprc": 0.8537655284183785
+      },
+      {
+        "fold": 2,
+        "pad_rows": 359,
+        "pad_pos": 137,
+        "val_rows": 75117,
+        "pad_auprc": 0.7919342086122493
+      },
+      {
+        "fold": 3,
+        "pad_rows": 395,
+        "pad_pos": 166,
+        "val_rows": 50847,
+        "pad_auprc": 0.9186487055287257
+      },
+      {
+        "fold": 4,
+        "pad_rows": 373,
+        "pad_pos": 198,
+        "val_rows": 60422,
+        "pad_auprc": 0.9052287098212195
+      }
+    ]
+  },
+  "winner": "P0",
+  "winner_reason": "highest score (0.8831)",
+  "winner_all_val_auprc_per_fold": {
+    "0": 0.7687904995239278,
+    "1": 0.6616496802649121,
+    "2": 0.6295691968504588,
+    "3": 0.7691086173789079,
+    "4": 0.7017925135010313
+  },
+  "ship_fold": 4,
+  "files_read": "val_predictions{tag}.csv, val_split.csv, val_metrics{tag}.json only"
+}
