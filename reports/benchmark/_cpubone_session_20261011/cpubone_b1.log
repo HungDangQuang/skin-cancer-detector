@@ -1,0 +1,16 @@
+[run] logging to /workspace/skin-cancer-detector/logs/benchmark_20261011_053030.log
+================================================================
+Script:      benchmark
+Host:        4e3bc53a38ed
+Working dir: /workspace/skin-cancer-detector
+Date:        2026-10-11 05:30:30
+================================================================
+[run] python: /workspace/skin-cancer-detector/.venv-linux/bin/python (Python 3.10.20)
+[run] GPU: pinned CUDA_VISIBLE_DEVICES=0
+[run] Full benchmark cpubone_b1 from experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_cpubone_b1__srcsamp/fold_4/checkpoints/best_model_auprc.pth (device=auto) -> reports/benchmark/_cpubone_session_20261011/cpubone_b1.json
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+/workspace/skin-cancer-detector/src/utils/checkpoint.py:34: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  checkpoint = torch.load(path, map_location=device)
+2026-10-11 05:30:49 | INFO     | __main__ | cpubone_b1: 10.84M params | 1.489 GFLOPs | 41.505 MB | CPU b1 39.804 ms | GPU b1 11.45 ms
+2026-10-11 05:30:49 | INFO     | __main__ | Benchmark saved to reports/benchmark/_cpubone_session_20261011/cpubone_b1.json
+[run] DONE

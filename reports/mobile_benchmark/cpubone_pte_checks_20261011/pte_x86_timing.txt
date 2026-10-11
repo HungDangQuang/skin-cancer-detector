@@ -1,0 +1,2 @@
+cpubone_b1                 n=200 median=18.54 ms  p90=86.99  min=12.80
+mobilenetv4_conv_medium    n=200 median=5.60 ms  p90=87.11  min=3.99

@@ -1,0 +1,26 @@
+{
+  "model_name": "cpubone_b1",
+  "pte_path": "exports/executorch_cpubone/cpubone_b1.pte",
+  "pte_size_mb": 41.439,
+  "executorch_api": "executorch.runtime.Runtime",
+  "reference_csv": "data/benchmark_set_cpubone/ref_cpubone_b1.csv",
+  "n_samples": 100,
+  "input_shape": [
+    3,
+    224,
+    224
+  ],
+  "tolerance": 0.001,
+  "max_abs_logit_delta": 8.521423339846734e-06,
+  "mean_abs_logit_delta": 2.1060688876883836e-06,
+  "p99_abs_logit_delta": 8.166182136548075e-06,
+  "max_abs_prob_delta": 2.002110681353919e-06,
+  "n_over_tolerance": 0,
+  "worst_sample": {
+    "id": "0049",
+    "pytorch_logit": 2.00461,
+    "pte_logit": 2.00460147857666,
+    "abs_delta": 8.521423339846734e-06
+  },
+  "passed": true
+}

@@ -1,0 +1,2 @@
+cpubone_b1.pte {'<xnnpack delegate call>': 62, 'aten::expand_copy': 40, 'aten::native_group_norm': 20, 'aten::mul': 20, 'aten::logical_not': 20, 'aten::split_with_sizes_copy': 10, 'aten::eq': 10, 'aten::full_like': 10, 'aten::any': 10, 'aten::where': 10, 'aten::alias_copy': 10, 'aten::upsample_nearest2d': 5, 'aten::native_layer_norm': 1, 'aten::squeeze_copy': 1}
+mobilenetv4_conv_medium__srcsamp_auprc_fold4.pte {'<xnnpack delegate call>': 1, 'aten::squeeze_copy': 1}
