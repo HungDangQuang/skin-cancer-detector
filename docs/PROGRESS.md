@@ -35,10 +35,10 @@
 
 | Mã | Job | Run-dir (trong `experiments/runs_newsplit_ddi/`) | Ai / ở đâu | Trạng thái |
 |---|---|---|---|---|
-| A7 | KD P3: `efficientnetv2_m → cpubone_b1` (công thức P0) | `kd_efficientnetv2_m_to_cpubone_b1__srcsamp` | server, GPU 0 | 🏃 bước 1 |
-| A8 | baseline `cpubone_b1` (đối chứng C1) | `baseline_cpubone_b1__srcsamp` | server | ⏳ sau A7 |
-| A9 | Chọn chỉ trên val P0 vs P3 → `reports/2026-10-10_cpubone_selection/` | driver bước 3 (CPU) | server | ⏳ sau A8; driver **dừng** ở đây |
-| N10 | Commit `selection.{json,md}` **rồi** mới chạy `GPU=0 bash .tmp/cpubone_eval.sh` (aggregate, eval ngoài miền, CI C1/C2 → `reports/ci_cpubone_P3_*`) | Mac (commit) + server | eval driver từ chối chạy nếu kết quả chọn chưa commit | ⏳ |
+| A7 | KD P3: `efficientnetv2_m → cpubone_b1` (công thức P0) | `kd_efficientnetv2_m_to_cpubone_b1__srcsamp` | server, GPU 0 | ✅ 5/5 fold, 10/10 14:11 → 17:59 UTC |
+| A8 | baseline `cpubone_b1` (đối chứng C1) | `baseline_cpubone_b1__srcsamp` | server | ✅ 5/5 fold, 17:59 → 19:16 UTC |
+| A9 | Chọn chỉ trên val P0 vs P3 → `reports/2026-10-10_cpubone_selection/` | driver bước 3 (CPU) | server | ✅ 19:16 UTC: **giữ P0** (val PAD AUPRC P0 0,8831 · P3 0,8766), fold ship fold_4; commit 11/10 |
+| N10 | Commit `selection.{json,md}` **rồi** mới chạy `GPU=0 bash .tmp/cpubone_eval.sh` (aggregate, eval ngoài miền, CI C1/C2 → `reports/ci_cpubone_P3_*`) | Mac (commit) + server | eval driver từ chối chạy nếu kết quả chọn chưa commit | 🏃 11/10 (tmux `cpubone_eval`) |
 
 **Xem tiến độ CPUBone** (đừng `tail` log train — log in số test):
 ```bash
