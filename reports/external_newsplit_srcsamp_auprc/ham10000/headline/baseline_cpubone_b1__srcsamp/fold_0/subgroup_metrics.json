@@ -1,0 +1,74 @@
+{
+  "dx": {
+    "akiec": {
+      "threshold": 0.1611948609352111,
+      "prevalence": 1.0,
+      "sensitivity": 0.6929824561403509,
+      "specificity": null,
+      "note": "single-class subgroup \u2014 ranking metrics (AUC/pAUC/AUPRC) undefined",
+      "n": 228,
+      "n_malignant": 228,
+      "n_benign": 0
+    },
+    "bcc": {
+      "threshold": 0.1611948609352111,
+      "prevalence": 1.0,
+      "sensitivity": 0.8165137614678899,
+      "specificity": null,
+      "note": "single-class subgroup \u2014 ranking metrics (AUC/pAUC/AUPRC) undefined",
+      "n": 327,
+      "n_malignant": 327,
+      "n_benign": 0
+    },
+    "bkl": {
+      "threshold": 0.1611948609352111,
+      "prevalence": 0.0,
+      "sensitivity": null,
+      "specificity": 0.171939477303989,
+      "note": "single-class subgroup \u2014 ranking metrics (AUC/pAUC/AUPRC) undefined",
+      "n": 727,
+      "n_malignant": 0,
+      "n_benign": 727
+    },
+    "df": {
+      "threshold": 0.1611948609352111,
+      "prevalence": 0.0,
+      "sensitivity": null,
+      "specificity": 0.0547945205479452,
+      "note": "single-class subgroup \u2014 ranking metrics (AUC/pAUC/AUPRC) undefined",
+      "n": 73,
+      "n_malignant": 0,
+      "n_benign": 73
+    },
+    "mel": {
+      "threshold": 0.1611948609352111,
+      "prevalence": 1.0,
+      "sensitivity": 0.8745928338762216,
+      "specificity": null,
+      "note": "single-class subgroup \u2014 ranking metrics (AUC/pAUC/AUPRC) undefined",
+      "n": 614,
+      "n_malignant": 614,
+      "n_benign": 0
+    },
+    "nv": {
+      "threshold": 0.1611948609352111,
+      "prevalence": 0.0,
+      "sensitivity": null,
+      "specificity": 0.2968721080880992,
+      "note": "single-class subgroup \u2014 ranking metrics (AUC/pAUC/AUPRC) undefined",
+      "n": 5403,
+      "n_malignant": 0,
+      "n_benign": 5403
+    },
+    "vasc": {
+      "threshold": 0.1611948609352111,
+      "prevalence": 0.0,
+      "sensitivity": null,
+      "specificity": 0.3877551020408163,
+      "note": "single-class subgroup \u2014 ranking metrics (AUC/pAUC/AUPRC) undefined",
+      "n": 98,
+      "n_malignant": 0,
+      "n_benign": 98
+    }
+  }
+}

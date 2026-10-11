@@ -27,7 +27,7 @@
 | Đang làm | **N1 xong 04/10: vòng 2 chọn lại P0, fold 4** (`reports/2026-10-04_candidate2_selection/`, commit `c61bab2` trước khi mở file test nào của vòng 2 để chọn — **trừ** một dòng metric test tổng in-domain của P1 fold 4 mà assistant đã thấy qua `tail` lúc ~00:25 UTC, trước N1 (prereg §10; `reports/2026-10-04_test_set_openings.md` #13)) ⇒ `.pte`, config app, A3/A4 của P0 giữ nguyên. **Mọi việc N/R làm được đã xong 04/10** (mục 7); vòng 2 chỉ báo cáo: `reports/2026-10-04_round2_report_only.md` — P1, P2 cũng đạt III-a và trượt III-b. Không còn job trên server. Việc còn lại chờ tác giả (mục 2) hoặc để sau (mục 5) |
 | Hợp đồng chấm | `.claude/skills/eval-results/reference/acceptance-gates.md` — 03/10: C2 = không kém teacher quá δ; **khung 3 trụ §2.1** (III-a ảnh điện thoại + III-b ảnh lâm sàng khác nguồn theo tông, tại ngưỡng app); B2 0,81 thôi làm cổng; S_min/Sp_min/δ chốt tạm 04/10 |
 
-## 1. Đang chạy 🏃 — thử CPUBone-B1 (từ 10/10)
+## 1. Đang chạy 🏃 — không có job nào (CPUBone-B1 xong 11/10)
 
 **Thử CPUBone-B1 làm student** (prereg `docs/PREREG_CPUBONE_2026-10-10.md`, thí nghiệm khám phá, post-hoc). Server
 `vastnew`, tmux `cpubone`, driver `.tmp/cpubone_driver.sh` (log `.tmp/cpubone_driver.log`, trạng thái
@@ -38,7 +38,7 @@
 | A7 | KD P3: `efficientnetv2_m → cpubone_b1` (công thức P0) | `kd_efficientnetv2_m_to_cpubone_b1__srcsamp` | server, GPU 0 | ✅ 5/5 fold, 10/10 14:11 → 17:59 UTC |
 | A8 | baseline `cpubone_b1` (đối chứng C1) | `baseline_cpubone_b1__srcsamp` | server | ✅ 5/5 fold, 17:59 → 19:16 UTC |
 | A9 | Chọn chỉ trên val P0 vs P3 → `reports/2026-10-10_cpubone_selection/` | driver bước 3 (CPU) | server | ✅ 19:16 UTC: **giữ P0** (val PAD AUPRC P0 0,8831 · P3 0,8766), fold ship fold_4; commit 11/10 |
-| N10 | Commit `selection.{json,md}` **rồi** mới chạy `GPU=0 bash .tmp/cpubone_eval.sh` (aggregate, eval ngoài miền, CI C1/C2 → `reports/ci_cpubone_P3_*`) | Mac (commit) + server | eval driver từ chối chạy nếu kết quả chọn chưa commit | 🏃 11/10 (tmux `cpubone_eval`) |
+| N10 | Commit `selection.{json,md}` **rồi** mới chạy `GPU=0 bash .tmp/cpubone_eval.sh` (aggregate, eval ngoài miền, CI C1/C2 → `reports/ci_cpubone_P3_*`) | Mac (commit) + server | eval driver từ chối chạy nếu kết quả chọn chưa commit | ✅ 11/10 03:38 UTC; CI `reports/ci_cpubone_P3_{indomain,ham10000_headline,fitzpatrick17k_headline}.md`, eval ngoài miền `reports/external_newsplit_srcsamp_auprc/*/*/{kd_efficientnetv2_m_to_,baseline_}cpubone_b1__srcsamp/`. Chỉ báo cáo — không đổi lựa chọn P0 |
 
 **Xem tiến độ CPUBone** (đừng `tail` log train — log in số test):
 ```bash
