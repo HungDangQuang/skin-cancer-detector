@@ -40,6 +40,8 @@
 | A9 | Chọn chỉ trên val P0 vs P3 → `reports/2026-10-10_cpubone_selection/` | driver bước 3 (CPU) | server | ✅ 19:16 UTC: **giữ P0** (val PAD AUPRC P0 0,8831 · P3 0,8766), fold ship fold_4; commit 11/10 |
 | N10 | Commit `selection.{json,md}` **rồi** mới chạy `GPU=0 bash .tmp/cpubone_eval.sh` (aggregate, eval ngoài miền, CI C1/C2 → `reports/ci_cpubone_P3_*`) | Mac (commit) + server | eval driver từ chối chạy nếu kết quả chọn chưa commit | ✅ 11/10 03:38 UTC; CI `reports/ci_cpubone_P3_{indomain,ham10000_headline,fitzpatrick17k_headline}.md`, eval ngoài miền `reports/external_newsplit_srcsamp_auprc/*/*/{kd_efficientnetv2_m_to_,baseline_}cpubone_b1__srcsamp/`. Chỉ báo cáo — không đổi lựa chọn P0 |
 
+| N11 | Khám phá, post-hoc: CI ghép cặp P3 − P0 ngoài miền (HAM10000 + Fitzpatrick17k headline) | `reports/ci_cpubone_P3vsP0_{ham10000,fitzpatrick17k}_headline.md` | server CPU (`.tmp/ci_p3p0/`) | ✅ 11/10: ΔAUPRC HAM +0,0320 [+0,0214; +0,0422], Fitz +0,0183 [+0,0119; +0,0244]; pAUC HAM −0,0027 (ngược chiều). Không đổi lựa chọn P0 — `reports/2026-10-11_cpubone_P3_vs_P0_external.md` |
+
 **Xem tiến độ CPUBone** (đừng `tail` log train — log in số test):
 ```bash
 ssh vastnew 'cd /workspace/skin-cancer-detector && ls .tmp/cpubone_status/ && grep "^\[cpubone\]" .tmp/cpubone_driver.log | tail -3'
