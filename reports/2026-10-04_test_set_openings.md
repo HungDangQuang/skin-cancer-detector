@@ -43,3 +43,18 @@ fold-run, rò rỉ bệnh nhân) không liệt kê; tập test v1 khác tập te
 **Chưa verify được:** giờ chính xác của #1–#3 và #7, #9, #10, #12, #16, #17, #18 (chỉ biết ngày); log trước 30/09 không còn trên box.
 Bảng có thể sót các lượt mở ad-hoc không để lại log hay commit (ví dụ lệnh `python -c` đọc `test_metrics.json` trong
 một phiên hội thoại).
+
+## Bổ sung 11/10/2026 — thử CPUBone-B1 (P3, `docs/PREREG_CPUBONE_2026-10-10.md`)
+
+Luật chọn chỉ dùng val, commit `6475d76` lúc 03:26:19 UTC 11/10, trước mọi lượt dưới đây. Giờ theo tên log `start_log` trên
+server (UTC); #21 chạy trên Mac (giờ mtime file, +0700).
+
+| # | Ngày giờ (UTC) | Ứng viên / arm | Tập test | Mục đích | Nguồn |
+|---|---|---|---|---|---|
+| 19 | 11/10 03:26–03:38 | P3 + `baseline_cpubone_b1__srcsamp` (`_auprc`), teacher `efficientnetv2_m` | in-domain (theo nguồn); HAM headline; Fitz 4 biến thể (theo tông) | prereg §5: aggregate, eval ngoài miền, CI C1/C2 | `logs/{aggregate,evaluate_external,bootstrap_ci}_20261011_03*.log`; `reports/ci_cpubone_P3_*` |
+| 20 | 11/10 04:38–04:39 | P3, P0 | HAM headline; Fitz headline (theo tông) | khám phá, post-hoc: P3 − P0 ngoài miền | `logs/bootstrap_ci_20261011_0438*.log`; `reports/ci_cpubone_P3vsP0_*` |
+| 21 | 11/10 05:07 (12:07 +0700, Mac) | P3 fold 4 | PAD, Fitz headline + Fitzpatrick17k-C theo tông, ISIC, tại ngưỡng app | khám phá: III-a/III-b như vòng 2 | `reports/2026-10-11_cpubone_app_threshold/P3/` |
+| 22 | 11/10 05:08–05:21 | P0, P1, P2, P3 | in-domain (theo nguồn); HAM headline; Fitz 4 biến thể (theo tông) | khám phá: P3 so với P0/P1/P2 | `logs/bootstrap_ci_20261011_05*.log`; `reports/ci_cpubone_P3vsAll_*` |
+
+Không có lượt nào đổi lựa chọn P0. Trước #19 assistant chỉ đọc `selection.md` (val) và `run/progress.sh` (val pAUC); log
+train (in số test cuối mỗi fold) không được `tail`.

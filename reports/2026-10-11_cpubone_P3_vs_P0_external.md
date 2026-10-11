@@ -80,6 +80,13 @@ tập phát triển cho câu hỏi này), ví dụ một tập xác nhận chưa
 `acceptance-gates.md` §2.1 (I-1, II-1, II-2, II-3, III-a, III-b, C2), không chỉ phần đo trên thiết bị — tức là còn phải
 export `.pte`, kiểm parity, đo trên Pixel 6a, và tính III-a/III-b tại ngưỡng app.
 
+## Ghi chú bổ sung 11/10/2026 (sau báo cáo này)
+
+Phép so ghép cặp P3 − P0 **trên ảnh PAD in-domain** nay đã chạy (`reports/ci_cpubone_P3vsAll_indomain.md` §6): ΔAUPRC
+−0,0145 [−0,0280; −0,0012] — P3 thấp hơn P0, khoảng sát ranh giới. Ba biến thể Fitzpatrick còn lại cũng đã so
+(`reports/ci_cpubone_P3vsAll_fitzpatrick17k_{crop50,crop70,with_non_neoplastic}.md`). Tổng hợp:
+`reports/2026-10-11_cpubone_full_evaluation.md`. Hai gạch đầu dòng đầu của mục dưới vì vậy đã lỗi thời.
+
 ## Chưa verify được / chưa làm
 
 - Phép kiểm ghép cặp P3 − P0 trên ảnh PAD trong miền: chưa chạy (chỉ có hai khoảng không ghép cặp).

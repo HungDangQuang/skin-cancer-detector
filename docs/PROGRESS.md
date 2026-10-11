@@ -42,6 +42,8 @@
 
 | N11 | Khám phá, post-hoc: CI ghép cặp P3 − P0 ngoài miền (HAM10000 + Fitzpatrick17k headline) | `reports/ci_cpubone_P3vsP0_{ham10000,fitzpatrick17k}_headline.md` | server CPU (`.tmp/ci_p3p0/`) | ✅ 11/10: ΔAUPRC HAM +0,0320 [+0,0214; +0,0422], Fitz +0,0183 [+0,0119; +0,0244]; pAUC HAM −0,0027 (ngược chiều). Không đổi lựa chọn P0 — `reports/2026-10-11_cpubone_P3_vs_P0_external.md` |
 
+| N12 | Khám phá, post-hoc: đánh giá đầy đủ P3 như các student khác — CI ghép cặp P3 vs P0/P1/P2 (in-domain theo nguồn, HAM, Fitz 4 biến thể), III-a/III-b tại ngưỡng app, benchmark cùng phiên, export `.pte` + parity + đếm phân đoạn XNNPACK | `reports/2026-10-11_cpubone_full_evaluation.md`; `reports/ci_cpubone_P3vsAll_*`; `reports/2026-10-11_cpubone_app_threshold/`; `reports/benchmark/_cpubone_session_20261011/`; `reports/mobile_benchmark/{parity_cpubone_b1.json,cpubone_pte_checks_20261011/}` | server + Mac | ✅ 11/10: PAD ΔAUPRC vs P0 −0,0145 [−0,0280; −0,0012]; III-a CHƯA CHỨNG MINH (tạm); ngoài miền AUPRC cao nhất P0–P3; `.pte` parity PASS nhưng 62 phân đoạn XNNPACK. **Còn: đo Pixel 6a cùng phiên với MobileNetV4 (tác giả)** |
+
 **Xem tiến độ CPUBone** (đừng `tail` log train — log in số test):
 ```bash
 ssh vastnew 'cd /workspace/skin-cancer-detector && ls .tmp/cpubone_status/ && grep "^\[cpubone\]" .tmp/cpubone_driver.log | tail -3'

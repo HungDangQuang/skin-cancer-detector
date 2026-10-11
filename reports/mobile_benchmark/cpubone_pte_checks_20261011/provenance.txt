@@ -1,0 +1,12 @@
+date_utc: 2026-10-11 05:40:36
+host: 4e3bc53a38ed
+cpubone ckpt: experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_cpubone_b1__srcsamp/fold_4/checkpoints/best_model_auprc.pth
+1b62b180c770cdfea9b64a6aee4d8a68d239282697f59ddabcab06f3a0a3543f  experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_cpubone_b1__srcsamp/fold_4/checkpoints/best_model_auprc.pth
+8e3e1aec8a5329871e25efc7c5f571f71ba4322c15b2a8799a76646c9e55db15  exports/executorch_cpubone/cpubone_b1.pte
+74e06b8df2889567618fd433680dad70f1d91eea31d2e3e22574c356f713e275  exports/executorch_srcsamp/mobilenetv4_conv_medium__srcsamp_auprc_fold4.pte
+[run] ExecuTorch export cpubone_b1 (backend=xnnpack) from experiments/runs_newsplit_ddi/kd_efficientnetv2_m_to_cpubone_b1__srcsamp/fold_4/checkpoints/best_model_auprc.pth -> exports/executorch_cpubone/cpubone_b1.pte
+2026-10-11 05:18:55 | INFO     | __main__ | Exporting cpubone_b1 (backend=xnnpack, input 1x3x224x224)
+/workspace/skin-cancer-detector/src/utils/checkpoint.py:34: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  checkpoint = torch.load(path, map_location=device)
+2026-10-11 05:18:47 | INFO     | __main__ | Wrote reference logits for cpubone_b1 -> data/benchmark_set_cpubone/ref_cpubone_b1.csv
+executorch ? torch 2.14.0+cu130
